@@ -151,3 +151,6 @@ export const STATUS_LABELS: Record<string, string> = {
   responded: '已回覆',
   closed: '已結案',
 };
+
+export type ReviewType = 'positive' | 'negative' | 'other';
+export type ReviewStatus = 'pending' | 'responded' | 'closed';
