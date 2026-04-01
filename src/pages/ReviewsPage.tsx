@@ -1,30 +1,27 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { reviewsApi } from '../services/api';
-import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS, ReviewType, ReviewStatus } from '../types';
+import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS } from '../types';
 
 const ReviewsPage: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
   const [filters, setFilters] = useState({
     review_type: '',
     status: '',
+    source: '',
   });
-  const navigate = useNavigate();
-  const limit = 20;
 
   const fetchReviews = async () => {
     setLoading(true);
     try {
-      const params: any = { limit, offset: page * limit };
+      const params: any = { limit: 100 };
       if (filters.review_type) params.review_type = filters.review_type;
       if (filters.status) params.status = filters.status;
-      
+      if (filters.source) params.source = filters.source;
+
       const res = await reviewsApi.search(params);
       setReviews(res.data.data);
-      setTotal(res.data.total);
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
     } finally {
@@ -34,43 +31,46 @@ const ReviewsPage: React.FC = () => {
 
   useEffect(() => {
     fetchReviews();
-  }, [page, filters]);
+  }, [filters]);
 
-  const getTypeColor = (type: ReviewType) => {
-    switch (type) {
-      case 'positive': return 'bg-green-100 text-green-800';
-      case 'negative': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusColor = (status: ReviewStatus) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'responded': return 'bg-blue-100 text-blue-800';
-      case 'closed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'responded':
+        return 'bg-blue-100 text-blue-800';
+      case 'closed':
+        return 'bg-gray-100 text-gray-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('zh-TW');
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'positive':
+        return 'bg-green-100 text-green-800';
+      case 'negative':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold">評價管理</h2>
-        <button
-          onClick={() => navigate('/reviews/new')}
+        <Link
+          to="/reviews/new"
           className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
         >
           新增評價
-        </button>
+        </Link>
       </div>
 
       {/* 篩選 */}
-      <div className="bg-white p-4 rounded-lg shadow flex gap-4">
+      <div className="bg-white p-4 rounded-lg shadow flex gap-4 flex-wrap">
         <select
           value={filters.review_type}
           onChange={(e) => setFilters({ ...filters, review_type: e.target.value })}
@@ -81,6 +81,7 @@ const ReviewsPage: React.FC = () => {
           <option value="negative">負評</option>
           <option value="other">其他</option>
         </select>
+
         <select
           value={filters.status}
           onChange={(e) => setFilters({ ...filters, status: e.target.value })}
@@ -91,6 +92,19 @@ const ReviewsPage: React.FC = () => {
           <option value="responded">已回覆</option>
           <option value="closed">已結案</option>
         </select>
+
+        <select
+          value={filters.source}
+          onChange={(e) => setFilters({ ...filters, source: e.target.value })}
+          className="px-3 py-2 border rounded"
+        >
+          <option value="">所有來源</option>
+          <option value="google_map">Google MAP</option>
+          <option value="facebook">Facebook</option>
+          <option value="phone">電話客服</option>
+          <option value="app">APP 客服</option>
+          <option value="other">其他</option>
+        </select>
       </div>
 
       {/* 列表 */}
@@ -98,14 +112,14 @@ const ReviewsPage: React.FC = () => {
         {loading ? (
           <div className="p-8 text-center text-gray-500">載入中...</div>
         ) : reviews.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">沒有評價記錄</div>
+          <div className="p-8 text-center text-gray-500">沒有評價資料</div>
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">員工</th>
-                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">來源</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">類型</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">來源</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">狀態</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">建立時間</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">操作</th>
@@ -114,24 +128,22 @@ const ReviewsPage: React.FC = () => {
             <tbody className="divide-y">
               {reviews.map((review) => (
                 <tr key={review.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium">{review.employee_name || '-'}</td>
                   <td className="px-4 py-3">
-                    {review.employee_name || review.employee_id.slice(0, 8)}
+                    <span className={`px-2 py-1 text-xs rounded ${getTypeColor(review.review_type)}`}>
+                      {TYPE_LABELS[review.review_type] || review.review_type}
+                    </span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-gray-600">
                     {SOURCE_LABELS[review.source] || review.source}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-sm ${getTypeColor(review.review_type)}`}>
-                      {TYPE_LABELS[review.review_type]}
+                    <span className={`px-2 py-1 text-xs rounded ${getStatusColor(review.status)}`}>
+                      {STATUS_LABELS[review.status] || review.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-sm ${getStatusColor(review.status)}`}>
-                      {STATUS_LABELS[review.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {formatDate(review.created_at)}
+                  <td className="px-4 py-3 text-gray-600">
+                    {new Date(review.created_at).toLocaleDateString('zh-TW')}
                   </td>
                   <td className="px-4 py-3">
                     <Link
@@ -145,31 +157,6 @@ const ReviewsPage: React.FC = () => {
               ))}
             </tbody>
           </table>
-        )}
-
-        {/* 分頁 */}
-        {total > limit && (
-          <div className="px-4 py-3 bg-gray-50 flex justify-between items-center">
-            <div className="text-sm text-gray-600">
-              共 {total} 筆，第 {page + 1} / {Math.ceil(total / limit)} 頁
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPage(p => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
-                上一頁
-              </button>
-              <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={(page + 1) * limit >= total}
-                className="px-3 py-1 border rounded disabled:opacity-50"
-              >
-                下一頁
-              </button>
-            </div>
-          </div>
         )}
       </div>
     </div>
