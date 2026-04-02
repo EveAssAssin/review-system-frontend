@@ -7,7 +7,7 @@ interface AuthContextType {
   employee: Employee | null;
   isLoading: boolean;
   isAdmin: boolean;
-  login: (erpid: string) => Promise<void>;
+  login: (appNumber: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -21,33 +21,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      authApi.me()
+      authApi.getMe()
         .then((res) => {
           setUser(res.data.user);
           setEmployee(res.data.employee);
         })
         .catch(() => {
           localStorage.removeItem('token');
-          localStorage.removeItem('user');
         })
-        .finally(() => setIsLoading(false));
+        .finally(() => {
+          setIsLoading(false);
+        });
     } else {
       setIsLoading(false);
     }
   }, []);
 
-  const login = async (erpid: string) => {
-    const res = await authApi.login(erpid);
+  const login = async (appNumber: string) => {
+    const res = await authApi.login({ app_number: appNumber });
     const { user, token, employee } = res.data;
     localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(user));
     setUser(user);
     setEmployee(employee);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    localStorage.removeItem('user');
     setUser(null);
     setEmployee(null);
   };
@@ -64,7 +63,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error('useAuth must be used within AuthProvider');
   }
   return context;
 };

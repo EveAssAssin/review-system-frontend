@@ -33,9 +33,8 @@ api.interceptors.response.use(
 
 // Auth API
 export const authApi = {
-  login: (erpid: string) => api.post('/auth/login', { erpid }),
-  me: () => api.get('/auth/me'),
-  validate: () => api.get('/auth/validate'),
+  login: (data: { app_number: string }) => api.post('/auth/login', data),
+  getMe: () => api.get('/auth/me'),
   getUsers: () => api.get('/auth/users'),
   createUser: (data: any) => api.post('/auth/users', data),
   updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),
