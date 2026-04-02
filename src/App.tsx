@@ -12,6 +12,7 @@ import MyReviewsPage from './pages/MyReviewsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import AlertsPage from './pages/AlertsPage';
 import UsersPage from './pages/UsersPage';
+import CategoriesPage from './pages/CategoriesPage';
 
 // 自動登入處理元件
 const AutoLogin = ({ children }: { children: React.ReactNode }) => {
@@ -147,6 +148,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <AlertsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <CategoriesPage />
               </ProtectedRoute>
             }
           />

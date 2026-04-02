@@ -1,145 +1,262 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { reviewsApi, employeesApi } from '../services/api';
-import { Employee } from '../types';
+import { reviewsApi, employeesApi, categoriesApi } from '../services/api';
 
-const NewReviewPage: React.FC = () => {
+interface Employee {
+  id: string;
+  name: string;
+  app_number: string;
+  store_name?: string;
+  department?: string;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description?: string;
+}
+
+export default function NewReviewPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
-  const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  
+  // 代理處理相關
+  const [isProxy, setIsProxy] = useState(false);
+  const [actualEmployeeSearch, setActualEmployeeSearch] = useState('');
+  const [actualEmployees, setActualEmployees] = useState<Employee[]>([]);
+  const [selectedActualEmployee, setSelectedActualEmployee] = useState<Employee | null>(null);
+
   const [form, setForm] = useState({
-    employee_id: '',
-    source: 'phone',
+    category_id: '',
+    source: 'google_map',
     review_type: 'negative',
     urgency: 'normal',
-    event_date: '',
+    event_date: new Date().toISOString().split('T')[0],
     content: '',
     requires_response: true,
     response_deadline_hours: 48,
   });
 
-  // 載入全部員工
+  // 載入分類
   useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const res = await employeesApi.search({ limit: 500 });
-        setAllEmployees(res.data.data);
-      } catch (error) {
-        console.error('Failed to fetch employees:', error);
-      }
-    };
-    fetchEmployees();
+    categoriesApi.getAll().then(res => {
+      setCategories(res.data);
+    }).catch(err => {
+      console.error('載入分類失敗:', err);
+    });
   }, []);
 
-  // 搜尋過濾
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setFilteredEmployees([]);
-      setShowDropdown(false);
+  // 搜尋員工（處理人）
+  const searchEmployees = async (query: string) => {
+    if (query.length < 2) {
+      setEmployees([]);
       return;
     }
-    const query = searchQuery.toLowerCase();
-    const filtered = allEmployees.filter(
-      (emp) =>
-        emp.name.toLowerCase().includes(query) ||
-        emp.erpid.toLowerCase().includes(query) ||
-        emp.store_name?.toLowerCase().includes(query)
-    ).slice(0, 10);
-    setFilteredEmployees(filtered);
-    setShowDropdown(filtered.length > 0);
-  }, [searchQuery, allEmployees]);
+    try {
+      const res = await employeesApi.search({ q: query, limit: 10 });
+      setEmployees(res.data.data);
+    } catch (err) {
+      console.error('搜尋員工失敗:', err);
+    }
+  };
 
-  const handleSelectEmployee = (emp: Employee) => {
-    setForm({ ...form, employee_id: emp.id });
-    setSearchQuery(emp.name);
-    setShowDropdown(false);
+  // 搜尋實際當事人
+  const searchActualEmployees = async (query: string) => {
+    if (query.length < 2) {
+      setActualEmployees([]);
+      return;
+    }
+    try {
+      const res = await employeesApi.search({ q: query, limit: 10 });
+      setActualEmployees(res.data.data);
+    } catch (err) {
+      console.error('搜尋員工失敗:', err);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.employee_id) {
-      alert('請選擇員工');
+    
+    if (!selectedEmployee) {
+      alert('請選擇處理人員');
+      return;
+    }
+
+    if (isProxy && !selectedActualEmployee) {
+      alert('請選擇實際當事人');
       return;
     }
 
     setLoading(true);
     try {
-      await reviewsApi.create(form);
-      alert('評價已建立');
+      const data: any = {
+        employee_id: selectedEmployee.id,
+        is_proxy: isProxy,
+        category_id: form.category_id || undefined,
+        source: form.source,
+        review_type: form.review_type,
+        urgency: form.urgency,
+        content: form.content,
+        requires_response: form.requires_response,
+        response_deadline_hours: form.response_deadline_hours,
+      };
+
+      // 如果有填日期才送
+      if (form.event_date) {
+        data.event_date = form.event_date;
+      }
+
+      // 如果是代理處理，加入實際當事人
+      if (isProxy && selectedActualEmployee) {
+        data.actual_employee_id = selectedActualEmployee.id;
+      }
+
+      await reviewsApi.create(data);
+      alert('評價建立成功');
       navigate('/reviews');
-    } catch (error: any) {
-      alert(error.response?.data?.message || '建立失敗');
+    } catch (err: any) {
+      console.error('建立評價失敗:', err);
+      alert(err.response?.data?.message || '建立失敗');
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedEmployee = allEmployees.find(e => e.id === form.employee_id);
-
   return (
-    <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-6">新增評價</h2>
+    <div className="max-w-2xl">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">新增評價</h1>
 
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow space-y-6">
-        {/* 選擇員工 */}
-        <div className="relative">
+      <form onSubmit={handleSubmit} className="space-y-6 bg-white rounded-lg shadow p-6">
+        {/* 處理人員 */}
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            員工 <span className="text-red-500">*</span>
+            {isProxy ? '代理處理人（店長/主管）' : '評價對象'}
+            <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
+            placeholder="輸入姓名或會員編號搜尋..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
-              if (form.employee_id) {
-                setForm({ ...form, employee_id: '' });
-              }
+              searchEmployees(e.target.value);
             }}
-            onFocus={() => {
-              if (filteredEmployees.length > 0) setShowDropdown(true);
-            }}
-            placeholder="輸入員工姓名、編號或門市搜尋"
             className="w-full px-3 py-2 border rounded"
           />
-          {showDropdown && filteredEmployees.length > 0 && (
-            <ul className="absolute z-10 w-full mt-1 bg-white border rounded shadow-lg max-h-60 overflow-y-auto">
-              {filteredEmployees.map((emp) => (
-                <li
+          {employees.length > 0 && (
+            <div className="mt-1 border rounded max-h-40 overflow-y-auto">
+              {employees.map((emp) => (
+                <div
                   key={emp.id}
-                  onClick={() => handleSelectEmployee(emp)}
-                  className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-b-0"
+                  onClick={() => {
+                    setSelectedEmployee(emp);
+                    setSearchQuery(emp.name);
+                    setEmployees([]);
+                  }}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                 >
-                  <div className="font-medium">{emp.name}</div>
-                  <div className="text-sm text-gray-500">
-                    {emp.erpid} - {emp.store_name || emp.department}
-                  </div>
-                </li>
+                  {emp.name} - {emp.store_name || emp.department} ({emp.app_number})
+                </div>
               ))}
-            </ul>
+            </div>
           )}
           {selectedEmployee && (
-            <div className="mt-2 p-2 bg-blue-50 rounded text-sm flex justify-between items-center">
-              <span>已選擇：{selectedEmployee.name} ({selectedEmployee.erpid}) - {selectedEmployee.store_name || selectedEmployee.department}</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setForm({ ...form, employee_id: '' });
-                  setSearchQuery('');
-                }}
-                className="text-red-500 hover:text-red-700"
-              >
-                ✕
-              </button>
+            <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+              已選擇：<strong>{selectedEmployee.name}</strong> ({selectedEmployee.store_name || selectedEmployee.department})
             </div>
           )}
         </div>
 
-        {/* 來源 */}
+        {/* 代理處理勾選 */}
+        <div className="border-t pt-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isProxy}
+              onChange={(e) => {
+                setIsProxy(e.target.checked);
+                if (!e.target.checked) {
+                  setSelectedActualEmployee(null);
+                  setActualEmployeeSearch('');
+                }
+              }}
+              className="w-4 h-4 text-blue-600"
+            />
+            <span className="text-sm font-medium text-gray-700">
+              此為代理處理（找不到當事人，由店長/主管代為處理）
+            </span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            勾選後，此評價會標記為「代理處理」，心理分析系統會以管理能力角度分析
+          </p>
+        </div>
+
+        {/* 實際當事人（當勾選代理處理時顯示） */}
+        {isProxy && (
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              實際當事人（如已知）
+            </label>
+            <input
+              type="text"
+              placeholder="輸入姓名或會員編號搜尋..."
+              value={actualEmployeeSearch}
+              onChange={(e) => {
+                setActualEmployeeSearch(e.target.value);
+                searchActualEmployees(e.target.value);
+              }}
+              className="w-full px-3 py-2 border rounded"
+            />
+            {actualEmployees.length > 0 && (
+              <div className="mt-1 border rounded max-h-40 overflow-y-auto bg-white">
+                {actualEmployees.map((emp) => (
+                  <div
+                    key={emp.id}
+                    onClick={() => {
+                      setSelectedActualEmployee(emp);
+                      setActualEmployeeSearch(emp.name);
+                      setActualEmployees([]);
+                    }}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  >
+                    {emp.name} - {emp.store_name || emp.department} ({emp.app_number})
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedActualEmployee && (
+              <div className="mt-2 p-2 bg-white rounded text-sm border">
+                實際當事人：<strong>{selectedActualEmployee.name}</strong> ({selectedActualEmployee.store_name || selectedActualEmployee.department})
+              </div>
+            )}
+            <p className="text-xs text-gray-600 mt-2">
+              如果知道實際當事人是誰，請選擇。如果完全找不到人，可以留空。
+            </p>
+          </div>
+        )}
+
+        {/* 評價分類 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">來源</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">評價分類</label>
+          <select
+            value={form.category_id}
+            onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+            className="w-full px-3 py-2 border rounded"
+          >
+            <option value="">-- 請選擇分類 --</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* 評價來源 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">評價來源</label>
           <select
             value={form.source}
             onChange={(e) => setForm({ ...form, source: e.target.value })}
@@ -153,37 +270,41 @@ const NewReviewPage: React.FC = () => {
           </select>
         </div>
 
-        {/* 類型 */}
+        {/* 評價類型 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">評價類型</label>
           <div className="flex gap-4">
-            {['positive', 'negative', 'other'].map((type) => (
-              <label key={type} className="flex items-center">
+            {[
+              { value: 'positive', label: '正評', color: 'green' },
+              { value: 'negative', label: '負評', color: 'red' },
+              { value: 'other', label: '其他', color: 'gray' },
+            ].map((type) => (
+              <label key={type.value} className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
                   name="review_type"
-                  value={type}
-                  checked={form.review_type === type}
+                  value={type.value}
+                  checked={form.review_type === type.value}
                   onChange={(e) => setForm({ ...form, review_type: e.target.value })}
-                  className="mr-2"
+                  className="w-4 h-4"
                 />
-                {type === 'positive' ? '正評' : type === 'negative' ? '負評' : '其他'}
+                <span className={`text-${type.color}-600 font-medium`}>{type.label}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* 緊急程度 */}
+        {/* 急迫程度 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">緊急程度</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">急迫程度</label>
           <select
             value={form.urgency}
             onChange={(e) => setForm({ ...form, urgency: e.target.value })}
             className="w-full px-3 py-2 border rounded"
           >
-            <option value="normal">普通</option>
+            <option value="normal">一般</option>
             <option value="urgent">緊急</option>
-            <option value="urgent_plus">特急</option>
+            <option value="urgent_plus">非常緊急</option>
           </select>
         </div>
 
@@ -200,58 +321,59 @@ const NewReviewPage: React.FC = () => {
 
         {/* 內容說明 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">內容說明</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">評價內容</label>
           <textarea
             value={form.content}
             onChange={(e) => setForm({ ...form, content: e.target.value })}
-            rows={5}
+            rows={4}
             className="w-full px-3 py-2 border rounded"
-            placeholder="請輸入評價內容或客訴說明..."
+            placeholder="請輸入評價內容..."
           />
         </div>
 
         {/* 需要回覆 */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="requires_response"
-            checked={form.requires_response}
-            onChange={(e) => setForm({ ...form, requires_response: e.target.checked })}
-            className="mr-2"
-          />
-          <label htmlFor="requires_response" className="text-sm text-gray-700">
-            需要員工回覆
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.requires_response}
+              onChange={(e) => setForm({ ...form, requires_response: e.target.checked })}
+              className="w-4 h-4"
+            />
+            <span className="text-sm text-gray-700">需要員工回覆</span>
           </label>
         </div>
 
         {/* 回覆期限 */}
         {form.requires_response && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              回覆期限（小時）
-            </label>
-            <input
-              type="number"
+            <label className="block text-sm font-medium text-gray-700 mb-1">回覆期限（小時）</label>
+            <select
               value={form.response_deadline_hours}
               onChange={(e) => setForm({ ...form, response_deadline_hours: parseInt(e.target.value) })}
-              className="w-32 px-3 py-2 border rounded"
-            />
+              className="w-full px-3 py-2 border rounded"
+            >
+              <option value={24}>24 小時</option>
+              <option value={48}>48 小時</option>
+              <option value={72}>72 小時</option>
+              <option value={168}>7 天</option>
+            </select>
           </div>
         )}
 
-        {/* 按鈕 */}
-        <div className="flex gap-4">
+        {/* 提交按鈕 */}
+        <div className="flex gap-3">
           <button
             type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50"
+            disabled={loading || !selectedEmployee}
+            className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? '建立中...' : '建立評價'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/reviews')}
-            className="px-6 py-2 bg-gray-200 hover:bg-gray-300 rounded"
+            className="px-6 py-2 border rounded hover:bg-gray-50"
           >
             取消
           </button>
@@ -259,6 +381,4 @@ const NewReviewPage: React.FC = () => {
       </form>
     </div>
   );
-};
-
-export default NewReviewPage;
+}

@@ -80,3 +80,12 @@ export const alertsApi = {
 };
 
 export default api;
+
+// Categories API
+export const categoriesApi = {
+  getAll: (includeInactive = false) => api.get('/categories', { params: { include_inactive: includeInactive } }),
+  getById: (id: string) => api.get(`/categories/${id}`),
+  create: (data: any) => api.post('/categories', data),
+  update: (id: string, data: any) => api.put(`/categories/${id}`, data),
+  delete: (id: string) => api.delete(`/categories/${id}`),
+};
