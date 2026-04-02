@@ -55,6 +55,7 @@ export const reviewsApi = {
   getStats: () => api.get('/reviews/stats'),
   getById: (id: string) => api.get(`/reviews/${id}`),
   getByToken: (token: string) => api.get(`/reviews/token/${token}`),
+  getResponses: (id: string) => api.get(`/reviews/${id}/responses`),
   respond: (token: string, content: string) => 
     api.post(`/reviews/token/${token}/respond`, { content }),
   addReviewerResponse: (id: string, content: string, reviewerName: string) =>
@@ -78,8 +79,6 @@ export const alertsApi = {
   updateManager: (id: string, data: any) => api.put(`/alerts/managers/${id}`, data),
   deleteManager: (id: string) => api.delete(`/alerts/managers/${id}`),
 };
-
-export default api;
 
 // Categories API
 export const categoriesApi = {
@@ -113,5 +112,4 @@ export const uploadsApi = {
   delete: (id: string) => api.delete(`/uploads/${id}`),
 };
 
-// 取得評價回覆
-reviewsApi.getResponses = (id: string) => api.get(`/reviews/${id}/responses`);
+export default api;
