@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { reviewsApi, employeesApi, categoriesApi } from '../services/api';
+import { reviewsApi, employeesApi, categoriesApi, uploadsApi } from '../services/api';
+import FileUpload from '../components/FileUpload';
 
 interface Employee {
   id: string;
@@ -23,6 +24,7 @@ export default function NewReviewPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   
   // 代理處理相關
   const [isProxy, setIsProxy] = useState(false);
@@ -105,17 +107,23 @@ export default function NewReviewPage() {
         response_deadline_hours: form.response_deadline_hours,
       };
 
-      // 如果有填日期才送
       if (form.event_date) {
         data.event_date = form.event_date;
       }
 
-      // 如果是代理處理，加入實際當事人
       if (isProxy && selectedActualEmployee) {
         data.actual_employee_id = selectedActualEmployee.id;
       }
 
-      await reviewsApi.create(data);
+      // 建立評價
+      const reviewRes = await reviewsApi.create(data);
+      const reviewId = reviewRes.data.id;
+
+      // 上傳附件
+      if (filesToUpload.length > 0) {
+        await uploadsApi.uploadForReview(reviewId, filesToUpload);
+      }
+
       alert('評價建立成功');
       navigate('/reviews');
     } catch (err: any) {
@@ -195,7 +203,7 @@ export default function NewReviewPage() {
           </p>
         </div>
 
-        {/* 實際當事人（當勾選代理處理時顯示） */}
+        {/* 實際當事人 */}
         {isProxy && (
           <div className="bg-yellow-50 p-4 rounded-lg">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -233,9 +241,6 @@ export default function NewReviewPage() {
                 實際當事人：<strong>{selectedActualEmployee.name}</strong> ({selectedActualEmployee.store_name || selectedActualEmployee.department})
               </div>
             )}
-            <p className="text-xs text-gray-600 mt-2">
-              如果知道實際當事人是誰，請選擇。如果完全找不到人，可以留空。
-            </p>
           </div>
         )}
 
@@ -328,6 +333,16 @@ export default function NewReviewPage() {
             rows={4}
             className="w-full px-3 py-2 border rounded"
             placeholder="請輸入評價內容..."
+          />
+        </div>
+
+        {/* 附件上傳 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">附件（圖片/影片）</label>
+          <FileUpload
+            onFilesSelected={setFilesToUpload}
+            maxFiles={5}
+            maxSizeMB={50}
           />
         </div>
 

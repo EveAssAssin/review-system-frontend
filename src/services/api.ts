@@ -89,3 +89,29 @@ export const categoriesApi = {
   update: (id: string, data: any) => api.put(`/categories/${id}`, data),
   delete: (id: string) => api.delete(`/categories/${id}`),
 };
+
+// Uploads API
+export const uploadsApi = {
+  uploadForReview: (reviewId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post(`/uploads/review/${reviewId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadForResponse: (reviewId: string, files: File[], uploadBy: 'reviewer' | 'employee' = 'employee') => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post(`/uploads/response/${reviewId}`, formData, {
+      headers: { 
+        'Content-Type': 'multipart/form-data',
+        'x-upload-by': uploadBy,
+      },
+    });
+  },
+  getByReviewId: (reviewId: string) => api.get(`/uploads/review/${reviewId}`),
+  delete: (id: string) => api.delete(`/uploads/${id}`),
+};
+
+// 取得評價回覆
+reviewsApi.getResponses = (id: string) => api.get(`/reviews/${id}/responses`);

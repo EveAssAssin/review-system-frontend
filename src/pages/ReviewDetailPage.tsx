@@ -1,44 +1,121 @@
-import React, { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { reviewsApi } from '../services/api';
-import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS, URGENCY_LABELS } from '../types';
+import { reviewsApi, uploadsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import FileUpload from '../components/FileUpload';
 
-const ReviewDetailPage: React.FC = () => {
+interface Review {
+  id: string;
+  employee_id: string;
+  is_proxy: boolean;
+  actual_employee_id?: string;
+  category_id?: string;
+  source: string;
+  review_type: string;
+  urgency: string;
+  event_date?: string;
+  content?: string;
+  status: string;
+  requires_response: boolean;
+  response_deadline?: string;
+  response_token?: string;
+  employee_response?: string;
+  employee_responded_at?: string;
+  reviewer_response?: string;
+  reviewer_name?: string;
+  reviewer_responded_at?: string;
+  close_note?: string;
+  closed_at?: string;
+  created_at: string;
+  employees?: {
+    name: string;
+    store_name?: string;
+    department?: string;
+  };
+  review_categories?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface Response {
+  id: string;
+  review_id: string;
+  responder_type: 'employee' | 'reviewer';
+  responder_name: string;
+  content: string;
+  created_at: string;
+}
+
+interface Attachment {
+  id: string;
+  file_name: string;
+  file_url: string;
+  file_type: 'image' | 'video';
+  uploaded_by: string;
+  upload_context: string;
+}
+
+export default function ReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [review, setReview] = useState<Review | null>(null);
+  const [responses, setResponses] = useState<Response[]>([]);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
-  const [replyContent, setReplyContent] = useState('');
+  const [showResponseForm, setShowResponseForm] = useState(false);
+  const [showCloseForm, setShowCloseForm] = useState(false);
+  const [responseContent, setResponseContent] = useState('');
   const [closeNote, setCloseNote] = useState('');
-  const [showCloseModal, setShowCloseModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
 
-  const fetchReview = async () => {
+  useEffect(() => {
+    if (id) {
+      loadReview();
+    }
+  }, [id]);
+
+  const loadReview = async () => {
     try {
       const res = await reviewsApi.getById(id!);
       setReview(res.data);
-    } catch (error) {
-      console.error('Failed to fetch review:', error);
+      
+      const [responsesRes, attachRes] = await Promise.all([
+        reviewsApi.getResponses(id!),
+        uploadsApi.getByReviewId(id!),
+      ]);
+      setResponses(responsesRes.data);
+      setAttachments(attachRes.data);
+    } catch (err) {
+      console.error('載入評價失敗:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    fetchReview();
-  }, [id]);
+  const handleReviewerResponse = async () => {
+    if (!responseContent.trim()) {
+      alert('請輸入回覆內容');
+      return;
+    }
 
-  const handleReply = async () => {
-    if (!replyContent.trim()) return;
     setSubmitting(true);
     try {
-      await reviewsApi.addReviewerResponse(id!, replyContent, user?.name || '公關部');
-      setReplyContent('');
-      fetchReview();
-    } catch (error: any) {
-      alert(error.response?.data?.message || '回覆失敗');
+      await reviewsApi.addReviewerResponse(id!, responseContent, user?.name || '公關部');
+      
+      if (filesToUpload.length > 0) {
+        await uploadsApi.uploadForResponse(id!, filesToUpload, 'reviewer');
+      }
+
+      setShowResponseForm(false);
+      setResponseContent('');
+      setFilesToUpload([]);
+      loadReview();
+    } catch (err) {
+      console.error('回覆失敗:', err);
+      alert('回覆失敗');
     } finally {
       setSubmitting(false);
     }
@@ -48,220 +125,217 @@ const ReviewDetailPage: React.FC = () => {
     setSubmitting(true);
     try {
       await reviewsApi.close(id!, closeNote);
-      setShowCloseModal(false);
-      fetchReview();
-    } catch (error: any) {
-      alert(error.response?.data?.message || '結案失敗');
+      setShowCloseForm(false);
+      loadReview();
+    } catch (err) {
+      console.error('結案失敗:', err);
+      alert('結案失敗');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('確定要刪除此評價嗎？此操作無法復原。')) return;
+  const handleDeleteAttachment = async (attachmentId: string) => {
+    if (!confirm('確定要刪除此附件嗎？')) return;
     try {
-      await reviewsApi.delete(id!);
-      navigate('/reviews');
-    } catch (error: any) {
-      alert(error.response?.data?.message || '刪除失敗');
+      await uploadsApi.delete(attachmentId);
+      setAttachments(prev => prev.filter(a => a.id !== attachmentId));
+    } catch (err) {
+      console.error('刪除附件失敗:', err);
+      alert('刪除失敗');
     }
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleString('zh-TW');
+  const sourceLabels: Record<string, string> = {
+    google_map: 'Google MAP',
+    facebook: 'Facebook',
+    phone: '電話客服',
+    app: 'APP 客服',
+    other: '其他',
   };
 
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'positive': return 'bg-green-100 text-green-800';
-      case 'negative': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const typeLabels: Record<string, string> = {
+    positive: '正評',
+    negative: '負評',
+    other: '其他',
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'responded': return 'bg-blue-100 text-blue-800';
-      case 'closed': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const statusLabels: Record<string, string> = {
+    pending: '待處理',
+    responded: '已回覆',
+    closed: '已結案',
+  };
+
+  const urgencyLabels: Record<string, string> = {
+    normal: '一般',
+    urgent: '緊急',
+    urgent_plus: '非常緊急',
   };
 
   if (loading) {
-    return <div className="text-center py-8">載入中...</div>;
+    return <div className="p-6">載入中...</div>;
   }
 
   if (!review) {
-    return <div className="text-center py-8">評價不存在</div>;
+    return <div className="p-6">找不到評價資料</div>;
   }
 
+  const reviewAttachments = attachments.filter(a => a.upload_context === 'review');
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* 標題列 */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">評價詳情</h2>
-        <div className="flex gap-2">
-          {review.status !== 'closed' && (
-            <button
-              onClick={() => setShowCloseModal(true)}
-              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded"
-            >
-              結案
-            </button>
-          )}
-          <button
-            onClick={handleDelete}
-            className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded"
-          >
-            刪除
-          </button>
-          <button
-            onClick={() => navigate('/reviews')}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
-          >
-            返回
-          </button>
-        </div>
+    <div className="max-w-3xl">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">評價詳情</h1>
+        <button onClick={() => navigate('/reviews')} className="text-gray-500 hover:text-gray-700">返回列表</button>
       </div>
 
-      {/* 基本資訊 */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="bg-white rounded-lg shadow p-6 space-y-6">
+        {/* 基本資訊 */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-sm text-gray-500">員工</div>
-            <div className="font-medium">{review.employee_name || review.employee_id.slice(0, 8)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">來源</div>
-            <div className="font-medium">{SOURCE_LABELS[review.source]}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">類型</div>
-            <span className={`px-2 py-1 rounded text-sm ${getTypeColor(review.review_type)}`}>
-              {TYPE_LABELS[review.review_type]}
-            </span>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">狀態</div>
-            <span className={`px-2 py-1 rounded text-sm ${getStatusColor(review.status)}`}>
-              {STATUS_LABELS[review.status]}
-            </span>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">緊急程度</div>
-            <div className="font-medium">{URGENCY_LABELS[review.urgency]}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">事件日期</div>
-            <div className="font-medium">{review.event_date || '-'}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">建立時間</div>
-            <div className="font-medium">{formatDate(review.created_at)}</div>
-          </div>
-          <div>
-            <div className="text-sm text-gray-500">回覆時間</div>
+            <div className="text-gray-500 text-sm">員工</div>
             <div className="font-medium">
-              {review.responded_at ? formatDate(review.responded_at) : '-'}
+              {review.employees?.name || '-'}
+              {review.is_proxy && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">代理處理</span>}
+            </div>
+            <div className="text-sm text-gray-400">{review.employees?.store_name || review.employees?.department}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">狀態</div>
+            <div className={review.status === 'pending' ? 'font-medium text-yellow-600' : review.status === 'responded' ? 'font-medium text-blue-600' : 'font-medium text-green-600'}>
+              {statusLabels[review.status]}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">類型</div>
+            <div className={review.review_type === 'positive' ? 'font-medium text-green-600' : review.review_type === 'negative' ? 'font-medium text-red-600' : 'font-medium text-gray-600'}>
+              {typeLabels[review.review_type]}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">來源</div>
+            <div className="font-medium">{sourceLabels[review.source]}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">分類</div>
+            <div className="font-medium">{review.review_categories?.name || '-'}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">急迫程度</div>
+            <div className={review.urgency === 'urgent_plus' ? 'font-medium text-red-600' : review.urgency === 'urgent' ? 'font-medium text-orange-600' : 'font-medium'}>
+              {urgencyLabels[review.urgency]}
+            </div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">事件日期</div>
+            <div className="font-medium">{review.event_date ? new Date(review.event_date).toLocaleDateString() : '-'}</div>
+          </div>
+          <div>
+            <div className="text-gray-500 text-sm">建立時間</div>
+            <div className="font-medium">{new Date(review.created_at).toLocaleString()}</div>
+          </div>
+        </div>
+
+        {/* 評價內容 */}
+        {review.content && (
+          <div className="border-t pt-4">
+            <div className="text-gray-500 text-sm mb-1">評價內容</div>
+            <div className="bg-gray-50 p-3 rounded">{review.content}</div>
+          </div>
+        )}
+
+        {/* 評價附件 */}
+        {reviewAttachments.length > 0 && (
+          <div className="border-t pt-4">
+            <div className="text-gray-500 text-sm mb-2">評價附件</div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {reviewAttachments.map((att) => (
+                <div key={att.id} className="relative group">
+                  <a href={att.file_url} target="_blank" rel="noopener noreferrer">
+                    {att.file_type === 'image' ? (
+                      <img src={att.file_url} alt={att.file_name} className="w-full h-24 object-cover rounded" />
+                    ) : (
+                      <video src={att.file_url} className="w-full h-24 object-cover rounded" />
+                    )}
+                  </a>
+                  <button onClick={() => handleDeleteAttachment(att.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition">✕</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 回覆記錄（多筆） */}
+        {responses.length > 0 && (
+          <div className="border-t pt-4">
+            <div className="text-gray-500 text-sm mb-3">回覆記錄</div>
+            <div className="space-y-3">
+              {responses.map((resp) => (
+                <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-blue-50 p-3 rounded' : 'bg-green-50 p-3 rounded'}>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={resp.responder_type === 'employee' ? 'font-medium text-blue-700' : 'font-medium text-green-700'}>
+                      {resp.responder_type === 'employee' ? '👤 員工回覆' : '🏢 公關部回覆'} - {resp.responder_name}
+                    </span>
+                    <span className="text-xs text-gray-400">{new Date(resp.created_at).toLocaleString()}</span>
+                  </div>
+                  <div className="text-gray-700">{resp.content}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 結案備註 */}
+        {review.status === 'closed' && review.close_note && (
+          <div className="border-t pt-4">
+            <div className="text-gray-500 text-sm mb-1">
+              結案備註
+              <span className="ml-2 text-xs text-gray-400">{review.closed_at && new Date(review.closed_at).toLocaleString()}</span>
+            </div>
+            <div className="bg-gray-100 p-3 rounded">{review.close_note}</div>
+          </div>
+        )}
+
+        {/* 操作按鈕 */}
+        {review.status !== 'closed' && (
+          <div className="border-t pt-4 flex gap-3">
+            <button onClick={() => setShowResponseForm(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">公關部回覆</button>
+            <button onClick={() => setShowCloseForm(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">結案</button>
+          </div>
+        )}
+      </div>
+
+      {/* 公關部回覆 Modal */}
+      {showResponseForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">公關部回覆</h2>
+            <textarea value={responseContent} onChange={(e) => setResponseContent(e.target.value)} rows={4} className="w-full px-3 py-2 border rounded mb-4" placeholder="請輸入回覆內容..." />
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">附件</label>
+              <FileUpload onFilesSelected={setFilesToUpload} maxFiles={5} maxSizeMB={50} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => { setShowResponseForm(false); setFilesToUpload([]); }} className="px-4 py-2 border rounded">取消</button>
+              <button onClick={handleReviewerResponse} disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">{submitting ? '送出中...' : '送出'}</button>
             </div>
           </div>
         </div>
-
-        {review.content && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="text-sm text-gray-500 mb-1">內容說明</div>
-            <div className="whitespace-pre-wrap">{review.content}</div>
-          </div>
-        )}
-
-        {review.close_note && (
-          <div className="mt-4 pt-4 border-t">
-            <div className="text-sm text-gray-500 mb-1">結案備註</div>
-            <div className="whitespace-pre-wrap">{review.close_note}</div>
-          </div>
-        )}
-      </div>
-
-      {/* 回覆記錄 */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">回覆記錄</h3>
-        {review.responses && review.responses.length > 0 ? (
-          <div className="space-y-4">
-            {review.responses.map((response) => (
-              <div
-                key={response.id}
-                className={`p-4 rounded-lg ${
-                  response.responder_type === 'employee' ? 'bg-blue-50 ml-0 mr-12' : 'bg-gray-50 ml-12 mr-0'
-                }`}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="font-medium">
-                    {response.responder_name || (response.responder_type === 'employee' ? '員工' : '公關部')}
-                  </span>
-                  <span className="text-sm text-gray-500">{formatDate(response.created_at)}</span>
-                </div>
-                <div className="whitespace-pre-wrap">{response.content}</div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-gray-500">尚無回覆</div>
-        )}
-
-        {/* 新增回覆 */}
-        {review.status !== 'closed' && (
-          <div className="mt-4 pt-4 border-t">
-            <textarea
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              placeholder="輸入回覆內容..."
-              rows={3}
-              className="w-full px-3 py-2 border rounded"
-            />
-            <button
-              onClick={handleReply}
-              disabled={submitting || !replyContent.trim()}
-              className="mt-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50"
-            >
-              {submitting ? '發送中...' : '發送回覆'}
-            </button>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* 結案 Modal */}
-      {showCloseModal && (
+      {showCloseForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-full max-w-md">
-            <h3 className="text-lg font-semibold mb-4">結案評價</h3>
-            <textarea
-              value={closeNote}
-              onChange={(e) => setCloseNote(e.target.value)}
-              placeholder="結案備註（選填）"
-              rows={3}
-              className="w-full px-3 py-2 border rounded mb-4"
-            />
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">結案</h2>
+            <textarea value={closeNote} onChange={(e) => setCloseNote(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded mb-4" placeholder="結案備註（選填）..." />
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => setShowCloseModal(false)}
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleClose}
-                disabled={submitting}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50"
-              >
-                {submitting ? '處理中...' : '確認結案'}
-              </button>
+              <button onClick={() => setShowCloseForm(false)} className="px-4 py-2 border rounded">取消</button>
+              <button onClick={handleClose} disabled={submitting} className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50">{submitting ? '處理中...' : '確認結案'}</button>
             </div>
           </div>
         </div>
       )}
     </div>
   );
-};
-
-export default ReviewDetailPage;
+}
