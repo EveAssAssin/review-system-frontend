@@ -1,35 +1,40 @@
-import React from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const Layout: React.FC = () => {
-  const { user, isAdmin, logout } = useAuth();
+export default function Layout() {
+  const { user, logout, canManageReviews, isSuperAdmin } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   const navItems = [
-    { path: '/', label: '儀表板', adminOnly: false },
-    { path: '/reviews', label: '評價管理', adminOnly: true },
-    { path: '/employees', label: '員工列表', adminOnly: true },
-    { path: '/my-reviews', label: '我的評價', adminOnly: false },
-    { path: '/alerts', label: '警示設定', adminOnly: true },
-    { path: '/settings', label: '系統設定', adminOnly: true },
+    { path: '/', label: '儀表板', show: true },
+    { path: '/my-reviews', label: '我的評價', show: true },
+    { path: '/reviews', label: '評價管理', show: canManageReviews },
+    { path: '/reviews/new', label: '新增評價', show: canManageReviews },
+    { path: '/employees', label: '員工列表', show: canManageReviews },
+    { path: '/alerts', label: '警示設定', show: canManageReviews },
+    { path: '/users', label: '使用者管理', show: isSuperAdmin },
   ];
-
-  const filteredNavItems = navItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Header */}
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold text-gray-800">員工評價系統</h1>
+          <h1 className="text-xl font-bold text-gray-900">員工評價系統</h1>
           <div className="flex items-center gap-4">
-            <span className="text-gray-600">
-              {user?.name} ({isAdmin ? '管理員' : '一般使用者'})
+            <span className="text-gray-600">{user?.name}</span>
+            <span className="text-xs px-2 py-1 rounded bg-gray-100">
+              {user?.role === 'super_admin' ? '管理員' : user?.role === 'pr_admin' ? '公關部' : '一般'}
             </span>
             <button
-              onClick={logout}
-              className="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded"
+              onClick={handleLogout}
+              className="text-gray-500 hover:text-gray-700"
             >
               登出
             </button>
@@ -37,36 +42,32 @@ const Layout: React.FC = () => {
         </div>
       </header>
 
-      <div className="flex">
+      <div className="max-w-7xl mx-auto px-4 py-6 flex gap-6">
         {/* Sidebar */}
-        <aside className="w-56 bg-white shadow min-h-[calc(100vh-64px)]">
-          <nav className="p-4">
-            <ul className="space-y-2">
-              {filteredNavItems.map((item) => (
-                <li key={item.path}>
-                  <Link
-                    to={item.path}
-                    className={`block px-4 py-2 rounded ${
-                      location.pathname === item.path
-                        ? 'bg-blue-500 text-white'
-                        : 'text-gray-700 hover:bg-gray-100'
-                    }`}
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        </aside>
+        <nav className="w-48 flex-shrink-0">
+          <ul className="space-y-1">
+            {navItems.filter(item => item.show).map((item) => (
+              <li key={item.path}>
+                <Link
+                  to={item.path}
+                  className={`block px-4 py-2 rounded-lg ${
+                    location.pathname === item.path
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
         {/* Main Content */}
-        <main className="flex-1 p-6">
+        <main className="flex-1">
           <Outlet />
         </main>
       </div>
     </div>
   );
-};
-
-export default Layout;
+}

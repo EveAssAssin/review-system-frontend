@@ -11,6 +11,7 @@ import ReviewRespondPage from './pages/ReviewRespondPage';
 import MyReviewsPage from './pages/MyReviewsPage';
 import EmployeesPage from './pages/EmployeesPage';
 import AlertsPage from './pages/AlertsPage';
+import UsersPage from './pages/UsersPage';
 
 // 自動登入處理元件
 const AutoLogin = ({ children }: { children: React.ReactNode }) => {
@@ -23,28 +24,23 @@ const AutoLogin = ({ children }: { children: React.ReactNode }) => {
     const uid = searchParams.get('uid');
     const appNumber = searchParams.get('app_number');
     
-    // 保存 uid 到 localStorage（供後續 API 使用）
     if (uid) {
       localStorage.setItem('line_uid', uid);
     }
 
-    // 如果有 app_number 參數且尚未登入且尚未嘗試自動登入
     if (appNumber && !user && !isLoading && !autoLoginAttempted) {
       setAutoLoginAttempted(true);
       login(appNumber)
         .then(() => {
-          // 登入成功，移除 URL 參數並跳轉到首頁
           navigate('/', { replace: true });
         })
         .catch((err) => {
           console.error('自動登入失敗:', err);
-          // 登入失敗，跳轉到登入頁
           navigate('/login', { replace: true });
         });
     }
   }, [searchParams, user, isLoading, login, navigate, autoLoginAttempted]);
 
-  // 如果正在自動登入中，顯示載入畫面
   const appNumber = searchParams.get('app_number');
   if (appNumber && !user && !autoLoginAttempted) {
     return (
@@ -58,8 +54,16 @@ const AutoLogin = ({ children }: { children: React.ReactNode }) => {
 };
 
 // 保護路由
-const ProtectedRoute = ({ children, adminOnly = false }: { children: React.ReactNode; adminOnly?: boolean }) => {
-  const { user, isLoading, isAdmin } = useAuth();
+const ProtectedRoute = ({ 
+  children, 
+  requirePrAdmin = false,
+  requireSuperAdmin = false 
+}: { 
+  children: React.ReactNode; 
+  requirePrAdmin?: boolean;
+  requireSuperAdmin?: boolean;
+}) => {
+  const { user, isLoading, canManageReviews, isSuperAdmin } = useAuth();
 
   if (isLoading) {
     return (
@@ -73,7 +77,13 @@ const ProtectedRoute = ({ children, adminOnly = false }: { children: React.React
     return <Navigate to="/login" replace />;
   }
 
-  if (adminOnly && !isAdmin) {
+  // 需要 super_admin 權限
+  if (requireSuperAdmin && !isSuperAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  // 需要公關部權限（pr_admin 或 super_admin）
+  if (requirePrAdmin && !canManageReviews) {
     return <Navigate to="/" replace />;
   }
 
@@ -99,11 +109,11 @@ function AppRoutes() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/my-reviews" element={<MyReviewsPage />} />
 
-          {/* 管理員頁面 */}
+          {/* 公關部頁面（pr_admin 或 super_admin） */}
           <Route
             path="/reviews"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute requirePrAdmin>
                 <ReviewsPage />
               </ProtectedRoute>
             }
@@ -111,7 +121,7 @@ function AppRoutes() {
           <Route
             path="/reviews/new"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute requirePrAdmin>
                 <NewReviewPage />
               </ProtectedRoute>
             }
@@ -119,7 +129,7 @@ function AppRoutes() {
           <Route
             path="/reviews/:id"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute requirePrAdmin>
                 <ReviewDetailPage />
               </ProtectedRoute>
             }
@@ -127,7 +137,7 @@ function AppRoutes() {
           <Route
             path="/employees"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute requirePrAdmin>
                 <EmployeesPage />
               </ProtectedRoute>
             }
@@ -135,14 +145,23 @@ function AppRoutes() {
           <Route
             path="/alerts"
             element={
-              <ProtectedRoute adminOnly>
+              <ProtectedRoute requirePrAdmin>
                 <AlertsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 超級管理員頁面 */}
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute requireSuperAdmin>
+                <UsersPage />
               </ProtectedRoute>
             }
           />
         </Route>
 
-        {/* 其他路由導向首頁 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </AutoLogin>

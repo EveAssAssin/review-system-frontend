@@ -1,162 +1,111 @@
-import React, { useEffect, useState } from 'react';
-import { reviewsApi, employeesApi } from '../services/api';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { reviewsApi } from '../services/api';
 
-interface Stats {
-  reviews: {
-    total: number;
-    pending: number;
-    responded: number;
-    closed: number;
-    by_type: Record<string, number>;
-    by_source: Record<string, number>;
-  };
-  employees: {
-    total: number;
-    active: number;
-    by_department: Record<string, number>;
-  };
-}
-
-const DashboardPage: React.FC = () => {
-  const { user, employee, isAdmin } = useAuth();
-  const [stats, setStats] = useState<Stats | null>(null);
+export default function DashboardPage() {
+  const { user, employee, canManageReviews } = useAuth();
+  const [stats, setStats] = useState<any>(null);
+  const [myStats, setMyStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const loadData = async () => {
       try {
-        const [reviewsRes, employeesRes] = await Promise.all([
-          reviewsApi.getStats(),
-          isAdmin ? employeesApi.getStats() : Promise.resolve({ data: null }),
-        ]);
-        setStats({
-          reviews: reviewsRes.data,
-          employees: employeesRes.data || { total: 0, active: 0, by_department: {} },
-        });
-      } catch (error) {
-        console.error('Failed to fetch stats:', error);
+        // 公關部/管理員看全部統計
+        if (canManageReviews) {
+          const res = await reviewsApi.getStats();
+          setStats(res.data);
+        }
+        
+        // 所有人都看自己的統計（從 employee 資料取得）
+        if (employee) {
+          setMyStats({
+            total: employee.total_reviews || 0,
+            positive: employee.positive_count || 0,
+            negative: employee.negative_count || 0,
+          });
+        }
+      } catch (err) {
+        console.error('載入統計失敗:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
-  }, [isAdmin]);
+    loadData();
+  }, [canManageReviews, employee]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">載入中...</div>
-      </div>
-    );
+    return <div className="p-6">載入中...</div>;
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">儀表板</h2>
+      <h1 className="text-2xl font-bold text-gray-900">儀表板</h1>
 
       {/* 歡迎訊息 */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-2">
-          歡迎，{user?.name}！
-        </h3>
-        <p className="text-gray-600">
-          {isAdmin ? '您擁有管理員權限，可以管理所有評價和設定。' : '您可以查看自己的評價記錄。'}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h2 className="text-lg font-semibold">歡迎，{user?.name}！</h2>
+        <p className="text-gray-600 mt-1">
+          {canManageReviews 
+            ? '您可以管理所有員工的評價記錄。' 
+            : '您可以查看自己的評價記錄。'}
         </p>
       </div>
 
-      {/* 評價統計 */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-3xl font-bold text-blue-600">{stats?.reviews.total || 0}</div>
-          <div className="text-gray-500">總評價數</div>
+      {/* 公關部/管理員：顯示全部統計 */}
+      {canManageReviews && stats && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-700 mb-3">系統總覽</h3>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <StatCard label="總評價數" value={stats.total} color="blue" />
+            <StatCard label="正評" value={stats.positive} color="green" />
+            <StatCard label="負評" value={stats.negative} color="red" />
+            <StatCard label="待處理" value={stats.pending} color="yellow" />
+            <StatCard label="本週新增" value={stats.recent_week} color="purple" />
+          </div>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-3xl font-bold text-yellow-600">{stats?.reviews.pending || 0}</div>
-          <div className="text-gray-500">待處理</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-3xl font-bold text-green-600">{stats?.reviews.responded || 0}</div>
-          <div className="text-gray-500">已回覆</div>
-        </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="text-3xl font-bold text-gray-600">{stats?.reviews.closed || 0}</div>
-          <div className="text-gray-500">已結案</div>
-        </div>
-      </div>
+      )}
 
-      {/* 評價類型分佈 */}
-      {isAdmin && stats?.reviews.by_type && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">評價類型分佈</h3>
+      {/* 一般人員：只顯示自己的統計 */}
+      {!canManageReviews && myStats && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-700 mb-3">我的評價統計</h3>
           <div className="grid grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-green-50 rounded">
-              <div className="text-2xl font-bold text-green-600">
-                {stats.reviews.by_type.positive || 0}
-              </div>
-              <div className="text-gray-600">正評</div>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded">
-              <div className="text-2xl font-bold text-red-600">
-                {stats.reviews.by_type.negative || 0}
-              </div>
-              <div className="text-gray-600">負評</div>
-            </div>
-            <div className="text-center p-4 bg-gray-50 rounded">
-              <div className="text-2xl font-bold text-gray-600">
-                {stats.reviews.by_type.other || 0}
-              </div>
-              <div className="text-gray-600">其他</div>
-            </div>
+            <StatCard label="總評價數" value={myStats.total} color="blue" />
+            <StatCard label="正評" value={myStats.positive} color="green" />
+            <StatCard label="負評" value={myStats.negative} color="red" />
           </div>
         </div>
       )}
 
-      {/* 員工個人統計 */}
-      {!isAdmin && employee && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">我的評價統計</h3>
-          <div className="grid grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded">
-              <div className="text-2xl font-bold text-blue-600">{employee.total_reviews}</div>
-              <div className="text-gray-600">總評價</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded">
-              <div className="text-2xl font-bold text-green-600">{employee.positive_count}</div>
-              <div className="text-gray-600">正評</div>
-            </div>
-            <div className="text-center p-4 bg-red-50 rounded">
-              <div className="text-2xl font-bold text-red-600">{employee.negative_count}</div>
-              <div className="text-gray-600">負評</div>
-            </div>
-            <div className="text-center p-4 bg-yellow-50 rounded">
-              <div className="text-2xl font-bold text-yellow-600">
-                {employee.avg_response_hours.toFixed(1)}h
-              </div>
-              <div className="text-gray-600">平均回覆時間</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 員工統計（管理員） */}
-      {isAdmin && stats?.employees && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">員工統計</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded">
-              <div className="text-2xl font-bold text-blue-600">{stats.employees.total}</div>
-              <div className="text-gray-600">總員工數</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded">
-              <div className="text-2xl font-bold text-green-600">{stats.employees.active}</div>
-              <div className="text-gray-600">在職員工</div>
-            </div>
+      {/* 公關部也顯示自己的統計 */}
+      {canManageReviews && myStats && (
+        <div>
+          <h3 className="text-lg font-medium text-gray-700 mb-3">我的評價統計</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <StatCard label="總評價數" value={myStats.total} color="blue" />
+            <StatCard label="正評" value={myStats.positive} color="green" />
+            <StatCard label="負評" value={myStats.negative} color="red" />
           </div>
         </div>
       )}
     </div>
   );
-};
+}
 
-export default DashboardPage;
+function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+  const colorClasses: Record<string, string> = {
+    blue: 'text-blue-600',
+    green: 'text-green-600',
+    red: 'text-red-600',
+    yellow: 'text-yellow-600',
+    purple: 'text-purple-600',
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow p-4">
+      <p className={`text-3xl font-bold ${colorClasses[color]}`}>{value}</p>
+      <p className="text-gray-500 text-sm mt-1">{label}</p>
+    </div>
+  );
+}
