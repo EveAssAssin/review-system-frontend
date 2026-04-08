@@ -19,34 +19,41 @@ const AutoLogin = ({ children }: { children: React.ReactNode }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login, user, isLoading } = useAuth();
-  const [autoLoginAttempted, setAutoLoginAttempted] = useState(false);
+  // 'idle' | 'logging_in' | 'done' | 'failed'
+  const [autoLoginState, setAutoLoginState] = useState<'idle' | 'logging_in' | 'done' | 'failed'>('idle');
+
+  const appNumber = searchParams.get('app_number');
+  const uid = searchParams.get('uid');
 
   useEffect(() => {
-    const uid = searchParams.get('uid');
-    const appNumber = searchParams.get('app_number');
-    
     if (uid) {
       localStorage.setItem('line_uid', uid);
     }
 
-    if (appNumber && !user && !isLoading && !autoLoginAttempted) {
-      setAutoLoginAttempted(true);
+    // 只在有 app_number、尚未登入、auth 載入完成、且尚未嘗試時執行
+    if (appNumber && !user && !isLoading && autoLoginState === 'idle') {
+      setAutoLoginState('logging_in');
       login(appNumber)
         .then(() => {
+          setAutoLoginState('done');
           navigate('/', { replace: true });
         })
         .catch((err) => {
           console.error('自動登入失敗:', err);
-          navigate('/login', { replace: true });
+          setAutoLoginState('failed');
         });
     }
-  }, [searchParams, user, isLoading, login, navigate, autoLoginAttempted]);
+  }, [appNumber, uid, user, isLoading, login, navigate, autoLoginState]);
 
-  const appNumber = searchParams.get('app_number');
-  if (appNumber && !user && !autoLoginAttempted) {
+  // 有 app_number 且尚未登入且登入尚未失敗 → 全程顯示「自動登入中...」
+  // 這樣可避免登入表單短暫閃出
+  if (appNumber && !user && autoLoginState !== 'failed') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-500">自動登入中...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="text-gray-500 text-lg mb-2">自動登入中...</div>
+          <div className="text-gray-400 text-sm">請稍候</div>
+        </div>
       </div>
     );
   }
