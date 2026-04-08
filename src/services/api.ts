@@ -23,12 +23,20 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // 登入 API 本身回 401 → 不跳頁，讓呼叫端自己處理錯誤訊息
       const isLoginEndpoint = error.config?.url?.includes('/auth/login');
+      const isOnLoginPage = window.location.pathname === '/login';
+
       if (!isLoginEndpoint) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+
+        if (isOnLoginPage) {
+          // 已在登入頁（例如帶著 app_number 的自動登入 URL）
+          // → 只清 token，不跳頁，保留 URL params 讓 AutoLogin 繼續執行
+        } else {
+          // 在其他頁面 token 過期 → 跳回登入頁
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);
