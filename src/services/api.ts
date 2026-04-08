@@ -23,9 +23,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // 登入 API 本身回 401 → 不跳頁，讓呼叫端自己處理錯誤訊息
+      const isLoginEndpoint = error.config?.url?.includes('/auth/login');
+      if (!isLoginEndpoint) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

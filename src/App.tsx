@@ -15,12 +15,16 @@ import UsersPage from './pages/UsersPage';
 import CategoriesPage from './pages/CategoriesPage';
 
 // 自動登入處理元件
+const MAX_RETRY = 3;
+const RETRY_DELAY_MS = 5000; // 每次重試間隔 5 秒
+
 const AutoLogin = ({ children }: { children: React.ReactNode }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { login, user, isLoading } = useAuth();
-  // 'idle' | 'logging_in' | 'done' | 'failed'
   const [autoLoginState, setAutoLoginState] = useState<'idle' | 'logging_in' | 'done' | 'failed'>('idle');
+  const [retryCount, setRetryCount] = useState(0);
+  const [statusMsg, setStatusMsg] = useState('自動登入中...');
 
   const appNumber = searchParams.get('app_number');
   const uid = searchParams.get('uid');
@@ -29,30 +33,56 @@ const AutoLogin = ({ children }: { children: React.ReactNode }) => {
     if (uid) {
       localStorage.setItem('line_uid', uid);
     }
+  }, [uid]);
 
-    // 只在有 app_number、尚未登入、auth 載入完成、且尚未嘗試時執行
-    if (appNumber && !user && !isLoading && autoLoginState === 'idle') {
-      setAutoLoginState('logging_in');
-      login(appNumber)
+  useEffect(() => {
+    if (!appNumber || user || isLoading || autoLoginState === 'done') return;
+    if (autoLoginState !== 'idle') return;
+
+    setAutoLoginState('logging_in');
+
+    const tryLogin = (attempt: number) => {
+      if (attempt > 1) {
+        setStatusMsg(`伺服器啟動中，請稍候... (${attempt}/${MAX_RETRY})`);
+      } else {
+        setStatusMsg('自動登入中...');
+      }
+
+      login(appNumber.trim())
         .then(() => {
           setAutoLoginState('done');
           navigate('/', { replace: true });
         })
         .catch((err) => {
-          console.error('自動登入失敗:', err);
-          setAutoLoginState('failed');
-        });
-    }
-  }, [appNumber, uid, user, isLoading, login, navigate, autoLoginState]);
+          console.error(`自動登入失敗 (第 ${attempt} 次):`, err);
+          // 帳號明確不存在（401 含 message）才不重試，其他都重試
+          const isDefiniteAuthError =
+            err.response?.status === 401 &&
+            err.response?.data?.message;
 
-  // 有 app_number 且尚未登入且登入尚未失敗 → 全程顯示「自動登入中...」
-  // 這樣可避免登入表單短暫閃出
+          if (!isDefiniteAuthError && attempt < MAX_RETRY) {
+            setTimeout(() => {
+              setRetryCount(attempt);
+              tryLogin(attempt + 1);
+            }, RETRY_DELAY_MS);
+          } else {
+            setAutoLoginState('failed');
+          }
+        });
+    };
+
+    tryLogin(1);
+  }, [appNumber, user, isLoading, autoLoginState, login, navigate]);
+
+  // 登入流程中 → 顯示等待畫面
   if (appNumber && !user && autoLoginState !== 'failed') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="text-gray-500 text-lg mb-2">自動登入中...</div>
-          <div className="text-gray-400 text-sm">請稍候</div>
+          <div className="text-gray-500 text-lg mb-2">{statusMsg}</div>
+          {retryCount > 0 && (
+            <div className="text-gray-400 text-sm">系統正在喚醒，請勿關閉頁面</div>
+          )}
         </div>
       </div>
     );
