@@ -32,6 +32,13 @@ interface Review {
     store_name?: string;
     department?: string;
   };
+  actual_employee?: {
+    id: string;
+    name: string;
+    store_name?: string;
+    department?: string;
+    app_number?: string;
+  } | null;
   review_categories?: {
     id: string;
     name: string;
@@ -193,12 +200,29 @@ export default function ReviewDetailPage() {
         {/* 基本資訊 */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="text-gray-500 text-sm">員工</div>
+            <div className="text-gray-500 text-sm">
+              {review.is_proxy ? '代理處理人（店長/主管）' : '評價對象'}
+            </div>
             <div className="font-medium">
               {review.employees?.name || '-'}
-              {review.is_proxy && <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">代理處理</span>}
+              {review.is_proxy && (
+                <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded">代理處理</span>
+              )}
             </div>
             <div className="text-sm text-gray-400">{review.employees?.store_name || review.employees?.department}</div>
+            {/* 實際當事人 */}
+            {review.is_proxy && review.actual_employee && (
+              <div className="mt-2 flex items-center gap-1 text-sm text-orange-700 bg-orange-50 rounded px-2 py-1">
+                <span className="font-medium">實際當事人：</span>
+                <span>{review.actual_employee.name}</span>
+                <span className="text-orange-400">
+                  ({review.actual_employee.store_name || review.actual_employee.department})
+                </span>
+              </div>
+            )}
+            {review.is_proxy && !review.actual_employee && (
+              <div className="mt-1 text-xs text-gray-400">實際當事人：未填寫</div>
+            )}
           </div>
           <div>
             <div className="text-gray-500 text-sm">狀態</div>
