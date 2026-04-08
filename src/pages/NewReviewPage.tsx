@@ -88,11 +88,6 @@ export default function NewReviewPage() {
       return;
     }
 
-    if (isProxy && !selectedActualEmployee) {
-      alert('請選擇實際當事人');
-      return;
-    }
-
     setLoading(true);
     try {
       const data: any = {
@@ -207,7 +202,8 @@ export default function NewReviewPage() {
         {isProxy && (
           <div className="bg-yellow-50 p-4 rounded-lg">
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              實際當事人（如已知）
+              實際當事人
+              <span className="ml-1 text-gray-400 font-normal text-xs">（選填，如已知）</span>
             </label>
             <input
               type="text"
