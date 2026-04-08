@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
@@ -8,6 +8,16 @@ const LoginPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // 若 URL 帶有 app_number（auto-login 失敗的 fallback），自動預填
+  useEffect(() => {
+    const urlAppNumber = searchParams.get('app_number');
+    if (urlAppNumber) {
+      setAppNumber(urlAppNumber);
+      setError('自動登入失敗，請確認會員編號後重新登入');
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
