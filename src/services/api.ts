@@ -143,6 +143,9 @@ export const feedbackApi = {
   create: (data: any) => api.post('/customer-feedback', data),
   update: (id: string, data: any) => api.put(`/customer-feedback/${id}`, data),
   addRecord: (id: string, data: any) => api.post(`/customer-feedback/${id}/records`, data),
+  sendSms: (id: string, data: { message?: string; sender_name?: string }) =>
+    api.post(`/customer-feedback/${id}/send-sms`, data),
+  notifyEmployee: (id: string) => api.post(`/customer-feedback/${id}/notify-employee`, {}),
   delete: (id: string) => api.delete(`/customer-feedback/${id}`),
 };
 

@@ -19,9 +19,8 @@ const NewFeedbackPage: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 客戶查詢
+  // 客戶查詢（僅支援客戶ID）
   const [lookupKeyword, setLookupKeyword] = useState('');
-  const [lookupType, setLookupType] = useState<'mobile' | 'client_card' | 'client_id'>('mobile');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<Customer[]>([]);
   const [lookupError, setLookupError] = useState('');
@@ -64,10 +63,7 @@ const NewFeedbackPage: React.FC = () => {
     setLookupError('');
     setLookupResults([]);
     try {
-      const params: any = {};
-      if (lookupType === 'mobile') params.mobile = lookupKeyword.trim();
-      else if (lookupType === 'client_card') params.client_card = lookupKeyword.trim();
-      else params.client_id = lookupKeyword.trim();
+      const params: any = { client_id: lookupKeyword.trim() };
 
       const res = await feedbackApi.lookupCustomer(params);
       if (res.data.length === 0) {
@@ -128,19 +124,13 @@ const NewFeedbackPage: React.FC = () => {
         {/* 客戶查詢 */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h3 className="font-semibold text-gray-700">客戶資料查詢</h3>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700 mb-2">
+            💡 查詢功能僅支援「客戶ID」（e0123 系統內部編號）。不知道 ID 的話，請直接在下方手動填寫客戶姓名與電話。
+          </div>
           <div className="flex gap-2">
-            <select
-              value={lookupType}
-              onChange={e => setLookupType(e.target.value as any)}
-              className="px-3 py-2 border rounded text-sm"
-            >
-              <option value="mobile">手機號碼</option>
-              <option value="client_card">會員卡號</option>
-              <option value="client_id">客戶ID</option>
-            </select>
             <input
               type="text"
-              placeholder="輸入查詢內容..."
+              placeholder="輸入客戶 ID（e0123 編號）..."
               value={lookupKeyword}
               onChange={e => setLookupKeyword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleLookup())}

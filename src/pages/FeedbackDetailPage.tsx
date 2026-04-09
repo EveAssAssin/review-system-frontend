@@ -38,6 +38,16 @@ const FeedbackDetailPage: React.FC = () => {
   const [newRecord, setNewRecord] = useState('');
   const [addingRecord, setAddingRecord] = useState(false);
 
+  // SMS 客戶通知
+  const [smsMessage, setSmsMessage] = useState('');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsMsg, setSmsMsg] = useState('');
+  const [showSmsInput, setShowSmsInput] = useState(false);
+
+  // LINE 員工通知
+  const [lineNotifying, setLineNotifying] = useState(false);
+  const [lineMsg, setLineMsg] = useState('');
+
   const loadFeedback = async () => {
     try {
       const res = await feedbackApi.getById(id!);
@@ -106,6 +116,49 @@ const FeedbackDetailPage: React.FC = () => {
     }
   };
 
+  const handleSendSms = async () => {
+    setSmsSending(true);
+    setSmsMsg('');
+    try {
+      const res = await feedbackApi.sendSms(id!, {
+        message: smsMessage.trim() || undefined,
+        sender_name: user?.name,
+      });
+      if (res.data.success) {
+        setSmsMsg('✓ SMS 已發送');
+        setSmsMessage('');
+        setShowSmsInput(false);
+        await loadFeedback();
+      } else {
+        setSmsMsg(`✗ ${res.data.message}`);
+      }
+    } catch (err) {
+      setSmsMsg('✗ 發送失敗，請稍後再試');
+    } finally {
+      setSmsSending(false);
+      setTimeout(() => setSmsMsg(''), 4000);
+    }
+  };
+
+  const handleNotifyEmployee = async () => {
+    setLineNotifying(true);
+    setLineMsg('');
+    try {
+      const res = await feedbackApi.notifyEmployee(id!);
+      if (res.data.success) {
+        setLineMsg('✓ LINE 通知已發送');
+        await loadFeedback();
+      } else {
+        setLineMsg(`✗ ${res.data.message}`);
+      }
+    } catch (err) {
+      setLineMsg('✗ 發送失敗，請稍後再試');
+    } finally {
+      setLineNotifying(false);
+      setTimeout(() => setLineMsg(''), 4000);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirm('確定要刪除此回報嗎？')) return;
     try {
@@ -139,6 +192,8 @@ const FeedbackDetailPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center text-gray-500">載入中...</div>;
   if (!feedback) return <div className="p-8 text-center text-gray-500">找不到此回報</div>;
 
+  const defaultSmsText = `您好，我們已針對您的${TYPE_LABELS[feedback.feedback_type] || '回報'}進行處理，若有任何問題歡迎再次聯絡。 -樂活眼鏡`;
+
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex justify-between items-center">
@@ -159,7 +214,7 @@ const FeedbackDetailPage: React.FC = () => {
       {/* 客戶資訊 */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="font-semibold text-gray-700 mb-4">客戶資訊</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <p className="text-xs text-gray-500">客戶姓名</p>
             <p className="font-medium text-lg">{feedback.client_name}</p>
@@ -183,6 +238,67 @@ const FeedbackDetailPage: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* SMS 通知客戶 */}
+        {feedback.client_phone && (
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700">SMS 通知客戶</span>
+                {feedback.customer_sms_sent ? (
+                  <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded">
+                    ✓ 已發送（{new Date(feedback.customer_sms_sent_at).toLocaleString('zh-TW')}）
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400">尚未發送</span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSmsInput(!showSmsInput)}
+                className="text-sm px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded"
+              >
+                {feedback.customer_sms_sent ? '再次發送' : '發送 SMS'}
+              </button>
+            </div>
+
+            {showSmsInput && (
+              <div className="mt-3 space-y-2">
+                <textarea
+                  value={smsMessage}
+                  onChange={e => setSmsMessage(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border rounded text-sm"
+                  placeholder={defaultSmsText}
+                />
+                <p className="text-xs text-gray-400">留空則使用預設訊息</p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSendSms}
+                    disabled={smsSending}
+                    className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded disabled:opacity-50"
+                  >
+                    {smsSending ? '發送中...' : '確認發送'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowSmsInput(false)}
+                    className="text-sm text-gray-500 hover:text-gray-700"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {smsMsg && (
+              <p className={`text-sm mt-2 ${smsMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+                {smsMsg}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 回報資訊 */}
@@ -213,22 +329,13 @@ const FeedbackDetailPage: React.FC = () => {
             <p>{feedback.feedback_categories?.name || '-'}</p>
           </div>
           <div>
-            <p className="text-gray-500">負責人員</p>
-            <p>{feedback.employees?.name || '-'}</p>
-            {feedback.employees?.store_name && (
-              <p className="text-xs text-gray-400">{feedback.employees.store_name}</p>
-            )}
-          </div>
-          <div>
             <p className="text-gray-500">建立時間</p>
             <p>{new Date(feedback.created_at).toLocaleString('zh-TW')}</p>
           </div>
-          {feedback.customer_sms_sent && (
-            <div>
-              <p className="text-gray-500">SMS 通知</p>
-              <p className="text-green-600">✓ 已發送</p>
-            </div>
-          )}
+          <div>
+            <p className="text-gray-500">建立人員</p>
+            <p>{feedback.created_by || '-'}</p>
+          </div>
         </div>
         {feedback.content && (
           <div>
@@ -331,6 +438,44 @@ const FeedbackDetailPage: React.FC = () => {
             </span>
           )}
         </div>
+
+        {/* 負責人員 LINE 通知狀態 */}
+        {feedback.assigned_employee_id && (
+          <div className="border-t mt-4 pt-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  負責人員：{feedback.employees?.name || '—'}
+                  {feedback.employees?.store_name && (
+                    <span className="text-gray-400 font-normal text-xs ml-1">
+                      （{feedback.employees.store_name}）
+                    </span>
+                  )}
+                </p>
+                {feedback.employee_notified ? (
+                  <p className="text-xs text-green-600 mt-0.5">
+                    ✓ LINE 通知已發送（{new Date(feedback.employee_notified_at).toLocaleString('zh-TW')}）
+                  </p>
+                ) : (
+                  <p className="text-xs text-yellow-600 mt-0.5">⚠ LINE 通知尚未發送</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleNotifyEmployee}
+                disabled={lineNotifying}
+                className="text-sm px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded disabled:opacity-50 whitespace-nowrap"
+              >
+                {lineNotifying ? '發送中...' : feedback.employee_notified ? '重新發送通知' : '發送 LINE 通知'}
+              </button>
+            </div>
+            {lineMsg && (
+              <p className={`text-sm mt-2 ${lineMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+                {lineMsg}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* 客服處理紀錄 */}
