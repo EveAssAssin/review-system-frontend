@@ -20,6 +20,8 @@ import ServiceRecordsPage from './pages/ServiceRecordsPage';
 import NewServiceRecordPage from './pages/NewServiceRecordPage';
 import ServiceRecordDetailPage from './pages/ServiceRecordDetailPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import MyAssignedFeedbacksPage from './pages/MyAssignedFeedbacksPage';
+import MyAssignedFeedbackDetailPage from './pages/MyAssignedFeedbackDetailPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -153,6 +155,8 @@ function AppRoutes() {
         >
           <Route path="/" element={<DashboardPage />} />
           <Route path="/my-reviews" element={<MyReviewsPage />} />
+          <Route path="/my-feedbacks" element={<MyAssignedFeedbacksPage />} />
+          <Route path="/my-feedbacks/:id" element={<MyAssignedFeedbackDetailPage />} />
 
           {/* 公關部頁面（pr_admin 或 super_admin） */}
           <Route

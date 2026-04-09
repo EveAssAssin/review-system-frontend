@@ -170,6 +170,16 @@ export const feedbackApi = {
   removeRelation: (id: string, relationId: string, operatorName?: string) =>
     api.delete(`/customer-feedback/${id}/relations/${relationId}`, { data: { operator_name: operatorName } }),
   delete: (id: string) => api.delete(`/customer-feedback/${id}`),
+  // 員工：查看自己被指派的未結案案件
+  getMyAssigned: (employeeId: string) =>
+    api.get(`/customer-feedback/my-assigned`, { params: { employee_id: employeeId } }),
+  // 員工：新增處理紀錄 + 可標記處理完成
+  employeeUpdate: (id: string, data: {
+    content: string;
+    employee_name: string;
+    employee_id?: string;
+    mark_resolved?: boolean;
+  }) => api.post(`/customer-feedback/${id}/employee-update`, data),
 };
 
 // Analytics API
