@@ -124,4 +124,26 @@ export const uploadsApi = {
   delete: (id: string) => api.delete(`/uploads/${id}`),
 };
 
+// Feedback Categories API
+export const feedbackCategoriesApi = {
+  getAll: (includeInactive = false) =>
+    api.get('/feedback-categories', { params: { include_inactive: includeInactive } }),
+  getById: (id: string) => api.get(`/feedback-categories/${id}`),
+  create: (data: any) => api.post('/feedback-categories', data),
+  update: (id: string, data: any) => api.put(`/feedback-categories/${id}`, data),
+  delete: (id: string) => api.delete(`/feedback-categories/${id}`),
+};
+
+// Customer Feedback API
+export const feedbackApi = {
+  lookupCustomer: (params: any) => api.post('/customer-feedback/lookup-customer', params),
+  getStats: () => api.get('/customer-feedback/stats'),
+  search: (params?: any) => api.get('/customer-feedback', { params }),
+  getById: (id: string) => api.get(`/customer-feedback/${id}`),
+  create: (data: any) => api.post('/customer-feedback', data),
+  update: (id: string, data: any) => api.put(`/customer-feedback/${id}`, data),
+  addRecord: (id: string, data: any) => api.post(`/customer-feedback/${id}/records`, data),
+  delete: (id: string) => api.delete(`/customer-feedback/${id}`),
+};
+
 export default api;

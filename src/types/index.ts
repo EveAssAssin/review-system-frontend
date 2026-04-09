@@ -160,3 +160,76 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export type ReviewType = 'positive' | 'negative' | 'other';
 export type ReviewStatus = 'pending' | 'responded' | 'closed';
+
+// ─── 客戶回報 ───────────────────────────────────────────
+export interface FeedbackCategory {
+  id: string;
+  name: string;
+  description?: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedbackRecord {
+  id: string;
+  feedback_id: string;
+  content: string;
+  recorder_type: 'staff' | 'system';
+  recorder_name?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerFeedback {
+  id: string;
+  feedback_type: string;
+  client_id?: string;
+  client_name: string;
+  client_phone?: string;
+  client_card?: string;
+  category_id?: string;
+  urgency: string;
+  content?: string;
+  source: string;
+  status: string;
+  assigned_employee_id?: string;
+  employee_notified: boolean;
+  employee_notified_at?: string;
+  customer_sms_sent: boolean;
+  customer_sms_sent_at?: string;
+  close_note?: string;
+  closed_at?: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+  // joins
+  feedback_categories?: { id: string; name: string };
+  employees?: { id: string; name: string; store_name?: string; department?: string };
+  records?: FeedbackRecord[];
+}
+
+export const FEEDBACK_TYPE_LABELS: Record<string, string> = {
+  suggestion: '建議',
+  complaint: '投訴',
+  praise: '稱讚',
+  inquiry: '詢問',
+  other: '其他',
+};
+
+export const FEEDBACK_STATUS_LABELS: Record<string, string> = {
+  pending: '待處理',
+  processing: '處理中',
+  resolved: '已解決',
+  closed: '已結案',
+};
+
+export const FEEDBACK_SOURCE_LABELS: Record<string, string> = {
+  phone: '電話',
+  walk_in: '到店',
+  line: 'LINE',
+  app: 'APP',
+  web: '網路',
+  other: '其他',
+};

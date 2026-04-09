@@ -13,6 +13,9 @@ import EmployeesPage from './pages/EmployeesPage';
 import AlertsPage from './pages/AlertsPage';
 import UsersPage from './pages/UsersPage';
 import CategoriesPage from './pages/CategoriesPage';
+import FeedbacksPage from './pages/FeedbacksPage';
+import NewFeedbackPage from './pages/NewFeedbackPage';
+import FeedbackDetailPage from './pages/FeedbackDetailPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -193,6 +196,32 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <CategoriesPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 客戶回報模組 */}
+          <Route
+            path="/feedbacks"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <FeedbacksPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedbacks/new"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <NewFeedbackPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedbacks/:id"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <FeedbackDetailPage />
               </ProtectedRoute>
             }
           />

@@ -16,6 +16,8 @@ export default function Layout() {
     { path: '/my-reviews', label: '我的評價', show: true },
     { path: '/reviews', label: '評價管理', show: canManageReviews },
     { path: '/reviews/new', label: '新增評價', show: canManageReviews },
+    { path: '/feedbacks', label: '客戶回報', show: canManageReviews },
+    { path: '/feedbacks/new', label: '新增回報', show: canManageReviews },
     { path: '/employees', label: '員工列表', show: canManageReviews },
     { path: '/categories', label: '分類管理', show: canManageReviews },
     { path: '/alerts', label: '警示設定', show: canManageReviews },
