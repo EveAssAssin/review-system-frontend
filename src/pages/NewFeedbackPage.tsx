@@ -58,6 +58,12 @@ const NewFeedbackPage: React.FC = () => {
     send_sms: false,
   });
 
+  // 關聯者
+  const [relations, setRelations] = useState<any[]>([]);
+  const [newRelation, setNewRelation] = useState({
+    employee_id: '', employee_name: '', employee_app_number: '', employee_store: '', relation_reason: '',
+  });
+
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -129,6 +135,12 @@ const NewFeedbackPage: React.FC = () => {
         ...form,
         created_by: user?.name,
       });
+      // 建立關聯者
+      for (const rel of relations) {
+        try {
+          await feedbackApi.addRelation(res.data.id, { ...rel, created_by: user?.name });
+        } catch {}
+      }
       navigate(`/feedbacks/${res.data.id}`);
     } catch (err: any) {
       setError(err.response?.data?.message || '建立失敗，請重試');
@@ -402,6 +414,82 @@ const NewFeedbackPage: React.FC = () => {
               </label>
             </div>
           )}
+        </div>
+
+        {/* 關聯者（非必填） */}
+        <div className="bg-white rounded-lg shadow p-6 space-y-4">
+          <h3 className="font-semibold text-gray-700">關聯者 <span className="text-gray-400 text-sm font-normal">（選填）</span></h3>
+
+          {relations.length > 0 && (
+            <div className="space-y-2">
+              {relations.map((rel, idx) => (
+                <div key={idx} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                  <div>
+                    <span className="font-medium text-sm">{rel.employee_name}</span>
+                    {rel.employee_store && <span className="text-xs text-gray-400 ml-2">{rel.employee_store}</span>}
+                    <span className="text-xs text-gray-500 ml-2">— {rel.relation_reason}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setRelations(prev => prev.filter((_, i) => i !== idx))}
+                    className="text-xs text-red-400 hover:text-red-600"
+                  >
+                    移除
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="border rounded p-3 space-y-2 bg-gray-50">
+            <p className="text-xs text-gray-500 font-medium">新增關聯者</p>
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={newRelation.employee_id}
+                onChange={e => {
+                  const emp = employees.find(em => em.id === e.target.value);
+                  if (emp) {
+                    setNewRelation(prev => ({
+                      ...prev,
+                      employee_id: emp.id,
+                      employee_name: emp.name,
+                      employee_app_number: emp.app_number || '',
+                      employee_store: emp.store_name || '',
+                    }));
+                  } else {
+                    setNewRelation({ employee_id: '', employee_name: '', employee_app_number: '', employee_store: '', relation_reason: '' });
+                  }
+                }}
+                className="px-2 py-1.5 border rounded text-sm"
+              >
+                <option value="">選擇員工</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name}{emp.store_name ? ` (${emp.store_name})` : ''}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="text"
+                placeholder="關聯原因（必填）"
+                value={newRelation.relation_reason}
+                onChange={e => setNewRelation(prev => ({ ...prev, relation_reason: e.target.value }))}
+                className="px-2 py-1.5 border rounded text-sm"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (!newRelation.employee_name || !newRelation.relation_reason.trim()) return;
+                setRelations(prev => [...prev, { ...newRelation }]);
+                setNewRelation({ employee_id: '', employee_name: '', employee_app_number: '', employee_store: '', relation_reason: '' });
+              }}
+              disabled={!newRelation.employee_name || !newRelation.relation_reason.trim()}
+              className="px-3 py-1.5 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 disabled:opacity-40"
+            >
+              + 新增
+            </button>
+          </div>
         </div>
 
         {error && (
