@@ -91,7 +91,7 @@ export default function CategoriesPage() {
             setForm({ name: '', description: '', sort_order: categories.length + 1 });
             setShowModal(true);
           }}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-[#8b6f4e] text-white rounded-lg hover:bg-blue-700"
         >
           新增分類
         </button>
@@ -99,7 +99,7 @@ export default function CategoriesPage() {
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-[#f9f6f2]">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">排序</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">名稱</th>
@@ -127,7 +127,7 @@ export default function CategoriesPage() {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <button
                     onClick={() => handleEdit(cat)}
-                    className="text-blue-600 hover:text-blue-800 mr-3"
+                    className="text-[#8b6f4e] hover:text-blue-800 mr-3"
                   >
                     編輯
                   </button>
@@ -201,7 +201,7 @@ export default function CategoriesPage() {
               <button
                 onClick={handleSubmit}
                 disabled={!form.name}
-                className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                className="px-4 py-2 bg-[#8b6f4e] text-white rounded disabled:opacity-50"
               >
                 儲存
               </button>

@@ -168,7 +168,7 @@ export default function NewReviewPage() {
             </div>
           )}
           {selectedEmployee && (
-            <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+            <div className="mt-2 p-2 bg-[#f5f0eb] rounded text-sm">
               已選擇：<strong>{selectedEmployee.name}</strong> ({selectedEmployee.store_name || selectedEmployee.department})
             </div>
           )}
@@ -187,7 +187,7 @@ export default function NewReviewPage() {
                   setActualEmployeeSearch('');
                 }
               }}
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-[#8b6f4e]"
             />
             <span className="text-sm font-medium text-gray-700">
               此為代理處理（找不到當事人，由店長/主管代為處理）
@@ -377,14 +377,14 @@ export default function NewReviewPage() {
           <button
             type="submit"
             disabled={loading || !selectedEmployee}
-            className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            className="flex-1 py-2 bg-[#8b6f4e] text-white rounded hover:bg-blue-700 disabled:opacity-50"
           >
             {loading ? '建立中...' : '建立評價'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/reviews')}
-            className="px-6 py-2 border rounded hover:bg-gray-50"
+            className="px-6 py-2 border rounded hover:bg-[#f9f6f2]"
           >
             取消
           </button>

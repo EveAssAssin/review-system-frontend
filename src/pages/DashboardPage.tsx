@@ -11,13 +11,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        // 公關部/管理員看全部統計
         if (canManageReviews) {
           const res = await reviewsApi.getStats();
           setStats(res.data);
         }
-        
-        // 所有人都看自己的統計（從 employee 資料取得）
         if (employee) {
           setMyStats({
             total: employee.total_reviews || 0,
@@ -35,77 +32,96 @@ export default function DashboardPage() {
   }, [canManageReviews, employee]);
 
   if (loading) {
-    return <div className="p-6">載入中...</div>;
+    return (
+      <div className="flex items-center justify-center h-48">
+        <div className="text-sm" style={{ color: '#8b7355' }}>載入中...</div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">儀表板</h1>
-
-      {/* 歡迎訊息 */}
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold">歡迎，{user?.name}！</h2>
-        <p className="text-gray-600 mt-1">
-          {canManageReviews 
-            ? '您可以管理所有員工的評價記錄。' 
-            : '您可以查看自己的評價記錄。'}
+      {/* Welcome banner */}
+      <div
+        className="rounded-2xl p-6 shadow-sm"
+        style={{
+          background: 'linear-gradient(135deg, #8b6f4e 0%, #a68b6a 100%)',
+          color: '#ffffff',
+        }}
+      >
+        <p className="text-sm opacity-80 mb-1">歡迎回來</p>
+        <h1 className="text-2xl font-bold">{user?.name}</h1>
+        <p className="text-sm mt-2 opacity-75">
+          {canManageReviews
+            ? '您可以管理所有員工的評價與客戶回報記錄。'
+            : '您可以查看自己的評價記錄與回覆客戶留言。'}
         </p>
       </div>
 
-      {/* 公關部/管理員：顯示全部統計 */}
+      {/* 管理員：系統總覽 */}
       {canManageReviews && stats && (
-        <div>
-          <h3 className="text-lg font-medium text-gray-700 mb-3">系統總覽</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <StatCard label="總評價數" value={stats.total} color="blue" />
-            <StatCard label="正評" value={stats.positive} color="green" />
-            <StatCard label="負評" value={stats.negative} color="red" />
-            <StatCard label="待處理" value={stats.pending} color="yellow" />
-            <StatCard label="本週新增" value={stats.recent_week} color="purple" />
+        <section>
+          <SectionTitle>系統總覽</SectionTitle>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <StatCard label="總評價數" value={stats.total} accent="#8b6f4e" />
+            <StatCard label="正評" value={stats.positive} accent="#16a34a" />
+            <StatCard label="負評" value={stats.negative} accent="#dc2626" />
+            <StatCard label="待處理" value={stats.pending} accent="#d97706" />
+            <StatCard label="本週新增" value={stats.recent_week} accent="#7c3aed" />
           </div>
-        </div>
+        </section>
       )}
 
-      {/* 一般人員：只顯示自己的統計 */}
-      {!canManageReviews && myStats && (
-        <div>
-          <h3 className="text-lg font-medium text-gray-700 mb-3">我的評價統計</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <StatCard label="總評價數" value={myStats.total} color="blue" />
-            <StatCard label="正評" value={myStats.positive} color="green" />
-            <StatCard label="負評" value={myStats.negative} color="red" />
+      {/* 我的評價統計 */}
+      {myStats && (
+        <section>
+          <SectionTitle>我的評價統計</SectionTitle>
+          <div className="grid grid-cols-3 gap-3">
+            <StatCard label="總評價數" value={myStats.total} accent="#8b6f4e" />
+            <StatCard label="正評" value={myStats.positive} accent="#16a34a" />
+            <StatCard label="負評" value={myStats.negative} accent="#dc2626" />
           </div>
-        </div>
-      )}
-
-      {/* 公關部也顯示自己的統計 */}
-      {canManageReviews && myStats && (
-        <div>
-          <h3 className="text-lg font-medium text-gray-700 mb-3">我的評價統計</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <StatCard label="總評價數" value={myStats.total} color="blue" />
-            <StatCard label="正評" value={myStats.positive} color="green" />
-            <StatCard label="負評" value={myStats.negative} color="red" />
-          </div>
-        </div>
+        </section>
       )}
     </div>
   );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
-  const colorClasses: Record<string, string> = {
-    blue: 'text-blue-600',
-    green: 'text-green-600',
-    red: 'text-red-600',
-    yellow: 'text-yellow-600',
-    purple: 'text-purple-600',
-  };
-
+function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow p-4">
-      <p className={`text-3xl font-bold ${colorClasses[color]}`}>{value}</p>
-      <p className="text-gray-500 text-sm mt-1">{label}</p>
+    <h2
+      className="text-sm font-semibold uppercase tracking-widest mb-3 flex items-center gap-2"
+      style={{ color: '#8b7355' }}
+    >
+      <span
+        className="inline-block w-3 h-3 rounded-sm"
+        style={{ backgroundColor: '#cdbea2' }}
+      />
+      {children}
+    </h2>
+  );
+}
+
+function StatCard({ label, value, accent }: { label: string; value: number; accent: string }) {
+  return (
+    <div
+      className="rounded-xl p-4 shadow-sm relative overflow-hidden"
+      style={{ backgroundColor: '#ffffff', border: '1px solid #e8ddd0' }}
+    >
+      {/* Left accent bar */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+        style={{ backgroundColor: accent }}
+      />
+      <p
+        className="text-3xl font-bold pl-2"
+        style={{ color: accent }}
+      >
+        {value}
+      </p>
+      <p className="text-xs mt-1 pl-2" style={{ color: '#8b7355' }}>
+        {label}
+      </p>
     </div>
   );
 }

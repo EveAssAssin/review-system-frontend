@@ -63,7 +63,7 @@ const FeedbacksPage: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'resolved': return 'bg-green-100 text-green-800';
       case 'closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -74,7 +74,7 @@ const FeedbacksPage: React.FC = () => {
     switch (type) {
       case 'complaint': return 'bg-red-100 text-red-800';
       case 'praise': return 'bg-green-100 text-green-800';
-      case 'suggestion': return 'bg-blue-100 text-blue-800';
+      case 'suggestion': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'inquiry': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -94,7 +94,7 @@ const FeedbacksPage: React.FC = () => {
         <h2 className="text-2xl font-bold">客戶回報管理</h2>
         <Link
           to="/feedbacks/new"
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
         >
           新增回報
         </Link>
@@ -116,7 +116,7 @@ const FeedbacksPage: React.FC = () => {
             <div className="text-sm text-gray-500 mt-1">特急待處理</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
-            <div className="text-3xl font-bold text-blue-500">{stats.complaint}</div>
+            <div className="text-3xl font-bold text-[#8b6f4e]">{stats.complaint}</div>
             <div className="text-sm text-gray-500 mt-1">投訴件數</div>
           </div>
         </div>
@@ -174,7 +174,7 @@ const FeedbacksPage: React.FC = () => {
           <div className="p-8 text-center text-gray-500">沒有回報資料</div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#f9f6f2]">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">客戶</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">類型</th>
@@ -188,7 +188,7 @@ const FeedbacksPage: React.FC = () => {
             </thead>
             <tbody className="divide-y">
               {feedbacks.map((fb) => (
-                <tr key={fb.id} className="hover:bg-gray-50">
+                <tr key={fb.id} className="hover:bg-[#f9f6f2]">
                   <td className="px-4 py-3">
                     <div className="font-medium">{fb.client_name}</div>
                     {fb.client_phone && (
@@ -226,7 +226,7 @@ const FeedbacksPage: React.FC = () => {
                   <td className="px-4 py-3">
                     <Link
                       to={`/feedbacks/${fb.id}`}
-                      className="text-blue-500 hover:underline"
+                      className="text-[#8b6f4e] hover:underline"
                     >
                       查看
                     </Link>

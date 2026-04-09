@@ -138,7 +138,7 @@ const ServiceRecordDetailPage: React.FC = () => {
   if (!record) return null;
 
   const getStatusColor = (s: string) => {
-    if (s === 'open') return 'bg-blue-100 text-blue-800';
+    if (s === 'open') return 'bg-[#e8ddd0] text-[#5c4033]';
     if (s === 'resolved') return 'bg-green-100 text-green-800';
     return 'bg-gray-100 text-gray-800';
   };
@@ -247,7 +247,7 @@ const ServiceRecordDetailPage: React.FC = () => {
           {record.status !== 'closed' && (
             <button
               onClick={() => setShowRelationForm(!showRelationForm)}
-              className="text-sm text-blue-500 hover:text-blue-700"
+              className="text-sm text-[#8b6f4e] hover:text-blue-700"
             >
               + 新增關聯者
             </button>
@@ -279,7 +279,7 @@ const ServiceRecordDetailPage: React.FC = () => {
         ))}
 
         {showRelationForm && (
-          <div className="border rounded p-3 space-y-2 bg-blue-50">
+          <div className="border rounded p-3 space-y-2 bg-[#f5f0eb]">
             <p className="text-xs font-medium text-gray-600">新增關聯者</p>
             <div className="grid grid-cols-2 gap-2">
               <select
@@ -317,7 +317,7 @@ const ServiceRecordDetailPage: React.FC = () => {
               <button
                 onClick={handleAddRelation}
                 disabled={addingRelation || !newRelation.employee_name || !newRelation.relation_reason}
-                className="px-3 py-1.5 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-40"
+                className="px-3 py-1.5 bg-[#8b6f4e] text-white rounded text-sm hover:bg-[#7a6040] disabled:opacity-40"
               >
                 {addingRelation ? '新增中...' : '確定新增'}
               </button>
@@ -457,7 +457,7 @@ const ServiceRecordDetailPage: React.FC = () => {
           <button
             onClick={handleAddNote}
             disabled={addingNote || !newNote.trim()}
-            className="px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-40"
+            className="px-4 py-2 bg-[#8b6f4e] text-white rounded text-sm hover:bg-[#7a6040] disabled:opacity-40"
           >
             {addingNote ? '新增中...' : '新增'}
           </button>

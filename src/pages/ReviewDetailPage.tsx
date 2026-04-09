@@ -226,7 +226,7 @@ export default function ReviewDetailPage() {
           </div>
           <div>
             <div className="text-gray-500 text-sm">狀態</div>
-            <div className={review.status === 'pending' ? 'font-medium text-yellow-600' : review.status === 'responded' ? 'font-medium text-blue-600' : 'font-medium text-green-600'}>
+            <div className={review.status === 'pending' ? 'font-medium text-yellow-600' : review.status === 'responded' ? 'font-medium text-[#8b6f4e]' : 'font-medium text-green-600'}>
               {statusLabels[review.status]}
             </div>
           </div>
@@ -295,7 +295,7 @@ export default function ReviewDetailPage() {
             <div className="text-gray-500 text-sm mb-3">回覆記錄</div>
             <div className="space-y-3">
               {responses.map((resp) => (
-                <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-blue-50 p-3 rounded' : 'bg-green-50 p-3 rounded'}>
+                <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-[#f5f0eb] p-3 rounded' : 'bg-green-50 p-3 rounded'}>
                   <div className="flex justify-between items-center mb-1">
                     <span className={resp.responder_type === 'employee' ? 'font-medium text-blue-700' : 'font-medium text-green-700'}>
                       {resp.responder_type === 'employee' ? '👤 員工回覆' : '🏢 公關部回覆'} - {resp.responder_name}
@@ -323,7 +323,7 @@ export default function ReviewDetailPage() {
         {/* 操作按鈕 */}
         {review.status !== 'closed' && (
           <div className="border-t pt-4 flex gap-3">
-            <button onClick={() => setShowResponseForm(true)} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">公關部回覆</button>
+            <button onClick={() => setShowResponseForm(true)} className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:bg-blue-700">公關部回覆</button>
             <button onClick={() => setShowCloseForm(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">結案</button>
           </div>
         )}
@@ -341,7 +341,7 @@ export default function ReviewDetailPage() {
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => { setShowResponseForm(false); setFilesToUpload([]); }} className="px-4 py-2 border rounded">取消</button>
-              <button onClick={handleReviewerResponse} disabled={submitting} className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50">{submitting ? '送出中...' : '送出'}</button>
+              <button onClick={handleReviewerResponse} disabled={submitting} className="px-4 py-2 bg-[#8b6f4e] text-white rounded disabled:opacity-50">{submitting ? '送出中...' : '送出'}</button>
             </div>
           </div>
         </div>

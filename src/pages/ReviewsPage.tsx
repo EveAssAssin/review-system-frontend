@@ -38,7 +38,7 @@ const ReviewsPage: React.FC = () => {
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
       case 'responded':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'closed':
         return 'bg-gray-100 text-gray-800';
       default:
@@ -63,7 +63,7 @@ const ReviewsPage: React.FC = () => {
         <h2 className="text-2xl font-bold">評價管理</h2>
         <Link
           to="/reviews/new"
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
         >
           新增評價
         </Link>
@@ -115,7 +115,7 @@ const ReviewsPage: React.FC = () => {
           <div className="p-8 text-center text-gray-500">沒有評價資料</div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#f9f6f2]">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">員工</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">類型</th>
@@ -127,7 +127,7 @@ const ReviewsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y">
               {reviews.map((review) => (
-                <tr key={review.id} className="hover:bg-gray-50">
+                <tr key={review.id} className="hover:bg-[#f9f6f2]">
                   <td className="px-4 py-3 font-medium">
                     {review.employees?.name || review.employee_name || '-'}
                     {review.employees?.store_name && (
@@ -153,7 +153,7 @@ const ReviewsPage: React.FC = () => {
                   <td className="px-4 py-3">
                     <Link
                       to={`/reviews/${review.id}`}
-                      className="text-blue-500 hover:underline"
+                      className="text-[#8b6f4e] hover:underline"
                     >
                       查看
                     </Link>

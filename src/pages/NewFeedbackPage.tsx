@@ -56,10 +56,10 @@ const EmployeeSearch: React.FC<EmployeeSearchProps> = ({ employees, value, onCha
 
   if (value) {
     return (
-      <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-3 py-2">
+      <div className="flex items-center justify-between bg-[#f5f0eb] border border-blue-200 rounded px-3 py-2">
         <div className="text-sm">
           <span className="font-medium text-blue-800">{value.name}</span>
-          {value.store_name && <span className="text-blue-600 ml-2 text-xs">({value.store_name})</span>}
+          {value.store_name && <span className="text-[#8b6f4e] ml-2 text-xs">({value.store_name})</span>}
           {value.app_number && <span className="text-gray-400 ml-2 text-xs">#{value.app_number}</span>}
         </div>
         <button type="button" onClick={() => onChange(null)} className="text-xs text-gray-400 hover:text-red-400 ml-3">✕</button>
@@ -84,7 +84,7 @@ const EmployeeSearch: React.FC<EmployeeSearchProps> = ({ employees, value, onCha
               key={emp.id}
               type="button"
               onMouseDown={() => { onChange(emp); setQuery(''); setOpen(false); }}
-              className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex justify-between"
+              className="w-full text-left px-3 py-2 hover:bg-[#f5f0eb] text-sm flex justify-between"
             >
               <span>
                 <span className="font-medium">{emp.name}</span>
@@ -346,7 +346,7 @@ const NewFeedbackPage: React.FC = () => {
                       {SEARCH_MODES.map(m => (
                         <button key={m.value} type="button"
                           onClick={() => { setSearchMode(m.value as any); setLookupKeyword(''); setLookupResults([]); setLookupError(''); }}
-                          className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                          className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-[#8b6f4e] text-white' : 'bg-white text-gray-600 hover:bg-[#f9f6f2]'}`}>
                           {m.label}
                         </button>
                       ))}
@@ -370,11 +370,11 @@ const NewFeedbackPage: React.FC = () => {
                     <div className="border rounded divide-y max-h-56 overflow-y-auto">
                       {lookupResults.map(c => (
                         <button key={c.id} type="button" onClick={() => selectCustomer(c)}
-                          className="w-full px-4 py-3 text-left hover:bg-blue-50 flex justify-between items-center gap-2">
+                          className="w-full px-4 py-3 text-left hover:bg-[#f5f0eb] flex justify-between items-center gap-2">
                           <div>
                             <span className="font-medium">{c.clientName}</span>
                             {c.mobile && <span className="text-gray-500 text-sm ml-2">{c.mobile}</span>}
-                            {c.lastUnitId && <span className="text-xs text-blue-500 ml-2">最後到訪：{getUnitLabel(c.lastUnitId)}</span>}
+                            {c.lastUnitId && <span className="text-xs text-[#8b6f4e] ml-2">最後到訪：{getUnitLabel(c.lastUnitId)}</span>}
                           </div>
                           {c.clientCard && <span className="text-xs text-gray-400 shrink-0">#{c.clientCard}</span>}
                         </button>
@@ -474,13 +474,13 @@ const NewFeedbackPage: React.FC = () => {
               placeholder="輸入姓名或門市搜尋..."
             />
             {assignedEmployee && (
-              <p className="text-xs text-blue-500 mt-1">✓ 指派後將自動發送 LINE 通知（含案件連結）給負責人員</p>
+              <p className="text-xs text-[#8b6f4e] mt-1">✓ 指派後將自動發送 LINE 通知（含案件連結）給負責人員</p>
             )}
           </div>
 
           {/* LINE 推波通知（左手系統） */}
-          <div className="border rounded p-3 space-y-3 bg-indigo-50">
-            <p className="text-xs font-semibold text-indigo-700">📲 LEFT 手系統 LINE 推波通知</p>
+          <div className="border rounded p-3 space-y-3 bg-[#f5f0eb]">
+            <p className="text-xs font-semibold text-[#8b6f4e]">📲 LEFT 手系統 LINE 推波通知</p>
 
             {/* 通知指派人員 */}
             {assignedEmployee ? (
@@ -497,7 +497,7 @@ const NewFeedbackPage: React.FC = () => {
                     }}
                     className="w-4 h-4 mt-0.5" />
                   <span className="text-sm text-gray-700">
-                    <span className="font-medium text-indigo-700">通知指派人員</span>
+                    <span className="font-medium text-[#8b6f4e]">通知指派人員</span>
                     <span className="text-gray-500 ml-1">— {assignedEmployee.name}（{assignedEmployee.store_name || '—'}）</span>
                   </span>
                 </label>
@@ -550,7 +550,7 @@ const NewFeedbackPage: React.FC = () => {
           </div>
 
           {/* 通知客戶（SMS） */}
-          <div className="border rounded p-3 space-y-2 bg-gray-50">
+          <div className="border rounded p-3 space-y-2 bg-[#f9f6f2]">
             <p className="text-xs font-medium text-gray-600">📱 SMS 通知</p>
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" checked={form.send_sms}
@@ -600,7 +600,7 @@ const NewFeedbackPage: React.FC = () => {
             </div>
           )}
 
-          <div className="border rounded p-3 space-y-2 bg-gray-50">
+          <div className="border rounded p-3 space-y-2 bg-[#f9f6f2]">
             <p className="text-xs text-gray-500 font-medium">新增關聯者</p>
             <EmployeeSearch
               employees={employees}
@@ -633,11 +633,11 @@ const NewFeedbackPage: React.FC = () => {
 
         <div className="flex gap-3">
           <button type="submit" disabled={loading}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50">
+            className="px-6 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded disabled:opacity-50">
             {loading ? '建立中...' : '建立回報'}
           </button>
           <button type="button" onClick={() => navigate('/feedbacks')}
-            className="px-6 py-2 border rounded text-gray-600 hover:bg-gray-50">
+            className="px-6 py-2 border rounded text-gray-600 hover:bg-[#f9f6f2]">
             取消
           </button>
         </div>

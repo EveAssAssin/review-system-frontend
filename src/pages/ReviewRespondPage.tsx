@@ -142,7 +142,7 @@ export default function ReviewRespondPage() {
                 <div className="text-gray-500 text-sm mb-3">回覆記錄</div>
                 <div className="space-y-3">
                   {responses.map((resp) => (
-                    <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-blue-50 p-3 rounded' : 'bg-green-50 p-3 rounded'}>
+                    <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-[#f5f0eb] p-3 rounded' : 'bg-green-50 p-3 rounded'}>
                       <div className="flex justify-between items-center mb-1">
                         <span className={resp.responder_type === 'employee' ? 'font-medium text-blue-700' : 'font-medium text-green-700'}>
                           {resp.responder_type === 'employee' ? '👤 我的回覆' : '🏢 公關部回覆'}
@@ -228,7 +228,7 @@ export default function ReviewRespondPage() {
               <div className="text-gray-500 text-sm mb-3">回覆記錄</div>
               <div className="space-y-3">
                 {responses.map((resp) => (
-                  <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-blue-50 p-3 rounded' : 'bg-green-50 p-3 rounded'}>
+                  <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-[#f5f0eb] p-3 rounded' : 'bg-green-50 p-3 rounded'}>
                     <div className="flex justify-between items-center mb-1">
                       <span className={resp.responder_type === 'employee' ? 'font-medium text-blue-700' : 'font-medium text-green-700'}>
                         {resp.responder_type === 'employee' ? '👤 我的回覆' : '🏢 公關部回覆'}
@@ -248,13 +248,13 @@ export default function ReviewRespondPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 {responses.length > 0 ? '追加回覆' : '您的回覆'} <span className="text-red-500">*</span>
               </label>
-              <textarea value={response} onChange={(e) => setResponse(e.target.value)} rows={5} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="請針對此評價進行說明或回覆..." />
+              <textarea value={response} onChange={(e) => setResponse(e.target.value)} rows={5} className="w-full px-3 py-2 border rounded focus:ring-2 focus:ring-[#8b6f4e] focus:border-[#8b6f4e]" placeholder="請針對此評價進行說明或回覆..." />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">附件（選填，可上傳相關圖片或影片）</label>
               <FileUpload onFilesSelected={setFilesToUpload} maxFiles={5} maxSizeMB={50} />
             </div>
-            <button type="submit" disabled={submitting || !response.trim()} className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
+            <button type="submit" disabled={submitting || !response.trim()} className="w-full py-3 bg-[#8b6f4e] text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50">
               {submitting ? '送出中...' : responses.length > 0 ? '送出追加回覆' : '送出回覆'}
             </button>
           </form>

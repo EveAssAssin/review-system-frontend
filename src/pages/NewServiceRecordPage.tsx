@@ -187,14 +187,14 @@ const NewServiceRecordPage: React.FC = () => {
             <button
               type="button"
               onClick={() => { setCustomerType('member'); clearCustomer(); }}
-              className={`px-4 py-2 rounded text-sm font-medium ${customerType === 'member' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+              className={`px-4 py-2 rounded text-sm font-medium ${customerType === 'member' ? 'bg-[#8b6f4e] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               會員查詢
             </button>
             <button
               type="button"
               onClick={() => { setCustomerType('stranger'); clearCustomer(); }}
-              className={`px-4 py-2 rounded text-sm font-medium ${customerType === 'stranger' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-600'}`}
+              className={`px-4 py-2 rounded text-sm font-medium ${customerType === 'stranger' ? 'bg-[#8b6f4e] text-white' : 'bg-gray-100 text-gray-600'}`}
             >
               陌生客
             </button>
@@ -210,7 +210,7 @@ const NewServiceRecordPage: React.FC = () => {
                       key={m.value}
                       type="button"
                       onClick={() => { setSearchMode(m.value as any); setLookupKeyword(''); setLookupResults([]); setLookupError(''); }}
-                      className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                      className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-[#8b6f4e] text-white' : 'bg-white text-gray-600 hover:bg-[#f9f6f2]'}`}
                     >
                       {m.label}
                     </button>
@@ -241,13 +241,13 @@ const NewServiceRecordPage: React.FC = () => {
                       key={c.id}
                       type="button"
                       onClick={() => selectCustomer(c)}
-                      className="w-full px-4 py-3 text-left hover:bg-blue-50 flex justify-between items-center"
+                      className="w-full px-4 py-3 text-left hover:bg-[#f5f0eb] flex justify-between items-center"
                     >
                       <div>
                         <span className="font-medium">{c.clientName}</span>
                         {c.mobile && <span className="text-gray-500 text-sm ml-2">{c.mobile}</span>}
                         {c.lastUnitId && (
-                          <span className="text-xs text-blue-500 ml-2">最後到訪：{getUnitLabel(c.lastUnitId)}</span>
+                          <span className="text-xs text-[#8b6f4e] ml-2">最後到訪：{getUnitLabel(c.lastUnitId)}</span>
                         )}
                       </div>
                       {c.clientCard && <span className="text-xs text-gray-400">#{c.clientCard}</span>}
@@ -411,7 +411,7 @@ const NewServiceRecordPage: React.FC = () => {
             </div>
           )}
 
-          <div className="border rounded p-3 space-y-2 bg-gray-50">
+          <div className="border rounded p-3 space-y-2 bg-[#f9f6f2]">
             <p className="text-xs text-gray-500 font-medium">新增關聯者</p>
             <div className="grid grid-cols-2 gap-2">
               <select
@@ -468,14 +468,14 @@ const NewServiceRecordPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50"
+            className="px-6 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded disabled:opacity-50"
           >
             {loading ? '建立中...' : '建立客服紀錄'}
           </button>
           <button
             type="button"
             onClick={() => navigate('/service-records')}
-            className="px-6 py-2 border rounded text-gray-600 hover:bg-gray-50"
+            className="px-6 py-2 border rounded text-gray-600 hover:bg-[#f9f6f2]"
           >
             取消
           </button>

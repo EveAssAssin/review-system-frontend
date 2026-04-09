@@ -162,7 +162,7 @@ const AlertsPage: React.FC = () => {
               setEditingRule(null);
               setShowRuleModal(true);
             }}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+            className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
           >
             新增規則
           </button>
@@ -188,7 +188,7 @@ const AlertsPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => openEditRule(rule)}
-                    className="px-3 py-1 text-blue-500 hover:bg-blue-50 rounded"
+                    className="px-3 py-1 text-[#8b6f4e] hover:bg-[#f5f0eb] rounded"
                   >
                     編輯
                   </button>
@@ -215,7 +215,7 @@ const AlertsPage: React.FC = () => {
               setEditingManager(null);
               setShowManagerModal(true);
             }}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+            className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
           >
             新增主管
           </button>
@@ -238,7 +238,7 @@ const AlertsPage: React.FC = () => {
                 <div className="flex gap-2">
                   <button
                     onClick={() => openEditManager(manager)}
-                    className="px-3 py-1 text-blue-500 hover:bg-blue-50 rounded"
+                    className="px-3 py-1 text-[#8b6f4e] hover:bg-[#f5f0eb] rounded"
                   >
                     編輯
                   </button>
@@ -341,7 +341,7 @@ const AlertsPage: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveRule}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+                className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
               >
                 儲存
               </button>
@@ -395,7 +395,7 @@ const AlertsPage: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveManager}
-                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+                className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
               >
                 儲存
               </button>

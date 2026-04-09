@@ -60,7 +60,7 @@ const ServiceRecordsPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'open': return 'bg-blue-100 text-blue-800';
+      case 'open': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'resolved': return 'bg-green-100 text-green-800';
       case 'closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -70,7 +70,7 @@ const ServiceRecordsPage: React.FC = () => {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'complaint': return 'bg-red-100 text-red-800';
-      case 'suggestion': return 'bg-blue-100 text-blue-800';
+      case 'suggestion': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'inquiry': return 'bg-purple-100 text-purple-800';
       case 'maintenance': return 'bg-orange-100 text-orange-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -83,7 +83,7 @@ const ServiceRecordsPage: React.FC = () => {
         <h2 className="text-2xl font-bold">客服紀錄</h2>
         <Link
           to="/service-records/new"
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
         >
           新增客服紀錄
         </Link>
@@ -97,7 +97,7 @@ const ServiceRecordsPage: React.FC = () => {
             <div className="text-sm text-gray-500 mt-1">總計</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
-            <div className="text-3xl font-bold text-blue-500">{stats.open || 0}</div>
+            <div className="text-3xl font-bold text-[#8b6f4e]">{stats.open || 0}</div>
             <div className="text-sm text-gray-500 mt-1">處理中</div>
           </div>
           <div className="bg-white rounded-lg shadow p-4 text-center">
@@ -152,7 +152,7 @@ const ServiceRecordsPage: React.FC = () => {
           <div className="p-8 text-center text-gray-500">沒有客服紀錄</div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50">
+            <thead className="bg-[#f9f6f2]">
               <tr>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">客戶</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">類型</th>
@@ -166,7 +166,7 @@ const ServiceRecordsPage: React.FC = () => {
             </thead>
             <tbody className="divide-y">
               {records.map((rec) => (
-                <tr key={rec.id} className="hover:bg-gray-50">
+                <tr key={rec.id} className="hover:bg-[#f9f6f2]">
                   <td className="px-4 py-3">
                     <div className="font-medium">
                       {rec.customer_name || '陌生客'}
@@ -206,7 +206,7 @@ const ServiceRecordsPage: React.FC = () => {
                   <td className="px-4 py-3">
                     <Link
                       to={`/service-records/${rec.id}`}
-                      className="text-blue-500 hover:underline text-sm"
+                      className="text-[#8b6f4e] hover:underline text-sm"
                     >
                       查看
                     </Link>

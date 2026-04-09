@@ -39,7 +39,7 @@ const MyReviewsPage: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'responded': return 'bg-blue-100 text-blue-800';
+      case 'responded': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -56,7 +56,7 @@ const MyReviewsPage: React.FC = () => {
       {/* 統計 */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div className="bg-white p-4 rounded-lg shadow text-center">
-          <div className="text-2xl font-bold text-blue-600">{employee.total_reviews}</div>
+          <div className="text-2xl font-bold text-[#8b6f4e]">{employee.total_reviews}</div>
           <div className="text-gray-500 text-sm">總評價</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow text-center">
@@ -87,7 +87,7 @@ const MyReviewsPage: React.FC = () => {
         ) : (
           <div className="divide-y">
             {reviews.map((review) => (
-              <div key={review.id} className="p-4 hover:bg-gray-50">
+              <div key={review.id} className="p-4 hover:bg-[#f9f6f2]">
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex gap-2">
                     <span className={`px-2 py-1 rounded text-sm ${getTypeColor(review.review_type)}`}>
@@ -108,7 +108,7 @@ const MyReviewsPage: React.FC = () => {
                 {review.status === 'pending' && review.requires_response && (
                   <Link
                     to={`/review/respond/${review.response_token}`}
-                    className="inline-block mt-2 text-blue-500 hover:underline text-sm"
+                    className="inline-block mt-2 text-[#8b6f4e] hover:underline text-sm"
                   >
                     前往回覆 →
                   </Link>

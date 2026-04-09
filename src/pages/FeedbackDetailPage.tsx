@@ -308,7 +308,7 @@ const FeedbackDetailPage: React.FC = () => {
   const getStatusColor = (s: string) => {
     switch (s) {
       case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'processing': return 'bg-blue-100 text-blue-800';
+      case 'processing': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'resolved': return 'bg-green-100 text-green-800';
       case 'closed': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -319,7 +319,7 @@ const FeedbackDetailPage: React.FC = () => {
     switch (type) {
       case 'complaint': return 'bg-red-100 text-red-800';
       case 'praise': return 'bg-green-100 text-green-800';
-      case 'suggestion': return 'bg-blue-100 text-blue-800';
+      case 'suggestion': return 'bg-[#e8ddd0] text-[#5c4033]';
       case 'inquiry': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
@@ -564,7 +564,7 @@ const FeedbackDetailPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={handleUpdate}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+            className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded"
           >
             儲存更新
           </button>
@@ -600,7 +600,7 @@ const FeedbackDetailPage: React.FC = () => {
                 type="button"
                 onClick={handleNotifyEmployee}
                 disabled={lineNotifying}
-                className="text-sm px-3 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-white rounded disabled:opacity-50 whitespace-nowrap"
+                className="text-sm px-3 py-1.5 bg-[#f5f0eb]0 hover:bg-[#8b6f4e] text-white rounded disabled:opacity-50 whitespace-nowrap"
               >
                 {lineNotifying ? '發送中...' : feedback.employee_notified ? '重新發送通知' : '發送 LINE 通知'}
               </button>
@@ -678,7 +678,7 @@ const FeedbackDetailPage: React.FC = () => {
                   📋 填寫結案說明
                 </button>
               ) : (
-                <div className="space-y-3 border rounded p-4 bg-gray-50">
+                <div className="space-y-3 border rounded p-4 bg-[#f9f6f2]">
                   <p className="text-sm font-medium text-gray-700">結案說明</p>
                   <textarea
                     value={closingNote}
@@ -779,7 +779,7 @@ const FeedbackDetailPage: React.FC = () => {
                 setNotifyMessage(defaultMsg);
                 setShowNotifyForm(true);
               }}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm"
+              className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded text-sm"
             >
               📤 {feedback.close_notify_sent ? '再次發送結案通知' : '發送結案通知'}
             </button>
@@ -817,7 +817,7 @@ const FeedbackDetailPage: React.FC = () => {
                   type="button"
                   onClick={handleSendCloseNotify}
                   disabled={notifying || !notifyMessage.trim()}
-                  className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded disabled:opacity-50"
+                  className="px-4 py-1.5 bg-[#8b6f4e] hover:bg-[#7a6040] text-white text-sm rounded disabled:opacity-50"
                 >
                   {notifying ? '發送中...' : '確認發送'}
                 </button>
@@ -999,7 +999,7 @@ const FeedbackDetailPage: React.FC = () => {
               <div
                 key={r.id}
                 className={`rounded p-3 ${
-                  r.recorder_type === 'system' ? 'bg-gray-50 border-l-4 border-gray-300' : 'bg-blue-50 border-l-4 border-blue-400'
+                  r.recorder_type === 'system' ? 'bg-gray-50 border-l-4 border-gray-300' : 'bg-[#f5f0eb] border-l-4 border-blue-400'
                 }`}
               >
                 <div className="flex justify-between text-xs text-gray-500 mb-1">

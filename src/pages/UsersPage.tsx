@@ -20,7 +20,7 @@ const roleLabels: Record<Role, string> = {
 
 const roleColors: Record<Role, string> = {
   super_admin: 'bg-red-100 text-red-800',
-  pr_admin: 'bg-blue-100 text-blue-800',
+  pr_admin: 'bg-[#e8ddd0] text-[#5c4033]',
   user: 'bg-gray-100 text-gray-800',
 };
 
@@ -115,7 +115,7 @@ export default function UsersPage() {
         <h1 className="text-2xl font-bold text-gray-900">使用者管理</h1>
         <button
           onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="px-4 py-2 bg-[#8b6f4e] text-white rounded-lg hover:bg-blue-700"
         >
           新增使用者
         </button>
@@ -135,7 +135,7 @@ export default function UsersPage() {
       {/* 使用者列表 */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-[#f9f6f2]">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">姓名</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ERPID</th>
@@ -246,7 +246,7 @@ export default function UsersPage() {
               <button
                 onClick={handleAddUser}
                 disabled={!selectedEmployee}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50"
+                className="px-4 py-2 bg-[#8b6f4e] text-white rounded-lg disabled:opacity-50"
               >
                 新增
               </button>

@@ -110,7 +110,7 @@ const AnalyticsPage: React.FC = () => {
           <button
             onClick={fetchSummary}
             disabled={loading}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm disabled:opacity-50"
+            className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded text-sm disabled:opacity-50"
           >
             {loading ? '載入中...' : '查詢'}
           </button>
@@ -125,7 +125,7 @@ const AnalyticsPage: React.FC = () => {
         <>
           {/* 綜合統計卡片 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="客戶回報總計" value={fb?.total} color="text-blue-600" />
+            <StatCard label="客戶回報總計" value={fb?.total} color="text-[#8b6f4e]" />
             <StatCard label="客服紀錄總計" value={sr?.total} color="text-purple-600" />
             <StatCard label="未處理案件" value={comb?.total_unresolved} color="text-red-500" />
             <StatCard label="投訴率" value={`${comb?.complaint_rate_pct ?? 0}%`} color={comb?.complaint_rate_pct > 20 ? 'text-red-500' : 'text-green-600'} />

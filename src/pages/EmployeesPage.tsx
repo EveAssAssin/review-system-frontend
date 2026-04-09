@@ -70,7 +70,7 @@ const EmployeesPage: React.FC = () => {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-[#f9f6f2]">
                 <tr>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">姓名</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">員工編號</th>
@@ -84,7 +84,7 @@ const EmployeesPage: React.FC = () => {
               </thead>
               <tbody className="divide-y">
                 {filteredEmployees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50">
+                  <tr key={emp.id} className="hover:bg-[#f9f6f2]">
                     <td className="px-4 py-3 font-medium">{emp.name}</td>
                     <td className="px-4 py-3 text-gray-600">{emp.erpid}</td>
                     <td className="px-4 py-3 text-gray-600">{emp.store_name || emp.department || '-'}</td>
@@ -96,12 +96,12 @@ const EmployeesPage: React.FC = () => {
                       <span className="text-red-600 font-medium">{emp.negative_count}</span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span className="text-blue-600 font-medium">{emp.total_reviews}</span>
+                      <span className="text-[#8b6f4e] font-medium">{emp.total_reviews}</span>
                     </td>
                     <td className="px-4 py-3">
                       <Link
                         to={`/employees/${emp.id}`}
-                        className="text-blue-500 hover:underline"
+                        className="text-[#8b6f4e] hover:underline"
                       >
                         查看
                       </Link>
