@@ -172,6 +172,14 @@ export const feedbackApi = {
   delete: (id: string) => api.delete(`/customer-feedback/${id}`),
 };
 
+// Analytics API
+export const analyticsApi = {
+  getSummary: (from?: string, to?: string) =>
+    api.get('/analytics/summary', { params: { from, to } }),
+  getAiSuggestions: (summary: any) =>
+    api.post('/analytics/ai-suggest', { summary }),
+};
+
 // Service Records API
 export const serviceRecordsApi = {
   getStats: () => api.get('/service-records/stats'),

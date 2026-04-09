@@ -20,6 +20,7 @@ export default function Layout() {
     { path: '/feedbacks/new', label: '新增回報', show: canManageReviews },
     { path: '/service-records', label: '客服紀錄', show: canManageReviews },
     { path: '/service-records/new', label: '新增客服紀錄', show: canManageReviews },
+    { path: '/analytics', label: '客服分析', show: canManageReviews },
     { path: '/employees', label: '員工列表', show: canManageReviews },
     { path: '/categories', label: '分類管理', show: canManageReviews },
     { path: '/alerts', label: '警示設定', show: canManageReviews },

@@ -19,6 +19,7 @@ import FeedbackDetailPage from './pages/FeedbackDetailPage';
 import ServiceRecordsPage from './pages/ServiceRecordsPage';
 import NewServiceRecordPage from './pages/NewServiceRecordPage';
 import ServiceRecordDetailPage from './pages/ServiceRecordDetailPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -251,6 +252,16 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <ServiceRecordDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 客服分析 */}
+          <Route
+            path="/analytics"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <AnalyticsPage />
               </ProtectedRoute>
             }
           />
