@@ -11,6 +11,23 @@ interface Customer {
   lastUnitId: number;
 }
 
+// lastUnitId → 門市名稱（基本對照，可依實際門市 ID 擴充）
+const UNIT_MAP: Record<number, string> = {
+  // 請依實際 e0123 門市 ID 補充，例如：
+  // 1: '台北信義店', 2: '台中中港店', ...
+};
+const getUnitLabel = (id?: number) => {
+  if (!id) return null;
+  return UNIT_MAP[id] ? UNIT_MAP[id] : `門市 #${id}`;
+};
+
+const SEARCH_MODES = [
+  { value: 'mobile', label: '電話' },
+  { value: 'name', label: '姓名' },
+  { value: 'client_card', label: '卡號' },
+  { value: 'client_id', label: '客戶ID' },
+];
+
 const NewFeedbackPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -19,11 +36,13 @@ const NewFeedbackPage: React.FC = () => {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // 客戶查詢（僅支援客戶ID）
+  // 客戶查詢
+  const [searchMode, setSearchMode] = useState<'mobile' | 'name' | 'client_card' | 'client_id'>('mobile');
   const [lookupKeyword, setLookupKeyword] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupResults, setLookupResults] = useState<Customer[]>([]);
   const [lookupError, setLookupError] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
   const [form, setForm] = useState({
     feedback_type: 'suggestion',
@@ -62,32 +81,39 @@ const NewFeedbackPage: React.FC = () => {
     setLookupLoading(true);
     setLookupError('');
     setLookupResults([]);
-    try {
-      const params: any = { client_id: lookupKeyword.trim() };
 
+    try {
+      const params: any = { [searchMode]: lookupKeyword.trim() };
       const res = await feedbackApi.lookupCustomer(params);
+
       if (res.data.length === 0) {
         setLookupError('查無符合客戶，請直接於下方手動填寫客戶資料');
       } else {
         setLookupResults(res.data);
       }
     } catch (err) {
-      setLookupError('客戶查詢服務暫時無法使用，請直接於下方手動填寫客戶資料');
+      setLookupError('查詢失敗，請直接於下方手動填寫客戶資料');
     } finally {
       setLookupLoading(false);
     }
   };
 
   const selectCustomer = (c: Customer) => {
+    setSelectedCustomer(c);
     setForm(prev => ({
       ...prev,
       client_id: String(c.id),
-      client_name: c.clientName,
+      client_name: c.clientName || '',
       client_phone: c.mobile || '',
       client_card: c.clientCard || '',
     }));
     setLookupResults([]);
     setLookupKeyword('');
+  };
+
+  const clearCustomer = () => {
+    setSelectedCustomer(null);
+    setForm(prev => ({ ...prev, client_id: '', client_name: '', client_phone: '', client_card: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -121,50 +147,117 @@ const NewFeedbackPage: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
+
         {/* 客戶查詢 */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h3 className="font-semibold text-gray-700">客戶資料查詢</h3>
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700 mb-2">
-            💡 查詢功能僅支援「客戶ID」（e0123 系統內部編號）。不知道 ID 的話，請直接在下方手動填寫客戶姓名與電話。
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="輸入客戶 ID（e0123 編號）..."
-              value={lookupKeyword}
-              onChange={e => setLookupKeyword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleLookup())}
-              className="flex-1 px-3 py-2 border rounded"
-            />
-            <button
-              type="button"
-              onClick={handleLookup}
-              disabled={lookupLoading}
-              className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm"
-            >
-              {lookupLoading ? '查詢中...' : '查詢'}
-            </button>
-          </div>
-          {lookupError && <p className="text-red-500 text-sm">{lookupError}</p>}
-          {lookupResults.length > 0 && (
-            <div className="border rounded divide-y max-h-48 overflow-y-auto">
-              {lookupResults.map(c => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => selectCustomer(c)}
-                  className="w-full px-4 py-3 text-left hover:bg-blue-50 flex justify-between items-center"
-                >
-                  <div>
-                    <span className="font-medium">{c.clientName}</span>
-                    {c.mobile && <span className="text-gray-500 text-sm ml-2">{c.mobile}</span>}
-                  </div>
-                  {c.clientCard && <span className="text-xs text-gray-400">#{c.clientCard}</span>}
-                </button>
-              ))}
+
+          {/* 已選取的客戶 */}
+          {selectedCustomer && (
+            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded p-3">
+              <div>
+                <span className="font-medium text-green-800">{selectedCustomer.clientName}</span>
+                {selectedCustomer.mobile && (
+                  <span className="text-green-600 text-sm ml-2">{selectedCustomer.mobile}</span>
+                )}
+                {selectedCustomer.clientCard && (
+                  <span className="text-gray-400 text-xs ml-2">#{selectedCustomer.clientCard}</span>
+                )}
+                {selectedCustomer.lastUnitId && (
+                  <span className="text-xs text-gray-500 ml-2">
+                    最後到訪：{getUnitLabel(selectedCustomer.lastUnitId)}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={clearCustomer}
+                className="text-xs text-gray-400 hover:text-red-400 ml-4"
+              >
+                ✕ 清除
+              </button>
             </div>
           )}
 
+          {/* 搜尋列 */}
+          {!selectedCustomer && (
+            <>
+              <div className="flex gap-2">
+                {/* 搜尋方式切換 */}
+                <div className="flex rounded border overflow-hidden shrink-0">
+                  {SEARCH_MODES.map(m => (
+                    <button
+                      key={m.value}
+                      type="button"
+                      onClick={() => { setSearchMode(m.value as any); setLookupKeyword(''); setLookupResults([]); setLookupError(''); }}
+                      className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  placeholder={
+                    searchMode === 'mobile' ? '輸入電話號碼...' :
+                    searchMode === 'name' ? '輸入客戶姓名...' :
+                    searchMode === 'client_card' ? '輸入會員卡號...' :
+                    '輸入 e0123 客戶ID...'
+                  }
+                  value={lookupKeyword}
+                  onChange={e => setLookupKeyword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleLookup())}
+                  className="flex-1 px-3 py-2 border rounded"
+                />
+                <button
+                  type="button"
+                  onClick={handleLookup}
+                  disabled={lookupLoading}
+                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm shrink-0"
+                >
+                  {lookupLoading ? '查詢中...' : '查詢'}
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-400">
+                💡 查詢前需先執行「客戶資料同步」（管理員功能），否則查無資料屬正常。
+              </p>
+
+              {lookupError && <p className="text-red-500 text-sm">{lookupError}</p>}
+
+              {/* 查詢結果清單 */}
+              {lookupResults.length > 0 && (
+                <div className="border rounded divide-y max-h-56 overflow-y-auto">
+                  {lookupResults.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => selectCustomer(c)}
+                      className="w-full px-4 py-3 text-left hover:bg-blue-50 flex justify-between items-center gap-2"
+                    >
+                      <div className="min-w-0">
+                        <span className="font-medium">{c.clientName}</span>
+                        {c.mobile && (
+                          <span className="text-gray-500 text-sm ml-2">{c.mobile}</span>
+                        )}
+                        {/* 方案A：顯示最後到訪門市，幫助識別家庭成員 */}
+                        {c.lastUnitId && (
+                          <span className="text-xs text-blue-500 ml-2">
+                            最後到訪：{getUnitLabel(c.lastUnitId)}
+                          </span>
+                        )}
+                      </div>
+                      {c.clientCard && (
+                        <span className="text-xs text-gray-400 shrink-0">#{c.clientCard}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* 手動填寫欄位 */}
           <div className="grid grid-cols-2 gap-4 pt-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -134,6 +134,13 @@ export const feedbackCategoriesApi = {
   delete: (id: string) => api.delete(`/feedback-categories/${id}`),
 };
 
+// Customer Sync API
+export const customerSyncApi = {
+  syncAll: () => api.post('/customer-sync/sync-all', {}),
+  syncIncremental: (days = 3) => api.post(`/customer-sync/sync-incremental?days=${days}`, {}),
+  getStatus: () => api.get('/customer-sync/status'),
+};
+
 // Customer Feedback API
 export const feedbackApi = {
   lookupCustomer: (params: any) => api.post('/customer-feedback/lookup-customer', params),
