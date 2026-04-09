@@ -172,4 +172,22 @@ export const feedbackApi = {
   delete: (id: string) => api.delete(`/customer-feedback/${id}`),
 };
 
+// Service Records API
+export const serviceRecordsApi = {
+  getStats: () => api.get('/service-records/stats'),
+  search: (params?: any) => api.get('/service-records', { params }),
+  getById: (id: string) => api.get(`/service-records/${id}`),
+  create: (data: any) => api.post('/service-records', data),
+  update: (id: string, data: any) => api.put(`/service-records/${id}`, data),
+  resolve: (id: string, data: { resolve_detail: string; resolver_name: string }) =>
+    api.post(`/service-records/${id}/resolve`, data),
+  closeCase: (id: string, data: { close_note: string; closer_name: string }) =>
+    api.post(`/service-records/${id}/close`, data),
+  addRelation: (id: string, data: any) => api.post(`/service-records/${id}/relations`, data),
+  removeRelation: (id: string, relationId: string, operatorName?: string) =>
+    api.delete(`/service-records/${id}/relations/${relationId}`, { data: { operator_name: operatorName } }),
+  addLog: (id: string, data: any) => api.post(`/service-records/${id}/logs`, data),
+  delete: (id: string) => api.delete(`/service-records/${id}`),
+};
+
 export default api;

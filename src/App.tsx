@@ -16,6 +16,9 @@ import CategoriesPage from './pages/CategoriesPage';
 import FeedbacksPage from './pages/FeedbacksPage';
 import NewFeedbackPage from './pages/NewFeedbackPage';
 import FeedbackDetailPage from './pages/FeedbackDetailPage';
+import ServiceRecordsPage from './pages/ServiceRecordsPage';
+import NewServiceRecordPage from './pages/NewServiceRecordPage';
+import ServiceRecordDetailPage from './pages/ServiceRecordDetailPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -222,6 +225,32 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <FeedbackDetailPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 客服紀錄模組 */}
+          <Route
+            path="/service-records"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <ServiceRecordsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/service-records/new"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <NewServiceRecordPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/service-records/:id"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <ServiceRecordDetailPage />
               </ProtectedRoute>
             }
           />
