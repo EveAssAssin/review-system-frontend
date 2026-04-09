@@ -48,6 +48,23 @@ const FeedbackDetailPage: React.FC = () => {
   const [lineNotifying, setLineNotifying] = useState(false);
   const [lineMsg, setLineMsg] = useState('');
 
+  // 處理完成流程
+  const [showResolveForm, setShowResolveForm] = useState(false);
+  const [resolveDetail, setResolveDetail] = useState('');
+  const [resolving, setResolving] = useState(false);
+
+  // 結案流程
+  const [showCloseForm, setShowCloseForm] = useState(false);
+  const [closingNote, setClosingNote] = useState('');
+  const [closing, setClosing] = useState(false);
+
+  // 結案通知
+  const [showNotifyForm, setShowNotifyForm] = useState(false);
+  const [notifyMethod, setNotifyMethod] = useState<'sms' | 'line'>('sms');
+  const [notifyMessage, setNotifyMessage] = useState('');
+  const [notifying, setNotifying] = useState(false);
+  const [notifyResult, setNotifyResult] = useState('');
+
   // 關聯者
   const [showRelationForm, setShowRelationForm] = useState(false);
   const [relationSearch, setRelationSearch] = useState('');
@@ -165,6 +182,57 @@ const FeedbackDetailPage: React.FC = () => {
     } finally {
       setLineNotifying(false);
       setTimeout(() => setLineMsg(''), 4000);
+    }
+  };
+
+  const handleResolve = async () => {
+    if (!resolveDetail.trim()) return;
+    setResolving(true);
+    try {
+      await feedbackApi.resolve(id!, { resolve_detail: resolveDetail, resolver_name: user?.name || '客服' });
+      setResolveDetail('');
+      setShowResolveForm(false);
+      await loadFeedback();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '操作失敗，請重試');
+    } finally { setResolving(false); }
+  };
+
+  const handleCloseCase = async () => {
+    if (!closingNote.trim()) return;
+    setClosing(true);
+    try {
+      await feedbackApi.closeCase(id!, { close_note: closingNote, closer_name: user?.name || '客服' });
+      setClosingNote('');
+      setShowCloseForm(false);
+      await loadFeedback();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '操作失敗，請重試');
+    } finally { setClosing(false); }
+  };
+
+  const handleSendCloseNotify = async () => {
+    if (!notifyMessage.trim()) return;
+    setNotifying(true);
+    setNotifyResult('');
+    try {
+      const res = await feedbackApi.sendCloseNotify(id!, {
+        method: notifyMethod,
+        message: notifyMessage,
+        sender_name: user?.name || '客服',
+      });
+      if (res.data.success) {
+        setNotifyResult('✓ 通知已發送');
+        setShowNotifyForm(false);
+        await loadFeedback();
+      } else {
+        setNotifyResult(`✗ ${res.data.message}`);
+      }
+    } catch {
+      setNotifyResult('✗ 發送失敗，請重試');
+    } finally {
+      setNotifying(false);
+      setTimeout(() => setNotifyResult(''), 4000);
     }
   };
 
@@ -533,6 +601,173 @@ const FeedbackDetailPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* 交辦流程操作 */}
+      {feedback.status !== 'closed' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="font-semibold text-gray-700 mb-4">流程操作</h3>
+
+          {/* 標記處理完成（processing → resolved） */}
+          {(feedback.status === 'pending' || feedback.status === 'processing') && (
+            <div className="mb-4">
+              {!showResolveForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowResolveForm(true)}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-sm"
+                >
+                  ✅ 標記處理完成
+                </button>
+              ) : (
+                <div className="space-y-3 border rounded p-4 bg-green-50">
+                  <p className="text-sm font-medium text-green-800">填寫處理完成細節</p>
+                  <textarea
+                    value={resolveDetail}
+                    onChange={e => setResolveDetail(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border rounded text-sm"
+                    placeholder="請說明處理過程與結果..."
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleResolve}
+                      disabled={resolving || !resolveDetail.trim()}
+                      className="px-4 py-1.5 bg-green-500 hover:bg-green-600 text-white text-sm rounded disabled:opacity-50"
+                    >
+                      {resolving ? '送出中...' : '確認完成'}
+                    </button>
+                    <button type="button" onClick={() => setShowResolveForm(false)} className="text-sm text-gray-500">取消</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 已解決狀態顯示處理細節 */}
+          {feedback.status === 'resolved' && feedback.resolve_detail && (
+            <div className="mb-4 bg-green-50 rounded p-3">
+              <p className="text-xs text-green-600 font-medium mb-1">
+                ✅ {feedback.resolved_by} 於 {new Date(feedback.resolved_at).toLocaleString('zh-TW')} 標記處理完成
+              </p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">{feedback.resolve_detail}</p>
+            </div>
+          )}
+
+          {/* 結案（resolved → closed） */}
+          {feedback.status === 'resolved' && (
+            <div className="mb-4">
+              {!showCloseForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCloseForm(true)}
+                  className="px-4 py-2 bg-gray-700 hover:bg-gray-800 text-white rounded text-sm"
+                >
+                  📋 填寫結案說明
+                </button>
+              ) : (
+                <div className="space-y-3 border rounded p-4 bg-gray-50">
+                  <p className="text-sm font-medium text-gray-700">結案說明</p>
+                  <textarea
+                    value={closingNote}
+                    onChange={e => setClosingNote(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border rounded text-sm"
+                    placeholder="請填寫結案說明..."
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCloseCase}
+                      disabled={closing || !closingNote.trim()}
+                      className="px-4 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded disabled:opacity-50"
+                    >
+                      {closing ? '結案中...' : '確認結案'}
+                    </button>
+                    <button type="button" onClick={() => setShowCloseForm(false)} className="text-sm text-gray-500">取消</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 結案後推播通知 */}
+      {feedback.status === 'closed' && (
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-700">結案通知推播</h3>
+            {feedback.close_notify_sent ? (
+              <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
+                ✓ 已發送（{feedback.close_notify_method?.toUpperCase()} · {new Date(feedback.close_notify_at).toLocaleString('zh-TW')}）
+              </span>
+            ) : (
+              <span className="text-xs text-yellow-600 bg-yellow-50 px-2 py-1 rounded">尚未發送</span>
+            )}
+          </div>
+
+          {!showNotifyForm ? (
+            <button
+              type="button"
+              onClick={() => {
+                const defaultMsg = `您好，您的案件（${feedback.close_note || '已處理完成'}）已結案，感謝您的回饋！如有任何問題請再次聯絡我們。 -樂活眼鏡`;
+                setNotifyMessage(defaultMsg);
+                setShowNotifyForm(true);
+              }}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm"
+            >
+              📤 {feedback.close_notify_sent ? '再次發送結案通知' : '發送結案通知'}
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex gap-3 items-center">
+                <label className="text-sm font-medium text-gray-700">推播方式</label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="sms"
+                    checked={notifyMethod === 'sms'}
+                    onChange={() => setNotifyMethod('sms')}
+                  />
+                  <span className="text-sm">簡訊（SMS）</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer">
+                  <input
+                    type="radio"
+                    value="line"
+                    checked={notifyMethod === 'line'}
+                    onChange={() => setNotifyMethod('line')}
+                  />
+                  <span className="text-sm">LINE（左手系統）</span>
+                </label>
+              </div>
+              <textarea
+                value={notifyMessage}
+                onChange={e => setNotifyMessage(e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border rounded text-sm"
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleSendCloseNotify}
+                  disabled={notifying || !notifyMessage.trim()}
+                  className="px-4 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded disabled:opacity-50"
+                >
+                  {notifying ? '發送中...' : '確認發送'}
+                </button>
+                <button type="button" onClick={() => setShowNotifyForm(false)} className="text-sm text-gray-500">取消</button>
+              </div>
+            </div>
+          )}
+          {notifyResult && (
+            <p className={`text-sm mt-2 ${notifyResult.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+              {notifyResult}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* 關聯者 */}
       <div className="bg-white rounded-lg shadow p-6">

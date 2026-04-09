@@ -153,6 +153,12 @@ export const feedbackApi = {
   sendSms: (id: string, data: { message?: string; sender_name?: string }) =>
     api.post(`/customer-feedback/${id}/send-sms`, data),
   notifyEmployee: (id: string) => api.post(`/customer-feedback/${id}/notify-employee`, {}),
+  resolve: (id: string, data: { resolve_detail: string; resolver_name: string }) =>
+    api.post(`/customer-feedback/${id}/resolve`, data),
+  closeCase: (id: string, data: { close_note: string; closer_name: string }) =>
+    api.post(`/customer-feedback/${id}/close-case`, data),
+  sendCloseNotify: (id: string, data: { method: 'line' | 'sms'; message: string; sender_name: string }) =>
+    api.post(`/customer-feedback/${id}/close-notify`, data),
   addRelation: (id: string, data: {
     employee_id?: string;
     employee_name: string;
