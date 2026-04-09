@@ -22,7 +22,13 @@ export interface Employee {
 export interface Review {
   id: string;
   employee_id: string;
-  employee_name?: string;
+  employee_name?: string; // 部分 API 直接回傳（如 findByToken）
+  employees?: {           // search / findById 回傳的巢狀物件
+    name: string;
+    store_name?: string;
+    department?: string;
+    app_number?: string;
+  };
   is_proxy: boolean;
   actual_employee_id?: string;
   source: string;

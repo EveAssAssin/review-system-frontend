@@ -128,7 +128,12 @@ const ReviewsPage: React.FC = () => {
             <tbody className="divide-y">
               {reviews.map((review) => (
                 <tr key={review.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{review.employee_name || '-'}</td>
+                  <td className="px-4 py-3 font-medium">
+                    {review.employees?.name || review.employee_name || '-'}
+                    {review.employees?.store_name && (
+                      <div className="text-xs text-gray-400">{review.employees.store_name}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs rounded ${getTypeColor(review.review_type)}`}>
                       {TYPE_LABELS[review.review_type] || review.review_type}
