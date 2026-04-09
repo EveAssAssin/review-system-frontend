@@ -133,6 +133,12 @@ const NewFeedbackPage: React.FC = () => {
   const [reporterIsInternal, setReporterIsInternal] = useState(false);
   const [reporterEmployee, setReporterEmployee] = useState<any | null>(null);
 
+  // LINE 推波通知（建立時）
+  const [lineNotifyAssignee, setLineNotifyAssignee] = useState(false);
+  const [lineNotifyAssigneeMsg, setLineNotifyAssigneeMsg] = useState('');
+  const [lineNotifyReporter, setLineNotifyReporter] = useState(false);
+  const [lineNotifyReporterMsg, setLineNotifyReporterMsg] = useState('');
+
   const [form, setForm] = useState({
     feedback_type: 'suggestion',
     client_id: '',
@@ -231,6 +237,11 @@ const NewFeedbackPage: React.FC = () => {
         reporter_employee_id: reporterEmployee?.id || null,
         reporter_employee_name: reporterEmployee?.name || null,
         reporter_app_number: reporterEmployee?.app_number || null,
+        // LINE 推波通知（建立時）
+        line_notify_assignee: lineNotifyAssignee,
+        line_notify_assignee_msg: lineNotifyAssignee ? (lineNotifyAssigneeMsg.trim() || undefined) : undefined,
+        line_notify_reporter: lineNotifyReporter,
+        line_notify_reporter_msg: lineNotifyReporter ? (lineNotifyReporterMsg.trim() || undefined) : undefined,
       };
 
       // 若回報者是內部人員，覆蓋客戶姓名
@@ -467,36 +478,102 @@ const NewFeedbackPage: React.FC = () => {
             )}
           </div>
 
-          {/* 通知客戶 */}
-          <div className="border rounded p-3 space-y-2 bg-gray-50">
-            <p className="text-xs font-medium text-gray-600">通知客戶</p>
+          {/* LINE 推波通知（左手系統） */}
+          <div className="border rounded p-3 space-y-3 bg-indigo-50">
+            <p className="text-xs font-semibold text-indigo-700">📲 LEFT 手系統 LINE 推波通知</p>
 
-            {/* 建立時通知 */}
+            {/* 通知指派人員 */}
+            {assignedEmployee ? (
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={lineNotifyAssignee}
+                    onChange={e => {
+                      setLineNotifyAssignee(e.target.checked);
+                      if (e.target.checked && !lineNotifyAssigneeMsg) {
+                        setLineNotifyAssigneeMsg(
+                          `您好 ${assignedEmployee.name}，您有一筆新的客戶回報已指派給您，請盡速查看處理。`
+                        );
+                      }
+                    }}
+                    className="w-4 h-4 mt-0.5" />
+                  <span className="text-sm text-gray-700">
+                    <span className="font-medium text-indigo-700">通知指派人員</span>
+                    <span className="text-gray-500 ml-1">— {assignedEmployee.name}（{assignedEmployee.store_name || '—'}）</span>
+                  </span>
+                </label>
+                {lineNotifyAssignee && (
+                  <textarea
+                    value={lineNotifyAssigneeMsg}
+                    onChange={e => setLineNotifyAssigneeMsg(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border rounded text-sm bg-white"
+                    placeholder="推波訊息內容（系統會自動附上案件連結）"
+                  />
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400">請先選擇指派人員，才能發送 LINE 通知</p>
+            )}
+
+            {/* 通知回報者（內部人員） */}
+            {reporterIsInternal && reporterEmployee?.app_number ? (
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input type="checkbox" checked={lineNotifyReporter}
+                    onChange={e => {
+                      setLineNotifyReporter(e.target.checked);
+                      if (e.target.checked && !lineNotifyReporterMsg) {
+                        setLineNotifyReporterMsg(
+                          `您好 ${reporterEmployee.name}，您的回報已收到，我們將盡快為您處理並跟進，感謝您的回饋！`
+                        );
+                      }
+                    }}
+                    className="w-4 h-4 mt-0.5" />
+                  <span className="text-sm text-gray-700">
+                    <span className="font-medium text-purple-700">通知回報者（內部人員）</span>
+                    <span className="text-gray-500 ml-1">— {reporterEmployee.name}</span>
+                  </span>
+                </label>
+                {lineNotifyReporter && (
+                  <textarea
+                    value={lineNotifyReporterMsg}
+                    onChange={e => setLineNotifyReporterMsg(e.target.value)}
+                    rows={3}
+                    className="w-full px-3 py-2 border rounded text-sm bg-white"
+                    placeholder="推波訊息內容（系統會自動附上案件連結）"
+                  />
+                )}
+              </div>
+            ) : reporterIsInternal ? (
+              <p className="text-xs text-orange-500">⚠ 選擇的回報者沒有 app_number，無法發送 LINE 通知</p>
+            ) : null}
+          </div>
+
+          {/* 通知客戶（SMS） */}
+          <div className="border rounded p-3 space-y-2 bg-gray-50">
+            <p className="text-xs font-medium text-gray-600">📱 SMS 通知</p>
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" checked={form.send_sms}
                 onChange={e => setForm({ ...form, send_sms: e.target.checked })}
                 className="w-4 h-4 mt-0.5" />
               <span className="text-sm text-gray-700">
-                <span className="font-medium">建立時通知</span>
-                {reporterIsInternal
-                  ? ' — 發送 LINE 給回報的內部人員（告知已收到回報）'
-                  : form.client_phone
-                    ? ` — 發送 SMS 給客戶（${form.client_phone}）`
-                    : ' — 發送 SMS 給客戶（請先填入電話）'}
+                <span className="font-medium">建立時發送 SMS</span>
+                {form.client_phone
+                  ? ` — 通知客戶（${form.client_phone}）已收到回報`
+                  : ' — 請先填入客戶電話'}
               </span>
             </label>
 
-            {/* 完成時通知 */}
             <label className="flex items-start gap-2 cursor-pointer">
               <input type="checkbox" checked={form.notify_on_complete}
                 onChange={e => setForm({ ...form, notify_on_complete: e.target.checked })}
                 className="w-4 h-4 mt-0.5" />
               <span className="text-sm text-gray-700">
-                <span className="font-medium">完成時通知</span>
+                <span className="font-medium">結案時自動通知</span>
                 {reporterIsInternal && reporterEmployee?.app_number
-                  ? ' — 結案時自動發送 LINE 通知（含案件連結）給回報者'
+                  ? ' — 結案時自動發送 LINE 給回報者'
                   : form.client_phone
-                    ? ' — 結案時自動發送 SMS 通知給客戶'
+                    ? ' — 結案時自動發送 SMS 給客戶'
                     : ' — 結案時自動通知（請先填入電話）'}
               </span>
             </label>

@@ -57,8 +57,12 @@ const FeedbackDetailPage: React.FC = () => {
   const [showCloseForm, setShowCloseForm] = useState(false);
   const [closingNote, setClosingNote] = useState('');
   const [closing, setClosing] = useState(false);
+  // 結案時推波（整合在結案表單內）
+  const [closeNotify, setCloseNotify] = useState(false);
+  const [closeNotifyMethod, setCloseNotifyMethod] = useState<'sms' | 'line'>('sms');
+  const [closeNotifyMsg, setCloseNotifyMsg] = useState('');
 
-  // 結案通知
+  // 結案通知（手動補發）
   const [showNotifyForm, setShowNotifyForm] = useState(false);
   const [notifyMethod, setNotifyMethod] = useState<'sms' | 'line'>('sms');
   const [notifyMessage, setNotifyMessage] = useState('');
@@ -202,8 +206,16 @@ const FeedbackDetailPage: React.FC = () => {
     if (!closingNote.trim()) return;
     setClosing(true);
     try {
-      await feedbackApi.closeCase(id!, { close_note: closingNote, closer_name: user?.name || '客服' });
+      await feedbackApi.closeCase(id!, {
+        close_note: closingNote,
+        closer_name: user?.name || '客服',
+        close_notify: closeNotify,
+        close_notify_method: closeNotify ? closeNotifyMethod : undefined,
+        close_notify_message: closeNotify && closeNotifyMsg.trim() ? closeNotifyMsg.trim() : undefined,
+      });
       setClosingNote('');
+      setCloseNotify(false);
+      setCloseNotifyMsg('');
       setShowCloseForm(false);
       await loadFeedback();
     } catch (err: any) {
@@ -675,6 +687,58 @@ const FeedbackDetailPage: React.FC = () => {
                     className="w-full px-3 py-2 border rounded text-sm"
                     placeholder="請填寫結案說明..."
                   />
+
+                  {/* 結案推波通知（整合在結案表單） */}
+                  <div className="border rounded p-3 bg-white space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={closeNotify}
+                        onChange={e => {
+                          setCloseNotify(e.target.checked);
+                          if (e.target.checked && !closeNotifyMsg) {
+                            const defaultMsg = feedback.reporter_is_internal
+                              ? `您好，您回報的案件已結案。\n\n結案說明：${closingNote || '（請先填寫）'}\n\n感謝您的回饋！`
+                              : `您好，您的案件已結案，感謝您的寶貴意見。如有任何問題歡迎再次聯絡。 -樂活眼鏡`;
+                            setCloseNotifyMsg(defaultMsg);
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-medium text-gray-700">📤 同時發送結案通知</span>
+                    </label>
+
+                    {closeNotify && (
+                      <div className="space-y-2 pl-6">
+                        <div className="flex gap-4">
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm">
+                            <input
+                              type="radio"
+                              checked={closeNotifyMethod === 'sms'}
+                              onChange={() => setCloseNotifyMethod('sms')}
+                            />
+                            簡訊（SMS）
+                          </label>
+                          <label className="flex items-center gap-1.5 cursor-pointer text-sm">
+                            <input
+                              type="radio"
+                              checked={closeNotifyMethod === 'line'}
+                              onChange={() => setCloseNotifyMethod('line')}
+                            />
+                            LINE（左手系統）
+                          </label>
+                        </div>
+                        <textarea
+                          value={closeNotifyMsg}
+                          onChange={e => setCloseNotifyMsg(e.target.value)}
+                          rows={4}
+                          className="w-full px-3 py-2 border rounded text-sm"
+                          placeholder="推波訊息內容（LINE 訊息會自動附上案件連結）"
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -682,9 +746,9 @@ const FeedbackDetailPage: React.FC = () => {
                       disabled={closing || !closingNote.trim()}
                       className="px-4 py-1.5 bg-gray-700 hover:bg-gray-800 text-white text-sm rounded disabled:opacity-50"
                     >
-                      {closing ? '結案中...' : '確認結案'}
+                      {closing ? '結案中...' : closeNotify ? '確認結案並發送通知' : '確認結案'}
                     </button>
-                    <button type="button" onClick={() => setShowCloseForm(false)} className="text-sm text-gray-500">取消</button>
+                    <button type="button" onClick={() => { setShowCloseForm(false); setCloseNotify(false); setCloseNotifyMsg(''); }} className="text-sm text-gray-500">取消</button>
                   </div>
                 </div>
               )}
