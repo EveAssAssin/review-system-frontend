@@ -161,7 +161,7 @@ const AnalyticsPage: React.FC = () => {
                   <ResponsiveContainer width="50%" height={180}>
                     <PieChart>
                       <Pie data={mapToChartData(fb.by_type, TYPE_ZH)} dataKey="value" nameKey="name"
-                        cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false} fontSize={11}>
                         {mapToChartData(fb.by_type, TYPE_ZH).map((_, i) => (
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -189,7 +189,7 @@ const AnalyticsPage: React.FC = () => {
                   <ResponsiveContainer width="50%" height={180}>
                     <PieChart>
                       <Pie data={mapToChartData(sr.by_type, TYPE_ZH)} dataKey="value" nameKey="name"
-                        cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
                         labelLine={false} fontSize={11}>
                         {mapToChartData(sr.by_type, TYPE_ZH).map((_, i) => (
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />

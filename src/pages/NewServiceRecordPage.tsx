@@ -25,7 +25,7 @@ const SEARCH_MODES = [
 
 const NewServiceRecordPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, employee: currentEmployee } = useAuth();
 
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -153,8 +153,8 @@ const NewServiceRecordPage: React.FC = () => {
         assignee_store: form.assignee_store || undefined,
         creator_id: user?.id,
         creator_name: user?.name || '未知',
-        creator_app_number: user?.app_number,
-        creator_store: user?.store_name,
+        creator_app_number: currentEmployee?.app_number,
+        creator_store: currentEmployee?.store_name,
         relations: relations.length > 0 ? relations.map(r => ({ ...r, created_by: user?.name })) : undefined,
       };
 
