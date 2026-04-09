@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { feedbackApi, feedbackCategoriesApi, employeesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,11 +11,7 @@ interface Customer {
   lastUnitId: number;
 }
 
-// lastUnitId → 門市名稱（基本對照，可依實際門市 ID 擴充）
-const UNIT_MAP: Record<number, string> = {
-  // 請依實際 e0123 門市 ID 補充，例如：
-  // 1: '台北信義店', 2: '台中中港店', ...
-};
+const UNIT_MAP: Record<number, string> = {};
 const getUnitLabel = (id?: number) => {
   if (!id) return null;
   return UNIT_MAP[id] ? UNIT_MAP[id] : `門市 #${id}`;
@@ -28,6 +24,87 @@ const SEARCH_MODES = [
   { value: 'client_id', label: '客戶ID' },
 ];
 
+// ── 員工快速搜尋元件 ────────────────────────────────────────────────────────
+interface EmployeeSearchProps {
+  employees: any[];
+  value: any | null;                        // 已選員工物件
+  onChange: (emp: any | null) => void;
+  placeholder?: string;
+}
+
+const EmployeeSearch: React.FC<EmployeeSearchProps> = ({ employees, value, onChange, placeholder = '輸入姓名或門市搜尋...' }) => {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = query.trim()
+    ? employees.filter(e =>
+        e.name?.includes(query) ||
+        e.store_name?.includes(query) ||
+        e.app_number?.includes(query)
+      ).slice(0, 20)
+    : [];
+
+  // 點外部關閉
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  if (value) {
+    return (
+      <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded px-3 py-2">
+        <div className="text-sm">
+          <span className="font-medium text-blue-800">{value.name}</span>
+          {value.store_name && <span className="text-blue-600 ml-2 text-xs">({value.store_name})</span>}
+          {value.app_number && <span className="text-gray-400 ml-2 text-xs">#{value.app_number}</span>}
+        </div>
+        <button type="button" onClick={() => onChange(null)} className="text-xs text-gray-400 hover:text-red-400 ml-3">✕</button>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <input
+        type="text"
+        value={query}
+        onChange={e => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        placeholder={placeholder}
+        className="w-full px-3 py-2 border rounded text-sm"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-20 top-full left-0 right-0 bg-white border rounded shadow-lg max-h-48 overflow-y-auto mt-0.5">
+          {filtered.map(emp => (
+            <button
+              key={emp.id}
+              type="button"
+              onMouseDown={() => { onChange(emp); setQuery(''); setOpen(false); }}
+              className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm flex justify-between"
+            >
+              <span>
+                <span className="font-medium">{emp.name}</span>
+                {emp.store_name && <span className="text-gray-400 ml-1.5 text-xs">({emp.store_name})</span>}
+              </span>
+              {emp.app_number && <span className="text-gray-400 text-xs">#{emp.app_number}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+      {open && query.trim() && filtered.length === 0 && (
+        <div className="absolute z-20 top-full left-0 right-0 bg-white border rounded shadow mt-0.5 px-3 py-2 text-sm text-gray-400">
+          查無符合員工
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── 主頁面 ─────────────────────────────────────────────────────────────────
 const NewFeedbackPage: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -44,6 +121,18 @@ const NewFeedbackPage: React.FC = () => {
   const [lookupError, setLookupError] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
+  // 指派員工
+  const [assignedEmployee, setAssignedEmployee] = useState<any | null>(null);
+
+  // 關聯者
+  const [relations, setRelations] = useState<any[]>([]);
+  const [pendingRelation, setPendingRelation] = useState<any | null>(null);
+  const [pendingReason, setPendingReason] = useState('');
+
+  // 回報者為內部人員
+  const [reporterIsInternal, setReporterIsInternal] = useState(false);
+  const [reporterEmployee, setReporterEmployee] = useState<any | null>(null);
+
   const [form, setForm] = useState({
     feedback_type: 'suggestion',
     client_id: '',
@@ -54,32 +143,20 @@ const NewFeedbackPage: React.FC = () => {
     urgency: 'normal',
     content: '',
     source: 'phone',
-    assigned_employee_id: '',
     send_sms: false,
-  });
-
-  // 關聯者
-  const [relations, setRelations] = useState<any[]>([]);
-  const [newRelation, setNewRelation] = useState({
-    employee_id: '', employee_name: '', employee_app_number: '', employee_store: '', relation_reason: '',
+    notify_on_complete: false,
   });
 
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [catsRes, empsRes] = await Promise.all([
-          feedbackCategoriesApi.getAll(),
-          employeesApi.search({ limit: 500 }),
-        ]);
-        setCategories(catsRes.data);
-        setEmployees(empsRes.data.data || []);
-      } catch (err) {
-        console.error('Failed to load data:', err);
-      }
-    };
-    loadData();
+    Promise.all([
+      feedbackCategoriesApi.getAll(),
+      employeesApi.search({ limit: 500 }),
+    ]).then(([catsRes, empsRes]) => {
+      setCategories(catsRes.data);
+      setEmployees(empsRes.data.data || []);
+    }).catch(console.error);
   }, []);
 
   const handleLookup = async () => {
@@ -87,18 +164,15 @@ const NewFeedbackPage: React.FC = () => {
     setLookupLoading(true);
     setLookupError('');
     setLookupResults([]);
-
     try {
-      const params: any = { [searchMode]: lookupKeyword.trim() };
-      const res = await feedbackApi.lookupCustomer(params);
-
+      const res = await feedbackApi.lookupCustomer({ [searchMode]: lookupKeyword.trim() });
       if (res.data.length === 0) {
-        setLookupError('查無符合客戶，請直接於下方手動填寫客戶資料');
+        setLookupError('查無符合客戶，請直接手動填寫客戶資料');
       } else {
         setLookupResults(res.data);
       }
-    } catch (err) {
-      setLookupError('查詢失敗，請直接於下方手動填寫客戶資料');
+    } catch {
+      setLookupError('查詢失敗，請直接手動填寫客戶資料');
     } finally {
       setLookupLoading(false);
     }
@@ -122,25 +196,58 @@ const NewFeedbackPage: React.FC = () => {
     setForm(prev => ({ ...prev, client_id: '', client_name: '', client_phone: '', client_card: '' }));
   };
 
+  const addRelation = () => {
+    if (!pendingRelation || !pendingReason.trim()) return;
+    setRelations(prev => [...prev, {
+      employee_id: pendingRelation.id,
+      employee_name: pendingRelation.name,
+      employee_app_number: pendingRelation.app_number || '',
+      employee_store: pendingRelation.store_name || '',
+      relation_reason: pendingReason.trim(),
+    }]);
+    setPendingRelation(null);
+    setPendingReason('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.client_name.trim()) {
+    if (!form.client_name.trim() && !reporterIsInternal) {
       setError('請填寫客戶姓名');
+      return;
+    }
+    if (reporterIsInternal && !reporterEmployee) {
+      setError('請選擇回報者（內部人員）');
       return;
     }
     setLoading(true);
     setError('');
     try {
-      const res = await feedbackApi.create({
+      const payload: any = {
         ...form,
+        assigned_employee_id: assignedEmployee?.id || '',
         created_by: user?.name,
-      });
+        // 回報者為內部人員
+        reporter_is_internal: reporterIsInternal,
+        reporter_employee_id: reporterEmployee?.id || null,
+        reporter_employee_name: reporterEmployee?.name || null,
+        reporter_app_number: reporterEmployee?.app_number || null,
+      };
+
+      // 若回報者是內部人員，覆蓋客戶姓名
+      if (reporterIsInternal && reporterEmployee) {
+        payload.client_name = reporterEmployee.name;
+        payload.client_phone = payload.client_phone || '';
+      }
+
+      const res = await feedbackApi.create(payload);
+
       // 建立關聯者
       for (const rel of relations) {
         try {
           await feedbackApi.addRelation(res.data.id, { ...rel, created_by: user?.name });
         } catch {}
       }
+
       navigate(`/feedbacks/${res.data.id}`);
     } catch (err: any) {
       setError(err.response?.data?.message || '建立失敗，請重試');
@@ -160,162 +267,144 @@ const NewFeedbackPage: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-6">
 
-        {/* 客戶查詢 */}
+        {/* ── 客戶資料 ─────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <h3 className="font-semibold text-gray-700">客戶資料查詢</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-700">客戶資料</h3>
+            {/* 回報者為內部人員切換 */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={reporterIsInternal}
+                onChange={e => {
+                  setReporterIsInternal(e.target.checked);
+                  if (!e.target.checked) setReporterEmployee(null);
+                }}
+                className="w-4 h-4"
+              />
+              <span className="text-sm text-gray-600">回報者為內部人員</span>
+            </label>
+          </div>
 
-          {/* 已選取的客戶 */}
-          {selectedCustomer && (
-            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded p-3">
-              <div>
-                <span className="font-medium text-green-800">{selectedCustomer.clientName}</span>
-                {selectedCustomer.mobile && (
-                  <span className="text-green-600 text-sm ml-2">{selectedCustomer.mobile}</span>
-                )}
-                {selectedCustomer.clientCard && (
-                  <span className="text-gray-400 text-xs ml-2">#{selectedCustomer.clientCard}</span>
-                )}
-                {selectedCustomer.lastUnitId && (
-                  <span className="text-xs text-gray-500 ml-2">
-                    最後到訪：{getUnitLabel(selectedCustomer.lastUnitId)}
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={clearCustomer}
-                className="text-xs text-gray-400 hover:text-red-400 ml-4"
-              >
-                ✕ 清除
-              </button>
-            </div>
-          )}
-
-          {/* 搜尋列 */}
-          {!selectedCustomer && (
-            <>
-              <div className="flex gap-2">
-                {/* 搜尋方式切換 */}
-                <div className="flex rounded border overflow-hidden shrink-0">
-                  {SEARCH_MODES.map(m => (
-                    <button
-                      key={m.value}
-                      type="button"
-                      onClick={() => { setSearchMode(m.value as any); setLookupKeyword(''); setLookupResults([]); setLookupError(''); }}
-                      className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
+          {/* 內部人員搜尋 */}
+          {reporterIsInternal ? (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-700">選擇回報的內部人員 <span className="text-red-500">*</span></label>
+              <EmployeeSearch
+                employees={employees}
+                value={reporterEmployee}
+                onChange={setReporterEmployee}
+                placeholder="輸入姓名或門市搜尋內部人員..."
+              />
+              {reporterEmployee && (
+                <p className="text-xs text-purple-500">
+                  ✓ 此回報會標記為「內部人員回報」，供 AI 分析時區分。
+                  {reporterEmployee.app_number && '完成時可自動發送 LINE 通知。'}
+                </p>
+              )}
+              {/* 仍可填電話 */}
+              <div className="pt-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">聯絡電話（可選）</label>
                 <input
                   type="text"
-                  placeholder={
-                    searchMode === 'mobile' ? '輸入電話號碼...' :
-                    searchMode === 'name' ? '輸入客戶姓名...' :
-                    searchMode === 'client_card' ? '輸入會員卡號...' :
-                    '輸入 e0123 客戶ID...'
-                  }
-                  value={lookupKeyword}
-                  onChange={e => setLookupKeyword(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleLookup())}
-                  className="flex-1 px-3 py-2 border rounded"
+                  value={form.client_phone}
+                  onChange={e => setForm({ ...form, client_phone: e.target.value })}
+                  className="w-full px-3 py-2 border rounded"
                 />
-                <button
-                  type="button"
-                  onClick={handleLookup}
-                  disabled={lookupLoading}
-                  className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm shrink-0"
-                >
-                  {lookupLoading ? '查詢中...' : '查詢'}
-                </button>
               </div>
-
-              <p className="text-xs text-gray-400">
-                💡 查詢前需先執行「客戶資料同步」（管理員功能），否則查無資料屬正常。
-              </p>
-
-              {lookupError && <p className="text-red-500 text-sm">{lookupError}</p>}
-
-              {/* 查詢結果清單 */}
-              {lookupResults.length > 0 && (
-                <div className="border rounded divide-y max-h-56 overflow-y-auto">
-                  {lookupResults.map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => selectCustomer(c)}
-                      className="w-full px-4 py-3 text-left hover:bg-blue-50 flex justify-between items-center gap-2"
-                    >
-                      <div className="min-w-0">
-                        <span className="font-medium">{c.clientName}</span>
-                        {c.mobile && (
-                          <span className="text-gray-500 text-sm ml-2">{c.mobile}</span>
-                        )}
-                        {/* 方案A：顯示最後到訪門市，幫助識別家庭成員 */}
-                        {c.lastUnitId && (
-                          <span className="text-xs text-blue-500 ml-2">
-                            最後到訪：{getUnitLabel(c.lastUnitId)}
-                          </span>
-                        )}
-                      </div>
-                      {c.clientCard && (
-                        <span className="text-xs text-gray-400 shrink-0">#{c.clientCard}</span>
-                      )}
-                    </button>
-                  ))}
+            </div>
+          ) : (
+            <>
+              {/* 外部客戶查詢 */}
+              {selectedCustomer ? (
+                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded p-3">
+                  <div>
+                    <span className="font-medium text-green-800">{selectedCustomer.clientName}</span>
+                    {selectedCustomer.mobile && <span className="text-green-600 text-sm ml-2">{selectedCustomer.mobile}</span>}
+                    {selectedCustomer.clientCard && <span className="text-gray-400 text-xs ml-2">#{selectedCustomer.clientCard}</span>}
+                    {selectedCustomer.lastUnitId && (
+                      <span className="text-xs text-gray-500 ml-2">最後到訪：{getUnitLabel(selectedCustomer.lastUnitId)}</span>
+                    )}
+                  </div>
+                  <button type="button" onClick={clearCustomer} className="text-xs text-gray-400 hover:text-red-400 ml-4">✕ 清除</button>
                 </div>
+              ) : (
+                <>
+                  <div className="flex gap-2">
+                    <div className="flex rounded border overflow-hidden shrink-0">
+                      {SEARCH_MODES.map(m => (
+                        <button key={m.value} type="button"
+                          onClick={() => { setSearchMode(m.value as any); setLookupKeyword(''); setLookupResults([]); setLookupError(''); }}
+                          className={`px-3 py-2 text-sm ${searchMode === m.value ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}>
+                          {m.label}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      placeholder={searchMode === 'mobile' ? '輸入電話...' : searchMode === 'name' ? '輸入姓名...' : searchMode === 'client_card' ? '輸入卡號...' : '輸入ID...'}
+                      value={lookupKeyword}
+                      onChange={e => setLookupKeyword(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleLookup())}
+                      className="flex-1 px-3 py-2 border rounded"
+                    />
+                    <button type="button" onClick={handleLookup} disabled={lookupLoading}
+                      className="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded text-sm shrink-0">
+                      {lookupLoading ? '查詢中...' : '查詢'}
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400">💡 查詢前需先執行「客戶資料同步」（管理員功能）</p>
+                  {lookupError && <p className="text-red-500 text-sm">{lookupError}</p>}
+                  {lookupResults.length > 0 && (
+                    <div className="border rounded divide-y max-h-56 overflow-y-auto">
+                      {lookupResults.map(c => (
+                        <button key={c.id} type="button" onClick={() => selectCustomer(c)}
+                          className="w-full px-4 py-3 text-left hover:bg-blue-50 flex justify-between items-center gap-2">
+                          <div>
+                            <span className="font-medium">{c.clientName}</span>
+                            {c.mobile && <span className="text-gray-500 text-sm ml-2">{c.mobile}</span>}
+                            {c.lastUnitId && <span className="text-xs text-blue-500 ml-2">最後到訪：{getUnitLabel(c.lastUnitId)}</span>}
+                          </div>
+                          {c.clientCard && <span className="text-xs text-gray-400 shrink-0">#{c.clientCard}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
+
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">客戶姓名 <span className="text-red-500">*</span></label>
+                  <input type="text" value={form.client_name}
+                    onChange={e => setForm({ ...form, client_name: e.target.value })}
+                    className="w-full px-3 py-2 border rounded" placeholder="可手動輸入" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">電話號碼</label>
+                  <input type="text" value={form.client_phone}
+                    onChange={e => setForm({ ...form, client_phone: e.target.value })}
+                    className="w-full px-3 py-2 border rounded" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">會員卡號</label>
+                  <input type="text" value={form.client_card}
+                    onChange={e => setForm({ ...form, client_card: e.target.value })}
+                    className="w-full px-3 py-2 border rounded" />
+                </div>
+              </div>
             </>
           )}
-
-          {/* 手動填寫欄位 */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                客戶姓名 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={form.client_name}
-                onChange={e => setForm({ ...form, client_name: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-                placeholder="可手動輸入"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">電話號碼</label>
-              <input
-                type="text"
-                value={form.client_phone}
-                onChange={e => setForm({ ...form, client_phone: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">會員卡號</label>
-              <input
-                type="text"
-                value={form.client_card}
-                onChange={e => setForm({ ...form, client_card: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              />
-            </div>
-          </div>
         </div>
 
-        {/* 回報資訊 */}
+        {/* ── 回報資訊 ─────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h3 className="font-semibold text-gray-700">回報資訊</h3>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">回報類型</label>
-              <select
-                value={form.feedback_type}
-                onChange={e => setForm({ ...form, feedback_type: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              >
+              <select value={form.feedback_type} onChange={e => setForm({ ...form, feedback_type: e.target.value })}
+                className="w-full px-3 py-2 border rounded">
                 <option value="suggestion">建議</option>
                 <option value="complaint">投訴</option>
                 <option value="praise">稱讚</option>
@@ -325,11 +414,8 @@ const NewFeedbackPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">回報來源</label>
-              <select
-                value={form.source}
-                onChange={e => setForm({ ...form, source: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              >
+              <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}
+                className="w-full px-3 py-2 border rounded">
                 <option value="phone">電話</option>
                 <option value="walk_in">到店</option>
                 <option value="line">LINE</option>
@@ -340,83 +426,84 @@ const NewFeedbackPage: React.FC = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">類別</label>
-              <select
-                value={form.category_id}
-                onChange={e => setForm({ ...form, category_id: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              >
+              <select value={form.category_id} onChange={e => setForm({ ...form, category_id: e.target.value })}
+                className="w-full px-3 py-2 border rounded">
                 <option value="">選擇類別</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">緊急度</label>
-              <select
-                value={form.urgency}
-                onChange={e => setForm({ ...form, urgency: e.target.value })}
-                className="w-full px-3 py-2 border rounded"
-              >
+              <select value={form.urgency} onChange={e => setForm({ ...form, urgency: e.target.value })}
+                className="w-full px-3 py-2 border rounded">
                 <option value="normal">普通</option>
                 <option value="urgent">緊急</option>
                 <option value="urgent_plus">特急</option>
               </select>
             </div>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">回報內容</label>
-            <textarea
-              value={form.content}
-              onChange={e => setForm({ ...form, content: e.target.value })}
-              rows={4}
-              className="w-full px-3 py-2 border rounded"
-              placeholder="請輸入客戶回報的詳細內容..."
-            />
+            <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })}
+              rows={4} className="w-full px-3 py-2 border rounded" placeholder="請輸入客戶回報的詳細內容..." />
           </div>
         </div>
 
-        {/* 指派與通知 */}
+        {/* ── 指派與通知 ─────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h3 className="font-semibold text-gray-700">指派與通知</h3>
 
+          {/* 指派員工 — 快速搜尋 */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">指派負責人員</label>
-            <select
-              value={form.assigned_employee_id}
-              onChange={e => setForm({ ...form, assigned_employee_id: e.target.value })}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="">不指派</option>
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name}{emp.store_name ? ` (${emp.store_name})` : ''}
-                </option>
-              ))}
-            </select>
-            {form.assigned_employee_id && (
-              <p className="text-xs text-blue-500 mt-1">✓ 指派後將自動發送 LINE 通知給負責人員</p>
+            <EmployeeSearch
+              employees={employees}
+              value={assignedEmployee}
+              onChange={setAssignedEmployee}
+              placeholder="輸入姓名或門市搜尋..."
+            />
+            {assignedEmployee && (
+              <p className="text-xs text-blue-500 mt-1">✓ 指派後將自動發送 LINE 通知（含案件連結）給負責人員</p>
             )}
           </div>
 
-          {form.client_phone && (
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                id="send_sms"
-                checked={form.send_sms}
+          {/* 通知客戶 */}
+          <div className="border rounded p-3 space-y-2 bg-gray-50">
+            <p className="text-xs font-medium text-gray-600">通知客戶</p>
+
+            {/* 建立時通知 */}
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.send_sms}
                 onChange={e => setForm({ ...form, send_sms: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <label htmlFor="send_sms" className="text-sm text-gray-700">
-                發送 SMS 給客戶（{form.client_phone}），告知回報已收到
-              </label>
-            </div>
-          )}
+                className="w-4 h-4 mt-0.5" />
+              <span className="text-sm text-gray-700">
+                <span className="font-medium">建立時通知</span>
+                {reporterIsInternal
+                  ? ' — 發送 LINE 給回報的內部人員（告知已收到回報）'
+                  : form.client_phone
+                    ? ` — 發送 SMS 給客戶（${form.client_phone}）`
+                    : ' — 發送 SMS 給客戶（請先填入電話）'}
+              </span>
+            </label>
+
+            {/* 完成時通知 */}
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={form.notify_on_complete}
+                onChange={e => setForm({ ...form, notify_on_complete: e.target.checked })}
+                className="w-4 h-4 mt-0.5" />
+              <span className="text-sm text-gray-700">
+                <span className="font-medium">完成時通知</span>
+                {reporterIsInternal && reporterEmployee?.app_number
+                  ? ' — 結案時自動發送 LINE 通知（含案件連結）給回報者'
+                  : form.client_phone
+                    ? ' — 結案時自動發送 SMS 通知給客戶'
+                    : ' — 結案時自動通知（請先填入電話）'}
+              </span>
+            </label>
+          </div>
         </div>
 
-        {/* 關聯者（非必填） */}
+        {/* ── 關聯者 ─────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
           <h3 className="font-semibold text-gray-700">關聯者 <span className="text-gray-400 text-sm font-normal">（選填）</span></h3>
 
@@ -426,16 +513,11 @@ const NewFeedbackPage: React.FC = () => {
                 <div key={idx} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
                   <div>
                     <span className="font-medium text-sm">{rel.employee_name}</span>
-                    {rel.employee_store && <span className="text-xs text-gray-400 ml-2">{rel.employee_store}</span>}
+                    {rel.employee_store && <span className="text-xs text-gray-400 ml-2">({rel.employee_store})</span>}
                     <span className="text-xs text-gray-500 ml-2">— {rel.relation_reason}</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setRelations(prev => prev.filter((_, i) => i !== idx))}
-                    className="text-xs text-red-400 hover:text-red-600"
-                  >
-                    移除
-                  </button>
+                  <button type="button" onClick={() => setRelations(prev => prev.filter((_, i) => i !== idx))}
+                    className="text-xs text-red-400 hover:text-red-600">移除</button>
                 </div>
               ))}
             </div>
@@ -443,74 +525,42 @@ const NewFeedbackPage: React.FC = () => {
 
           <div className="border rounded p-3 space-y-2 bg-gray-50">
             <p className="text-xs text-gray-500 font-medium">新增關聯者</p>
-            <div className="grid grid-cols-2 gap-2">
-              <select
-                value={newRelation.employee_id}
-                onChange={e => {
-                  const emp = employees.find(em => em.id === e.target.value);
-                  if (emp) {
-                    setNewRelation(prev => ({
-                      ...prev,
-                      employee_id: emp.id,
-                      employee_name: emp.name,
-                      employee_app_number: emp.app_number || '',
-                      employee_store: emp.store_name || '',
-                    }));
-                  } else {
-                    setNewRelation({ employee_id: '', employee_name: '', employee_app_number: '', employee_store: '', relation_reason: '' });
-                  }
-                }}
-                className="px-2 py-1.5 border rounded text-sm"
-              >
-                <option value="">選擇員工</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name}{emp.store_name ? ` (${emp.store_name})` : ''}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="text"
-                placeholder="關聯原因（必填）"
-                value={newRelation.relation_reason}
-                onChange={e => setNewRelation(prev => ({ ...prev, relation_reason: e.target.value }))}
-                className="px-2 py-1.5 border rounded text-sm"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (!newRelation.employee_name || !newRelation.relation_reason.trim()) return;
-                setRelations(prev => [...prev, { ...newRelation }]);
-                setNewRelation({ employee_id: '', employee_name: '', employee_app_number: '', employee_store: '', relation_reason: '' });
-              }}
-              disabled={!newRelation.employee_name || !newRelation.relation_reason.trim()}
-              className="px-3 py-1.5 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 disabled:opacity-40"
-            >
-              + 新增
-            </button>
+            <EmployeeSearch
+              employees={employees}
+              value={pendingRelation}
+              onChange={setPendingRelation}
+              placeholder="輸入姓名或門市搜尋員工..."
+            />
+            {pendingRelation && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="關聯原因（必填）"
+                  value={pendingReason}
+                  onChange={e => setPendingReason(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addRelation())}
+                  className="flex-1 px-2 py-1.5 border rounded text-sm"
+                />
+                <button type="button" onClick={addRelation} disabled={!pendingReason.trim()}
+                  className="px-3 py-1.5 bg-gray-600 text-white rounded text-sm hover:bg-gray-700 disabled:opacity-40 shrink-0">
+                  + 新增
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-            {error}
-          </div>
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">{error}</div>
         )}
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50"
-          >
+          <button type="submit" disabled={loading}
+            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded disabled:opacity-50">
             {loading ? '建立中...' : '建立回報'}
           </button>
-          <button
-            type="button"
-            onClick={() => navigate('/feedbacks')}
-            className="px-6 py-2 border rounded text-gray-600 hover:bg-gray-50"
-          >
+          <button type="button" onClick={() => navigate('/feedbacks')}
+            className="px-6 py-2 border rounded text-gray-600 hover:bg-gray-50">
             取消
           </button>
         </div>
