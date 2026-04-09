@@ -48,6 +48,15 @@ const FeedbackDetailPage: React.FC = () => {
   const [lineNotifying, setLineNotifying] = useState(false);
   const [lineMsg, setLineMsg] = useState('');
 
+  // 關聯者
+  const [showRelationForm, setShowRelationForm] = useState(false);
+  const [relationSearch, setRelationSearch] = useState('');
+  const [relationSearchResults, setRelationSearchResults] = useState<any[]>([]);
+  const [selectedRelationEmp, setSelectedRelationEmp] = useState<any>(null);
+  const [relationReason, setRelationReason] = useState('');
+  const [addingRelation, setAddingRelation] = useState(false);
+  const [relationMsg, setRelationMsg] = useState('');
+
   const loadFeedback = async () => {
     try {
       const res = await feedbackApi.getById(id!);
@@ -156,6 +165,53 @@ const FeedbackDetailPage: React.FC = () => {
     } finally {
       setLineNotifying(false);
       setTimeout(() => setLineMsg(''), 4000);
+    }
+  };
+
+  const handleRelationSearch = async (keyword: string) => {
+    setRelationSearch(keyword);
+    if (keyword.trim().length < 1) { setRelationSearchResults([]); return; }
+    try {
+      const res = await employeesApi.search({ keyword, limit: 10 });
+      setRelationSearchResults(res.data.data || []);
+    } catch { setRelationSearchResults([]); }
+  };
+
+  const handleAddRelation = async () => {
+    if (!selectedRelationEmp || !relationReason.trim()) return;
+    setAddingRelation(true);
+    setRelationMsg('');
+    try {
+      await feedbackApi.addRelation(id!, {
+        employee_id: String(selectedRelationEmp.id),
+        employee_name: selectedRelationEmp.name,
+        employee_app_number: selectedRelationEmp.app_number || undefined,
+        employee_store: selectedRelationEmp.store_name || undefined,
+        relation_reason: relationReason.trim(),
+        created_by: user?.name,
+      });
+      setSelectedRelationEmp(null);
+      setRelationReason('');
+      setRelationSearch('');
+      setRelationSearchResults([]);
+      setShowRelationForm(false);
+      setRelationMsg('✓ 關聯者已新增');
+      await loadFeedback();
+    } catch {
+      setRelationMsg('✗ 新增失敗，請重試');
+    } finally {
+      setAddingRelation(false);
+      setTimeout(() => setRelationMsg(''), 3000);
+    }
+  };
+
+  const handleRemoveRelation = async (relationId: string) => {
+    if (!confirm('確定要移除此關聯者？')) return;
+    try {
+      await feedbackApi.removeRelation(id!, relationId, user?.name);
+      await loadFeedback();
+    } catch {
+      alert('移除失敗，請重試');
     }
   };
 
@@ -475,6 +531,155 @@ const FeedbackDetailPage: React.FC = () => {
               </p>
             )}
           </div>
+        )}
+      </div>
+
+      {/* 關聯者 */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="font-semibold text-gray-700">
+            關聯者
+            <span className="text-gray-400 font-normal text-sm ml-2">
+              ({(feedback.relations || []).length} 人)
+            </span>
+          </h3>
+          <button
+            type="button"
+            onClick={() => { setShowRelationForm(!showRelationForm); setRelationMsg(''); }}
+            className="text-sm px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded"
+          >
+            + 新增關聯者
+          </button>
+        </div>
+
+        {/* 現有關聯者列表 */}
+        {(feedback.relations || []).length === 0 ? (
+          <p className="text-gray-400 text-sm mb-4">尚無關聯者</p>
+        ) : (
+          <div className="space-y-2 mb-4">
+            {(feedback.relations || []).map((r: any) => (
+              <div key={r.id} className="flex items-start justify-between bg-purple-50 rounded p-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-800">{r.employee_name}</span>
+                    {r.employee_store && (
+                      <span className="text-xs text-gray-400">({r.employee_store})</span>
+                    )}
+                    {r.employee_app_number && (
+                      <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">
+                        #{r.employee_app_number}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-purple-700 mt-1">
+                    <span className="text-gray-500">關聯原因：</span>{r.relation_reason}
+                  </p>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {new Date(r.created_at).toLocaleString('zh-TW')}
+                    {r.created_by && ` · 由 ${r.created_by} 新增`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveRelation(r.id)}
+                  className="text-xs text-red-400 hover:text-red-600 ml-3 shrink-0"
+                >
+                  移除
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 新增關聯者表單 */}
+        {showRelationForm && (
+          <div className="border-t pt-4 space-y-3">
+            <p className="text-sm font-medium text-gray-700">搜尋員工</p>
+
+            {/* 已選取的員工 */}
+            {selectedRelationEmp ? (
+              <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded p-2">
+                <div>
+                  <span className="font-medium">{selectedRelationEmp.name}</span>
+                  {selectedRelationEmp.store_name && (
+                    <span className="text-gray-500 text-sm ml-2">({selectedRelationEmp.store_name})</span>
+                  )}
+                  {selectedRelationEmp.app_number && (
+                    <span className="text-xs text-gray-400 ml-2">#{selectedRelationEmp.app_number}</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedRelationEmp(null)}
+                  className="text-xs text-gray-400 hover:text-red-400"
+                >✕</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="輸入姓名搜尋員工..."
+                  value={relationSearch}
+                  onChange={e => handleRelationSearch(e.target.value)}
+                  className="w-full px-3 py-2 border rounded text-sm"
+                />
+                {relationSearchResults.length > 0 && (
+                  <div className="absolute z-10 w-full bg-white border rounded shadow-lg mt-1 max-h-40 overflow-y-auto">
+                    {relationSearchResults.map((emp: any) => (
+                      <button
+                        key={emp.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRelationEmp(emp);
+                          setRelationSearch('');
+                          setRelationSearchResults([]);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-purple-50 flex justify-between"
+                      >
+                        <span>{emp.name}</span>
+                        <span className="text-gray-400">{emp.store_name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                關聯原因 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={relationReason}
+                onChange={e => setRelationReason(e.target.value)}
+                placeholder="例：負責門市主管、事件當時值班人員..."
+                className="w-full px-3 py-2 border rounded text-sm"
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleAddRelation}
+                disabled={addingRelation || !selectedRelationEmp || !relationReason.trim()}
+                className="px-4 py-1.5 bg-purple-500 hover:bg-purple-600 text-white text-sm rounded disabled:opacity-50"
+              >
+                {addingRelation ? '新增中...' : '確認新增'}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowRelationForm(false); setSelectedRelationEmp(null); setRelationReason(''); }}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >取消</button>
+            </div>
+          </div>
+        )}
+
+        {relationMsg && (
+          <p className={`text-sm mt-2 ${relationMsg.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>
+            {relationMsg}
+          </p>
         )}
       </div>
 

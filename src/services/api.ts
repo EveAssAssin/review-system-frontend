@@ -153,6 +153,16 @@ export const feedbackApi = {
   sendSms: (id: string, data: { message?: string; sender_name?: string }) =>
     api.post(`/customer-feedback/${id}/send-sms`, data),
   notifyEmployee: (id: string) => api.post(`/customer-feedback/${id}/notify-employee`, {}),
+  addRelation: (id: string, data: {
+    employee_id?: string;
+    employee_name: string;
+    employee_app_number?: string;
+    employee_store?: string;
+    relation_reason: string;
+    created_by?: string;
+  }) => api.post(`/customer-feedback/${id}/relations`, data),
+  removeRelation: (id: string, relationId: string, operatorName?: string) =>
+    api.delete(`/customer-feedback/${id}/relations/${relationId}`, { data: { operator_name: operatorName } }),
   delete: (id: string) => api.delete(`/customer-feedback/${id}`),
 };
 
