@@ -715,7 +715,12 @@ const FeedbackDetailPage: React.FC = () => {
                             <input
                               type="radio"
                               checked={closeNotifyMethod === 'sms'}
-                              onChange={() => setCloseNotifyMethod('sms')}
+                              onChange={() => {
+                                setCloseNotifyMethod('sms');
+                                setCloseNotifyMsg(
+                                  `您好，您的案件已結案。\n\n${closingNote ? `結案說明：${closingNote}\n\n` : ''}感謝您的寶貴意見，如有任何問題歡迎再次聯絡。 -樂活眼鏡`
+                                );
+                              }}
                             />
                             簡訊（SMS）
                           </label>
@@ -723,7 +728,15 @@ const FeedbackDetailPage: React.FC = () => {
                             <input
                               type="radio"
                               checked={closeNotifyMethod === 'line'}
-                              onChange={() => setCloseNotifyMethod('line')}
+                              onChange={() => {
+                                setCloseNotifyMethod('line');
+                                const isInternal = feedback?.reporter_is_internal;
+                                setCloseNotifyMsg(
+                                  isInternal
+                                    ? `您好，您回報的案件已結案。\n\n${closingNote ? `結案說明：${closingNote}\n\n` : ''}感謝您的回饋！`
+                                    : `您好，您的案件已結案。\n\n${closingNote ? `結案說明：${closingNote}\n\n` : ''}感謝您的寶貴意見，如有任何問題歡迎再次聯絡。`
+                                );
+                              }}
                             />
                             LINE（左手系統）
                           </label>
@@ -733,8 +746,13 @@ const FeedbackDetailPage: React.FC = () => {
                           onChange={e => setCloseNotifyMsg(e.target.value)}
                           rows={4}
                           className="w-full px-3 py-2 border rounded text-sm"
-                          placeholder="推波訊息內容（LINE 訊息會自動附上案件連結）"
+                          placeholder={closeNotifyMethod === 'sms' ? 'SMS 訊息內容...' : 'LINE 訊息內容（系統會自動附上案件連結）'}
                         />
+                        <p className="text-xs text-gray-400">
+                          {closeNotifyMethod === 'sms'
+                            ? `📱 發送至：${feedback?.client_phone || '（尚無電話）'}`
+                            : `📲 LINE 發送至：${feedback?.reporter_is_internal ? `${feedback?.reporter_app_number || '—'}（回報者）` : `卡號 ${feedback?.client_card || '—'}（客戶）`}`}
+                        </p>
                       </div>
                     )}
                   </div>

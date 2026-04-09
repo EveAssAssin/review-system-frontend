@@ -133,7 +133,13 @@ const NewFeedbackPage: React.FC = () => {
   const [reporterIsInternal, setReporterIsInternal] = useState(false);
   const [reporterEmployee, setReporterEmployee] = useState<any | null>(null);
 
-  // LINE 推波通知（建立時）
+  // 客戶通知（建立時）
+  const [notifyCustomerSms, setNotifyCustomerSms] = useState(false);
+  const [notifyCustomerSmsMsg, setNotifyCustomerSmsMsg] = useState('');
+  const [notifyCustomerLine, setNotifyCustomerLine] = useState(false);
+  const [notifyCustomerLineMsg, setNotifyCustomerLineMsg] = useState('');
+
+  // LINE 推波通知（員工，建立時）
   const [lineNotifyAssignee, setLineNotifyAssignee] = useState(false);
   const [lineNotifyAssigneeMsg, setLineNotifyAssigneeMsg] = useState('');
   const [lineNotifyReporter, setLineNotifyReporter] = useState(false);
@@ -149,8 +155,6 @@ const NewFeedbackPage: React.FC = () => {
     urgency: 'normal',
     content: '',
     source: 'phone',
-    send_sms: false,
-    notify_on_complete: false,
   });
 
   const [error, setError] = useState('');
@@ -237,7 +241,12 @@ const NewFeedbackPage: React.FC = () => {
         reporter_employee_id: reporterEmployee?.id || null,
         reporter_employee_name: reporterEmployee?.name || null,
         reporter_app_number: reporterEmployee?.app_number || null,
-        // LINE 推波通知（建立時）
+        // 客戶通知（建立時）
+        send_sms: notifyCustomerSms,
+        send_sms_msg: notifyCustomerSms ? (notifyCustomerSmsMsg.trim() || undefined) : undefined,
+        line_notify_customer: notifyCustomerLine,
+        line_notify_customer_msg: notifyCustomerLine ? (notifyCustomerLineMsg.trim() || undefined) : undefined,
+        // LINE 推波通知（員工，建立時）
         line_notify_assignee: lineNotifyAssignee,
         line_notify_assignee_msg: lineNotifyAssignee ? (lineNotifyAssigneeMsg.trim() || undefined) : undefined,
         line_notify_reporter: lineNotifyReporter,
@@ -478,105 +487,149 @@ const NewFeedbackPage: React.FC = () => {
             )}
           </div>
 
-          {/* LINE 推波通知（左手系統） */}
-          <div className="border rounded p-3 space-y-3 bg-[#f5f0eb]">
-            <p className="text-xs font-semibold text-[#8b6f4e]">📲 LEFT 手系統 LINE 推波通知</p>
+          {/* ── 通知客戶（建立時）──────────────────── */}
+          <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#e8ddd0' }}>
+            <div className="px-3 py-2 text-xs font-semibold" style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>
+              📱 建立時通知客戶
+            </div>
 
-            {/* 通知指派人員 */}
-            {assignedEmployee ? (
-              <div className="space-y-2">
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" checked={lineNotifyAssignee}
-                    onChange={e => {
-                      setLineNotifyAssignee(e.target.checked);
-                      if (e.target.checked && !lineNotifyAssigneeMsg) {
-                        setLineNotifyAssigneeMsg(
-                          `您好 ${assignedEmployee.name}，您有一筆新的客戶回報已指派給您，請盡速查看處理。`
-                        );
-                      }
-                    }}
-                    className="w-4 h-4 mt-0.5" />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-medium text-[#8b6f4e]">通知指派人員</span>
-                    <span className="text-gray-500 ml-1">— {assignedEmployee.name}（{assignedEmployee.store_name || '—'}）</span>
-                  </span>
-                </label>
-                {lineNotifyAssignee && (
-                  <textarea
-                    value={lineNotifyAssigneeMsg}
-                    onChange={e => setLineNotifyAssigneeMsg(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border rounded text-sm bg-white"
-                    placeholder="推波訊息內容（系統會自動附上案件連結）"
-                  />
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-400">請先選擇指派人員，才能發送 LINE 通知</p>
-            )}
+            {/* SMS */}
+            <div className="p-3 space-y-2 border-b" style={{ borderColor: '#e8ddd0' }}>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={notifyCustomerSms}
+                  onChange={e => {
+                    setNotifyCustomerSms(e.target.checked);
+                    if (e.target.checked && !notifyCustomerSmsMsg) {
+                      const typeLabel = { suggestion: '建議', complaint: '投訴', praise: '稱讚', inquiry: '詢問', other: '回報' }[form.feedback_type] || '回報';
+                      setNotifyCustomerSmsMsg(`您好！您的${typeLabel}已收到，我們將盡快為您處理，感謝您的回報。 -樂活眼鏡`);
+                    }
+                  }}
+                  className="w-4 h-4 mt-0.5" />
+                <div className="text-sm">
+                  <span className="font-medium text-gray-700">SMS 簡訊</span>
+                  {form.client_phone
+                    ? <span className="text-gray-500 ml-1">— 發送至 {form.client_phone}</span>
+                    : <span className="text-orange-500 ml-1">— 請先填入客戶電話</span>}
+                </div>
+              </label>
+              {notifyCustomerSms && (
+                <textarea
+                  value={notifyCustomerSmsMsg}
+                  onChange={e => setNotifyCustomerSmsMsg(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border rounded text-sm bg-white ml-6"
+                  placeholder="SMS 訊息內容..."
+                  style={{ width: 'calc(100% - 1.5rem)' }}
+                />
+              )}
+            </div>
 
-            {/* 通知回報者（內部人員） */}
-            {reporterIsInternal && reporterEmployee?.app_number ? (
-              <div className="space-y-2">
-                <label className="flex items-start gap-2 cursor-pointer">
-                  <input type="checkbox" checked={lineNotifyReporter}
-                    onChange={e => {
-                      setLineNotifyReporter(e.target.checked);
-                      if (e.target.checked && !lineNotifyReporterMsg) {
-                        setLineNotifyReporterMsg(
-                          `您好 ${reporterEmployee.name}，您的回報已收到，我們將盡快為您處理並跟進，感謝您的回饋！`
-                        );
-                      }
-                    }}
-                    className="w-4 h-4 mt-0.5" />
-                  <span className="text-sm text-gray-700">
-                    <span className="font-medium text-purple-700">通知回報者（內部人員）</span>
-                    <span className="text-gray-500 ml-1">— {reporterEmployee.name}</span>
-                  </span>
-                </label>
-                {lineNotifyReporter && (
-                  <textarea
-                    value={lineNotifyReporterMsg}
-                    onChange={e => setLineNotifyReporterMsg(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2 border rounded text-sm bg-white"
-                    placeholder="推波訊息內容（系統會自動附上案件連結）"
-                  />
-                )}
-              </div>
-            ) : reporterIsInternal ? (
-              <p className="text-xs text-orange-500">⚠ 選擇的回報者沒有 app_number，無法發送 LINE 通知</p>
-            ) : null}
+            {/* LINE（左手）客戶 */}
+            <div className="p-3 space-y-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="checkbox" checked={notifyCustomerLine}
+                  onChange={e => {
+                    setNotifyCustomerLine(e.target.checked);
+                    if (e.target.checked && !notifyCustomerLineMsg) {
+                      const typeLabel = { suggestion: '建議', complaint: '投訴', praise: '稱讚', inquiry: '詢問', other: '回報' }[form.feedback_type] || '回報';
+                      setNotifyCustomerLineMsg(`您好！您的${typeLabel}已收到，我們將盡快為您處理，感謝您的回報。`);
+                    }
+                  }}
+                  className="w-4 h-4 mt-0.5" />
+                <div className="text-sm">
+                  <span className="font-medium" style={{ color: '#8b6f4e' }}>LINE（左手系統）</span>
+                  {form.client_card
+                    ? <span className="text-gray-500 ml-1">— 卡號 {form.client_card}</span>
+                    : <span className="text-orange-500 ml-1">— 請先填入會員卡號</span>}
+                </div>
+              </label>
+              {notifyCustomerLine && (
+                <textarea
+                  value={notifyCustomerLineMsg}
+                  onChange={e => setNotifyCustomerLineMsg(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 border rounded text-sm bg-white ml-6"
+                  placeholder="LINE 訊息內容（系統會自動附上案件連結）"
+                  style={{ width: 'calc(100% - 1.5rem)' }}
+                />
+              )}
+            </div>
           </div>
 
-          {/* 通知客戶（SMS） */}
-          <div className="border rounded p-3 space-y-2 bg-[#f9f6f2]">
-            <p className="text-xs font-medium text-gray-600">📱 SMS 通知</p>
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.send_sms}
-                onChange={e => setForm({ ...form, send_sms: e.target.checked })}
-                className="w-4 h-4 mt-0.5" />
-              <span className="text-sm text-gray-700">
-                <span className="font-medium">建立時發送 SMS</span>
-                {form.client_phone
-                  ? ` — 通知客戶（${form.client_phone}）已收到回報`
-                  : ' — 請先填入客戶電話'}
-              </span>
-            </label>
+          {/* ── LINE 推波通知（員工）──────────────── */}
+          <div className="border rounded-lg overflow-hidden" style={{ borderColor: '#e8ddd0' }}>
+            <div className="px-3 py-2 text-xs font-semibold" style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>
+              📲 LEFT 手系統 LINE 推波（員工）
+            </div>
+            <div className="p-3 space-y-3">
+              {/* 通知指派人員 */}
+              {assignedEmployee ? (
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" checked={lineNotifyAssignee}
+                      onChange={e => {
+                        setLineNotifyAssignee(e.target.checked);
+                        if (e.target.checked && !lineNotifyAssigneeMsg) {
+                          setLineNotifyAssigneeMsg(
+                            `您好 ${assignedEmployee.name}，您有一筆新的客戶回報已指派給您，請盡速查看處理。`
+                          );
+                        }
+                      }}
+                      className="w-4 h-4 mt-0.5" />
+                    <span className="text-sm text-gray-700">
+                      <span className="font-medium" style={{ color: '#8b6f4e' }}>通知指派人員</span>
+                      <span className="text-gray-500 ml-1">— {assignedEmployee.name}（{assignedEmployee.store_name || '—'}）</span>
+                    </span>
+                  </label>
+                  {lineNotifyAssignee && (
+                    <textarea
+                      value={lineNotifyAssigneeMsg}
+                      onChange={e => setLineNotifyAssigneeMsg(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border rounded text-sm bg-white ml-6"
+                      placeholder="推波訊息內容（系統會自動附上案件連結）"
+                      style={{ width: 'calc(100% - 1.5rem)' }}
+                    />
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400">請先選擇指派人員，才能發送 LINE 通知</p>
+              )}
 
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input type="checkbox" checked={form.notify_on_complete}
-                onChange={e => setForm({ ...form, notify_on_complete: e.target.checked })}
-                className="w-4 h-4 mt-0.5" />
-              <span className="text-sm text-gray-700">
-                <span className="font-medium">結案時自動通知</span>
-                {reporterIsInternal && reporterEmployee?.app_number
-                  ? ' — 結案時自動發送 LINE 給回報者'
-                  : form.client_phone
-                    ? ' — 結案時自動發送 SMS 給客戶'
-                    : ' — 結案時自動通知（請先填入電話）'}
-              </span>
-            </label>
+              {/* 通知回報者（內部人員） */}
+              {reporterIsInternal && reporterEmployee?.app_number ? (
+                <div className="space-y-2">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input type="checkbox" checked={lineNotifyReporter}
+                      onChange={e => {
+                        setLineNotifyReporter(e.target.checked);
+                        if (e.target.checked && !lineNotifyReporterMsg) {
+                          setLineNotifyReporterMsg(
+                            `您好 ${reporterEmployee.name}，您的回報已收到，我們將盡快為您處理並跟進，感謝您的回饋！`
+                          );
+                        }
+                      }}
+                      className="w-4 h-4 mt-0.5" />
+                    <span className="text-sm text-gray-700">
+                      <span className="font-medium text-purple-700">通知回報者（內部人員）</span>
+                      <span className="text-gray-500 ml-1">— {reporterEmployee.name}</span>
+                    </span>
+                  </label>
+                  {lineNotifyReporter && (
+                    <textarea
+                      value={lineNotifyReporterMsg}
+                      onChange={e => setLineNotifyReporterMsg(e.target.value)}
+                      rows={3}
+                      className="w-full px-3 py-2 border rounded text-sm bg-white ml-6"
+                      placeholder="推波訊息內容（系統會自動附上案件連結）"
+                      style={{ width: 'calc(100% - 1.5rem)' }}
+                    />
+                  )}
+                </div>
+              ) : reporterIsInternal ? (
+                <p className="text-xs text-orange-500">⚠ 選擇的回報者沒有 app_number，無法發送 LINE 通知</p>
+              ) : null}
+            </div>
           </div>
         </div>
 
