@@ -71,12 +71,12 @@ const NewFeedbackPage: React.FC = () => {
 
       const res = await feedbackApi.lookupCustomer(params);
       if (res.data.length === 0) {
-        setLookupError('找不到符合的客戶資料');
+        setLookupError('查無符合客戶，請直接於下方手動填寫客戶資料');
       } else {
         setLookupResults(res.data);
       }
     } catch (err) {
-      setLookupError('查詢失敗，請確認後重試');
+      setLookupError('客戶查詢服務暫時無法使用，請直接於下方手動填寫客戶資料');
     } finally {
       setLookupLoading(false);
     }
