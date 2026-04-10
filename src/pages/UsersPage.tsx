@@ -1,259 +1,280 @@
-import { useState, useEffect } from 'react';
-import { authApi, employeesApi } from '../services/api';
+import { useEffect, useState } from 'react';
+import { authApi } from '../services/api';
 
 type Role = 'super_admin' | 'pr_admin' | 'user';
 
-interface User {
+interface UserRecord {
   id: string;
-  erpid: string;
   name: string;
+  erpid: string;
   role: Role;
   is_active: boolean;
-  created_at: string;
+  last_login_at?: string;
 }
 
-const roleLabels: Record<Role, string> = {
-  super_admin: '系統管理員',
-  pr_admin: '公關部',
-  user: '一般人員',
+const ROLE_LABELS: Record<Role, string> = {
+  super_admin: '超級管理員',
+  pr_admin: '公關部管理員',
+  user: '一般員工',
 };
 
-const roleColors: Record<Role, string> = {
-  super_admin: 'bg-red-100 text-red-800',
-  pr_admin: 'bg-[#e8ddd0] text-[#5c4033]',
-  user: 'bg-gray-100 text-gray-800',
+const ROLE_COLORS: Record<Role, string> = {
+  super_admin: 'bg-red-100 text-red-700 border-red-200',
+  pr_admin: 'bg-amber-100 text-amber-700 border-amber-200',
+  user: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
-  const [selectedRole, setSelectedRole] = useState<Role>('pr_admin');
-  const [employees, setEmployees] = useState<any[]>([]);
-  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editRole, setEditRole] = useState<Role>('user');
+  const [editActive, setEditActive] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
-    loadUsers();
+    fetchUsers();
   }, []);
 
-  const loadUsers = async () => {
+  async function fetchUsers() {
+    setLoading(true);
     try {
       const res = await authApi.getUsers();
-      setUsers(res.data);
-    } catch (err) {
-      console.error('載入使用者失敗:', err);
+      const data: UserRecord[] = res.data;
+      data.sort((a, b) => {
+        const order: Record<string, number> = { super_admin: 0, pr_admin: 1, user: 2 };
+        if (order[a.role] !== order[b.role]) return (order[a.role] ?? 3) - (order[b.role] ?? 3);
+        return a.name.localeCompare(b.name, 'zh-Hant');
+      });
+      setUsers(data);
+    } catch (e) {
+      console.error(e);
     } finally {
       setLoading(false);
     }
-  };
-
-  const searchEmployees = async (query: string) => {
-    if (query.length < 2) {
-      setEmployees([]);
-      return;
-    }
-    try {
-      const res = await employeesApi.search({ q: query, limit: 10 });
-      setEmployees(res.data.data);
-    } catch (err) {
-      console.error('搜尋員工失敗:', err);
-    }
-  };
-
-  const handleAddUser = async () => {
-    if (!selectedEmployee) return;
-    try {
-      await authApi.createUser({
-        employee_id: selectedEmployee.id,
-        erpid: selectedEmployee.erpid,
-        name: selectedEmployee.name,
-        role: selectedRole,
-        is_active: true,
-      });
-      setShowAddModal(false);
-      setSelectedEmployee(null);
-      setEmployeeSearch('');
-      loadUsers();
-    } catch (err) {
-      console.error('新增使用者失敗:', err);
-      alert('新增失敗，該員工可能已有帳號');
-    }
-  };
-
-  const handleRoleChange = async (userId: string, newRole: Role) => {
-    try {
-      await authApi.updateUser(userId, { role: newRole });
-      loadUsers();
-    } catch (err) {
-      console.error('更新權限失敗:', err);
-    }
-  };
-
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`確定要刪除 ${userName} 的帳號嗎？`)) return;
-    try {
-      await authApi.deleteUser(userId);
-      loadUsers();
-    } catch (err) {
-      console.error('刪除使用者失敗:', err);
-    }
-  };
-
-  const filteredUsers = users.filter(u => 
-    u.name?.includes(searchQuery) || u.erpid?.includes(searchQuery)
-  );
-
-  if (loading) {
-    return <div className="p-6">載入中...</div>;
   }
 
+  function startEdit(user: UserRecord) {
+    setEditingId(user.id);
+    setEditRole(user.role);
+    setEditActive(user.is_active);
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+  }
+
+  async function saveEdit(userId: string) {
+    setSaving(true);
+    try {
+      await authApi.updateUser(userId, { role: editRole, is_active: editActive });
+      setUsers(prev =>
+        prev.map(u => u.id === userId ? { ...u, role: editRole, is_active: editActive } : u)
+      );
+      setEditingId(null);
+      setSuccessMsg('權限已更新');
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch (e) {
+      console.error(e);
+      alert('更新失敗，請稍後再試');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const filtered = users.filter(u =>
+    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    u.erpid.includes(searchTerm)
+  );
+
+  const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">使用者管理</h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="px-4 py-2 bg-[#8b6f4e] text-white rounded-lg hover:bg-blue-700"
+    <div className="p-6 max-w-4xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#5c4033' }}>使用者權限管理</h1>
+          <p className="text-sm text-gray-500 mt-1">管理員工的系統角色與帳號狀態</p>
+        </div>
+        <div
+          className="text-xs px-3 py-1.5 rounded-full font-medium border"
+          style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e', borderColor: '#cdbea2' }}
         >
-          新增使用者
-        </button>
+          共 {users.length} 位使用者
+        </div>
       </div>
 
-      {/* 搜尋 */}
-      <div className="mb-4">
+      {/* Success toast */}
+      {successMsg && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium"
+          style={{ backgroundColor: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' }}>
+          ✓ {successMsg}
+        </div>
+      )}
+
+      {/* Role legend */}
+      <div className="flex flex-wrap gap-3">
+        {(Object.entries(ROLE_LABELS) as [Role, string][]).map(([role, label]) => (
+          <div key={role} className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium ${ROLE_COLORS[role]}`}>
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Search */}
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         <input
           type="text"
-          placeholder="搜尋姓名或 ERPID..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full md:w-64 px-4 py-2 border rounded-lg"
+          placeholder="搜尋姓名或員工編號..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 border rounded-lg text-sm focus:outline-none"
+          style={{ borderColor: '#cdbea2' }}
         />
       </div>
 
-      {/* 使用者列表 */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-[#f9f6f2]">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">姓名</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ERPID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">角色</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{user.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-gray-500">{user.erpid}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value as Role)}
-                    className={`px-2 py-1 rounded text-sm ${roleColors[user.role]}`}
-                    disabled={user.role === 'super_admin'}
-                  >
-                    <option value="user">一般人員</option>
-                    <option value="pr_admin">公關部</option>
-                    <option value="super_admin" disabled>系統管理員</option>
-                  </select>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {user.role !== 'super_admin' && (
-                    <button
-                      onClick={() => handleDeleteUser(user.id, user.name)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      刪除
-                    </button>
-                  )}
-                </td>
+      {/* Users table */}
+      {loading ? (
+        <div className="text-center py-16 text-gray-400">載入中...</div>
+      ) : (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden" style={{ borderColor: '#e8ddd4' }}>
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ backgroundColor: '#f5f0eb' }}>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">員工姓名</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">員工編號</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">目前角色</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">帳號狀態</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">最後登入</th>
+                <th className="px-4 py-3"></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* 新增使用者 Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">新增使用者</h2>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">搜尋員工</label>
-              <input
-                type="text"
-                placeholder="輸入姓名或會員編號..."
-                value={employeeSearch}
-                onChange={(e) => {
-                  setEmployeeSearch(e.target.value);
-                  searchEmployees(e.target.value);
-                }}
-                className="w-full px-4 py-2 border rounded-lg"
-              />
-              {employees.length > 0 && (
-                <div className="mt-2 border rounded-lg max-h-40 overflow-y-auto">
-                  {employees.map((emp) => (
-                    <div
-                      key={emp.id}
-                      onClick={() => {
-                        setSelectedEmployee(emp);
-                        setEmployeeSearch(emp.name);
-                        setEmployees([]);
-                      }}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                    >
-                      {emp.name} ({emp.app_number})
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-10 text-gray-400">找不到符合的使用者</td>
+                </tr>
+              ) : filtered.map(user => (
+                <tr
+                  key={user.id}
+                  className="transition-colors"
+                  style={editingId === user.id ? { backgroundColor: '#faf7f4' } : {}}
+                >
+                  {/* Name */}
+                  <td className="px-4 py-3 font-medium text-gray-800">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                        style={{ backgroundColor: '#8b6f4e' }}>
+                        {user.name.charAt(0)}
+                      </div>
+                      <span>{user.name}</span>
+                      {user.id === currentUser?.id && (
+                        <span className="text-xs text-gray-400">(你)</span>
+                      )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </td>
 
-            {selectedEmployee && (
-              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <p><strong>姓名：</strong>{selectedEmployee.name}</p>
-                <p><strong>部門：</strong>{selectedEmployee.store_name || selectedEmployee.department}</p>
-              </div>
-            )}
+                  {/* ERPID */}
+                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{user.erpid}</td>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium mb-1">角色</label>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as Role)}
-                className="w-full px-4 py-2 border rounded-lg"
-              >
-                <option value="user">一般人員</option>
-                <option value="pr_admin">公關部</option>
-              </select>
-            </div>
+                  {/* Role */}
+                  <td className="px-4 py-3">
+                    {editingId === user.id ? (
+                      <select
+                        value={editRole}
+                        onChange={e => setEditRole(e.target.value as Role)}
+                        className="border rounded-lg px-2 py-1 text-sm focus:outline-none"
+                        style={{ borderColor: '#cdbea2' }}
+                      >
+                        <option value="user">一般員工</option>
+                        <option value="pr_admin">公關部管理員</option>
+                      </select>
+                    ) : (
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${ROLE_COLORS[user.role as Role] || 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                        {ROLE_LABELS[user.role as Role] || user.role}
+                      </span>
+                    )}
+                  </td>
 
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setShowAddModal(false);
-                  setSelectedEmployee(null);
-                  setEmployeeSearch('');
-                }}
-                className="px-4 py-2 border rounded-lg"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleAddUser}
-                disabled={!selectedEmployee}
-                className="px-4 py-2 bg-[#8b6f4e] text-white rounded-lg disabled:opacity-50"
-              >
-                新增
-              </button>
-            </div>
-          </div>
+                  {/* Active */}
+                  <td className="px-4 py-3">
+                    {editingId === user.id ? (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editActive}
+                          onChange={e => setEditActive(e.target.checked)}
+                          className="rounded"
+                        />
+                        <span className="text-sm text-gray-600">{editActive ? '啟用' : '停用'}</span>
+                      </label>
+                    ) : (
+                      <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium ${user.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${user.is_active ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+                        {user.is_active ? '啟用中' : '已停用'}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Last login */}
+                  <td className="px-4 py-3 text-gray-400 text-xs">
+                    {user.last_login_at
+                      ? new Date(user.last_login_at).toLocaleDateString('zh-TW', {
+                          month: '2-digit', day: '2-digit',
+                          hour: '2-digit', minute: '2-digit',
+                        })
+                      : '—'}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-4 py-3">
+                    {editingId === user.id ? (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => saveEdit(user.id)}
+                          disabled={saving}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90"
+                          style={{ backgroundColor: '#8b6f4e' }}
+                        >
+                          {saving ? '儲存中...' : '儲存'}
+                        </button>
+                        <button
+                          onClick={cancelEdit}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                        >
+                          取消
+                        </button>
+                      </div>
+                    ) : (
+                      user.id !== currentUser?.id && (
+                        <button
+                          onClick={() => startEdit(user)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-amber-50"
+                          style={{ borderColor: '#cdbea2', color: '#8b6f4e' }}
+                        >
+                          修改權限
+                        </button>
+                      )
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
+
+      {/* Info box */}
+      <div className="rounded-lg p-4 text-sm space-y-1.5" style={{ backgroundColor: '#faf7f4', borderLeft: '3px solid #cdbea2' }}>
+        <p className="font-semibold" style={{ color: '#8b6f4e' }}>角色說明</p>
+        <p className="text-gray-600"><span className="font-medium">超級管理員</span>｜完整系統存取，可管理所有使用者角色</p>
+        <p className="text-gray-600"><span className="font-medium">公關部管理員</span>｜可建立評價、指派案件、結案、查看分析</p>
+        <p className="text-gray-600"><span className="font-medium">一般員工</span>｜僅可查看並更新自己被指派的案件</p>
+      </div>
     </div>
   );
 }
