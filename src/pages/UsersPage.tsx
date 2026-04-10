@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { authApi } from '../services/api';
+import { authApi, syncApi } from '../services/api';
 
 type Role = 'super_admin' | 'pr_admin' | 'user';
 
@@ -31,7 +31,8 @@ export default function UsersPage() {
   const [editRole, setEditRole] = useState<Role>('user');
   const [editActive, setEditActive] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ store_employees: number; backend_employees: number; missing_employees: number; total: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -39,9 +40,8 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  async function fetchUsers(isRefresh = false) {
-    if (isRefresh) setRefreshing(true);
-    else setLoading(true);
+  async function fetchUsers() {
+    setLoading(true);
     try {
       const res = await authApi.getUsers();
       const data: UserRecord[] = res.data;
@@ -51,15 +51,28 @@ export default function UsersPage() {
         return a.name.localeCompare(b.name, 'zh-Hant');
       });
       setUsers(data);
-      if (isRefresh) {
-        setSuccessMsg('清單已更新');
-        setTimeout(() => setSuccessMsg(''), 3000);
-      }
     } catch (e) {
       console.error(e);
     } finally {
-      if (isRefresh) setRefreshing(false);
-      else setLoading(false);
+      setLoading(false);
+    }
+  }
+
+  async function handleSync() {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await syncApi.syncAll();
+      setSyncResult(res.data);
+      // 同步完成後重新拉使用者清單
+      await fetchUsers();
+      setSuccessMsg('左手人員資料同步完成');
+      setTimeout(() => setSuccessMsg(''), 6000);
+    } catch (e: any) {
+      console.error(e);
+      alert('同步失敗：' + (e?.response?.data?.message || '請稍後再試'));
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -114,14 +127,14 @@ export default function UsersPage() {
             共 {users.length} 位使用者
           </div>
           <button
-            onClick={() => fetchUsers(true)}
-            disabled={refreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-amber-50 disabled:opacity-50"
-            style={{ borderColor: '#cdbea2', color: '#8b6f4e' }}
-            title="重新整理使用者清單"
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: syncing ? '#b39c86' : '#8b6f4e' }}
+            title="從左手系統重新同步所有員工資料"
           >
-            <span className={refreshing ? 'animate-spin inline-block' : ''}>↻</span>
-            {refreshing ? '更新中...' : '手動更新'}
+            <span className={syncing ? 'animate-spin inline-block' : ''}>↻</span>
+            {syncing ? '同步中...' : '從左手同步人員'}
           </button>
         </div>
       </div>
@@ -131,6 +144,19 @@ export default function UsersPage() {
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg text-sm font-medium"
           style={{ backgroundColor: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0' }}>
           ✓ {successMsg}
+        </div>
+      )}
+
+      {/* Sync result */}
+      {syncResult && (
+        <div className="rounded-lg p-4 text-sm" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+          <p className="font-semibold text-green-800 mb-2">✓ 同步完成</p>
+          <div className="flex flex-wrap gap-4 text-green-700">
+            <span>門市員工 <strong>{syncResult.store_employees}</strong> 人</span>
+            <span>後勤人員 <strong>{syncResult.backend_employees}</strong> 人</span>
+            <span>補撈遺漏 <strong>{syncResult.missing_employees}</strong> 人</span>
+            <span className="font-semibold">共計 <strong>{syncResult.total}</strong> 人</span>
+          </div>
         </div>
       )}
 

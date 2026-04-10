@@ -53,6 +53,12 @@ export const authApi = {
   deleteUser: (id: string) => api.delete(`/auth/users/${id}`),
 };
 
+// Employee Sync API
+export const syncApi = {
+  syncAll: () => api.post('/employee-sync/all', {}),
+  getStats: () => api.get('/employee-sync/stats'),
+};
+
 // Employees API
 export const employeesApi = {
   search: (params?: any) => api.get('/employees', { params }),
