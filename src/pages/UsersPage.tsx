@@ -31,6 +31,7 @@ export default function UsersPage() {
   const [editRole, setEditRole] = useState<Role>('user');
   const [editActive, setEditActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -38,8 +39,9 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
-  async function fetchUsers() {
-    setLoading(true);
+  async function fetchUsers(isRefresh = false) {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
     try {
       const res = await authApi.getUsers();
       const data: UserRecord[] = res.data;
@@ -49,10 +51,15 @@ export default function UsersPage() {
         return a.name.localeCompare(b.name, 'zh-Hant');
       });
       setUsers(data);
+      if (isRefresh) {
+        setSuccessMsg('清單已更新');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      }
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (isRefresh) setRefreshing(false);
+      else setLoading(false);
     }
   }
 
@@ -99,11 +106,23 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold" style={{ color: '#5c4033' }}>使用者權限管理</h1>
           <p className="text-sm text-gray-500 mt-1">管理員工的系統角色與帳號狀態</p>
         </div>
-        <div
-          className="text-xs px-3 py-1.5 rounded-full font-medium border"
-          style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e', borderColor: '#cdbea2' }}
-        >
-          共 {users.length} 位使用者
+        <div className="flex items-center gap-3">
+          <div
+            className="text-xs px-3 py-1.5 rounded-full font-medium border"
+            style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e', borderColor: '#cdbea2' }}
+          >
+            共 {users.length} 位使用者
+          </div>
+          <button
+            onClick={() => fetchUsers(true)}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-amber-50 disabled:opacity-50"
+            style={{ borderColor: '#cdbea2', color: '#8b6f4e' }}
+            title="重新整理使用者清單"
+          >
+            <span className={refreshing ? 'animate-spin inline-block' : ''}>↻</span>
+            {refreshing ? '更新中...' : '手動更新'}
+          </button>
         </div>
       </div>
 
