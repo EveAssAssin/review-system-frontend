@@ -33,6 +33,8 @@ export default function UsersPage() {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ store_employees: number; backend_employees: number; missing_employees: number; total: number } | null>(null);
+  const [bulkCreating, setBulkCreating] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{ created: number; skipped: number; total: number } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -73,6 +75,24 @@ export default function UsersPage() {
       alert('同步失敗：' + (e?.response?.data?.message || '請稍後再試'));
     } finally {
       setSyncing(false);
+    }
+  }
+
+  async function handleBulkCreate() {
+    if (!confirm('將從員工資料庫批次建立所有尚未建立帳號的員工，預設角色為「一般員工」。確定繼續？')) return;
+    setBulkCreating(true);
+    setBulkResult(null);
+    try {
+      const res = await authApi.bulkCreateFromEmployees();
+      setBulkResult(res.data);
+      await fetchUsers();
+      setSuccessMsg(`成功預建 ${res.data.created} 位員工帳號`);
+      setTimeout(() => setSuccessMsg(''), 6000);
+    } catch (e: any) {
+      console.error(e);
+      alert('批次建立失敗：' + (e?.response?.data?.message || '請稍後再試'));
+    } finally {
+      setBulkCreating(false);
     }
   }
 
@@ -127,8 +147,18 @@ export default function UsersPage() {
             共 {users.length} 位使用者
           </div>
           <button
+            onClick={handleBulkCreate}
+            disabled={bulkCreating || syncing}
+            className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium border transition-colors hover:bg-amber-50 disabled:opacity-50"
+            style={{ borderColor: '#cdbea2', color: '#8b6f4e' }}
+            title="將 employees 資料庫中尚未建立帳號的員工全部預建為 user"
+          >
+            <span>{bulkCreating ? '⏳' : '👥'}</span>
+            {bulkCreating ? '建立中...' : '預建所有使用者'}
+          </button>
+          <button
             onClick={handleSync}
-            disabled={syncing}
+            disabled={syncing || bulkCreating}
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-50"
             style={{ backgroundColor: syncing ? '#b39c86' : '#8b6f4e' }}
             title="從左手系統重新同步所有員工資料"
@@ -150,13 +180,26 @@ export default function UsersPage() {
       {/* Sync result */}
       {syncResult && (
         <div className="rounded-lg p-4 text-sm" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-          <p className="font-semibold text-green-800 mb-2">✓ 同步完成</p>
+          <p className="font-semibold text-green-800 mb-2">✓ 左手同步完成</p>
           <div className="flex flex-wrap gap-4 text-green-700">
             <span>門市員工 <strong>{syncResult.store_employees}</strong> 人</span>
             <span>後勤人員 <strong>{syncResult.backend_employees}</strong> 人</span>
             <span>補撈遺漏 <strong>{syncResult.missing_employees}</strong> 人</span>
             <span className="font-semibold">共計 <strong>{syncResult.total}</strong> 人</span>
           </div>
+        </div>
+      )}
+
+      {/* Bulk create result */}
+      {bulkResult && (
+        <div className="rounded-lg p-4 text-sm" style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe' }}>
+          <p className="font-semibold text-blue-800 mb-2">✓ 預建完成</p>
+          <div className="flex flex-wrap gap-4 text-blue-700">
+            <span>新增帳號 <strong>{bulkResult.created}</strong> 人</span>
+            <span>已存在跳過 <strong>{bulkResult.skipped}</strong> 人</span>
+            <span className="font-semibold">員工總數 <strong>{bulkResult.total}</strong> 人</span>
+          </div>
+          <p className="text-blue-500 text-xs mt-2">所有新帳號預設為「一般員工」，可在下方名單調整權限</p>
         </div>
       )}
 

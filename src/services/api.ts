@@ -51,6 +51,7 @@ export const authApi = {
   createUser: (data: any) => api.post('/auth/users', data),
   updateUser: (id: string, data: any) => api.put(`/auth/users/${id}`, data),
   deleteUser: (id: string) => api.delete(`/auth/users/${id}`),
+  bulkCreateFromEmployees: () => api.post('/auth/users/bulk-create-from-employees', {}),
 };
 
 // Employee Sync API
