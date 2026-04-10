@@ -105,6 +105,12 @@ const MyReviewsPage: React.FC = () => {
                 {review.content && (
                   <p className="text-gray-700 line-clamp-2">{review.content}</p>
                 )}
+                {review.immediate_response && (
+                  <div className="mt-2 p-2.5 rounded-lg text-sm" style={{ backgroundColor: '#faf7f4', borderLeft: '3px solid #cdbea2' }}>
+                    <span className="text-xs font-semibold mr-1.5" style={{ color: '#8b6f4e' }}>即時應急回覆</span>
+                    <span className="text-gray-600">{review.immediate_response}</span>
+                  </div>
+                )}
                 {review.status === 'pending' && review.requires_response && (
                   <Link
                     to={`/review/respond/${review.response_token}`}

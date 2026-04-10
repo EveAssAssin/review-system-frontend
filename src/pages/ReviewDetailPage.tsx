@@ -268,6 +268,21 @@ export default function ReviewDetailPage() {
           </div>
         )}
 
+        {/* 即時應急回覆 */}
+        {review.immediate_response && (
+          <div className="border-t pt-4">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="text-sm font-semibold" style={{ color: '#8b6f4e' }}>即時應急回覆</div>
+              <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>建立時記錄</span>
+            </div>
+            <div className="p-3 rounded-lg text-sm text-gray-700 leading-relaxed"
+              style={{ backgroundColor: '#faf7f4', borderLeft: '3px solid #cdbea2' }}>
+              {review.immediate_response}
+            </div>
+          </div>
+        )}
+
         {/* 評價附件 */}
         {reviewAttachments.length > 0 && (
           <div className="border-t pt-4">

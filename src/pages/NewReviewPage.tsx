@@ -39,6 +39,7 @@ export default function NewReviewPage() {
     urgency: 'normal',
     event_date: new Date().toISOString().split('T')[0],
     content: '',
+    immediate_response: '',
     requires_response: true,
     response_deadline_hours: 48,
   });
@@ -98,6 +99,7 @@ export default function NewReviewPage() {
         review_type: form.review_type,
         urgency: form.urgency,
         content: form.content,
+        immediate_response: form.immediate_response || undefined,
         requires_response: form.requires_response,
         response_deadline_hours: form.response_deadline_hours,
       };
@@ -329,6 +331,28 @@ export default function NewReviewPage() {
             rows={4}
             className="w-full px-3 py-2 border rounded"
             placeholder="請輸入評價內容..."
+          />
+        </div>
+
+        {/* 即時應急回覆 */}
+        <div className="bg-white rounded-lg shadow p-5 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-700">即時應急回覆</h3>
+              <p className="text-xs mt-0.5" style={{ color: '#8b7355' }}>
+                記錄建立當下對客戶或員工的應急處理與回覆內容，此欄位可供被指派人員查閱
+              </p>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+              style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>重要</span>
+          </div>
+          <textarea
+            value={form.immediate_response}
+            onChange={(e) => setForm({ ...form, immediate_response: e.target.value })}
+            rows={4}
+            className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none resize-none"
+            style={{ borderColor: '#cdbea2' }}
+            placeholder="例：已電話聯繫員工說明情況，向其致歉並告知後續處理流程..."
           />
         </div>
 

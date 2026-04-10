@@ -46,6 +46,7 @@ export interface Review {
   closed_at?: string;
   closed_by?: string;
   close_note?: string;
+  immediate_response?: string;
   employee_notified: boolean;
   employee_notified_at?: string;
   manager_notified: boolean;
