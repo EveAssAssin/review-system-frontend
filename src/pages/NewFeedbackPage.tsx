@@ -145,6 +145,9 @@ const NewFeedbackPage: React.FC = () => {
   const [lineNotifyReporter, setLineNotifyReporter] = useState(false);
   const [lineNotifyReporterMsg, setLineNotifyReporterMsg] = useState('');
 
+  // 即時應急回覆
+  const [immediateResponse, setImmediateResponse] = useState('');
+
   const [form, setForm] = useState({
     feedback_type: 'suggestion',
     client_id: '',
@@ -251,6 +254,8 @@ const NewFeedbackPage: React.FC = () => {
         line_notify_assignee_msg: lineNotifyAssignee ? (lineNotifyAssigneeMsg.trim() || undefined) : undefined,
         line_notify_reporter: lineNotifyReporter,
         line_notify_reporter_msg: lineNotifyReporter ? (lineNotifyReporterMsg.trim() || undefined) : undefined,
+        // 即時應急回覆
+        immediate_response: immediateResponse.trim() || undefined,
       };
 
       // 若回報者是內部人員，覆蓋客戶姓名
@@ -467,6 +472,32 @@ const NewFeedbackPage: React.FC = () => {
             <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })}
               rows={4} className="w-full px-3 py-2 border rounded" placeholder="請輸入客戶回報的詳細內容..." />
           </div>
+        </div>
+
+        {/* ── 即時應急回覆 ─────────────────────────────────────── */}
+        <div className="bg-white rounded-lg shadow p-6 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-700">即時應急回覆</h3>
+              <p className="text-xs mt-0.5" style={{ color: '#8b7355' }}>
+                記錄建立當下對客戶的應急處理與回覆內容，此欄位將納入 AI 分析公關部處理能力
+              </p>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>
+              重要
+            </span>
+          </div>
+          <textarea
+            value={immediateResponse}
+            onChange={e => setImmediateResponse(e.target.value)}
+            rows={4}
+            className="w-full px-3 py-2 border rounded-lg text-sm"
+            style={{ borderColor: '#cdbea2', backgroundColor: '#faf8f5' }}
+            placeholder="例：已電話聯繫客戶，向客戶致歉並說明後續處理流程，客戶表示可接受，預計3日內回覆處理結果..."
+          />
+          <p className="text-xs" style={{ color: '#cdbea2' }}>
+            💡 建議填寫：與客戶的溝通內容、當下承諾、臨時解決方案
+          </p>
         </div>
 
         {/* ── 指派與通知 ─────────────────────────────────────── */}

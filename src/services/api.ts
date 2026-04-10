@@ -180,6 +180,16 @@ export const feedbackApi = {
     employee_id?: string;
     mark_resolved?: boolean;
   }) => api.post(`/customer-feedback/${id}/employee-update`, data),
+  // 結案標籤管理
+  getTags: () => api.get('/customer-feedback/tags'),
+  createTag: (data: { name: string; color?: string; description?: string }) =>
+    api.post('/customer-feedback/tags', data),
+  updateTag: (tagId: string, data: { name?: string; color?: string; description?: string }) =>
+    api.put(`/customer-feedback/tags/${tagId}`, data),
+  deleteTag: (tagId: string) => api.delete(`/customer-feedback/tags/${tagId}`),
+  // 公關部應急能力分析
+  getPrCapability: (from?: string, to?: string) =>
+    api.get('/customer-feedback/pr-capability', { params: { from, to } }),
 };
 
 // Analytics API

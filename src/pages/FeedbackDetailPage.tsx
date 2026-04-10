@@ -61,6 +61,9 @@ const FeedbackDetailPage: React.FC = () => {
   const [closeNotify, setCloseNotify] = useState(false);
   const [closeNotifyMethod, setCloseNotifyMethod] = useState<'sms' | 'line'>('sms');
   const [closeNotifyMsg, setCloseNotifyMsg] = useState('');
+  // 結案標籤
+  const [availableTags, setAvailableTags] = useState<any[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // 結案通知（手動補發）
   const [showNotifyForm, setShowNotifyForm] = useState(false);
@@ -106,6 +109,10 @@ const FeedbackDetailPage: React.FC = () => {
       } catch (err) {
         console.error(err);
       }
+      try {
+        const tagsRes = await feedbackApi.getTags();
+        setAvailableTags(tagsRes.data);
+      } catch {}
     };
     loadAll();
   }, [id]);
@@ -212,11 +219,13 @@ const FeedbackDetailPage: React.FC = () => {
         close_notify: closeNotify,
         close_notify_method: closeNotify ? closeNotifyMethod : undefined,
         close_notify_message: closeNotify && closeNotifyMsg.trim() ? closeNotifyMsg.trim() : undefined,
+        close_tags: selectedTags,
       });
       setClosingNote('');
       setCloseNotify(false);
       setCloseNotifyMsg('');
       setShowCloseForm(false);
+      setSelectedTags([]);
       await loadFeedback();
     } catch (err: any) {
       alert(err.response?.data?.message || '操作失敗，請重試');
@@ -481,10 +490,39 @@ const FeedbackDetailPage: React.FC = () => {
             </div>
           </div>
         )}
+        {feedback.immediate_response && (
+          <div className="mt-4 rounded-lg p-4" style={{ backgroundColor: '#f5f0eb', border: '1px solid #cdbea2' }}>
+            <p className="text-xs font-semibold mb-2" style={{ color: '#8b6f4e' }}>
+              ⚡ 即時應急回覆
+            </p>
+            <p className="text-sm whitespace-pre-wrap" style={{ color: '#3d2b1f' }}>
+              {feedback.immediate_response}
+            </p>
+          </div>
+        )}
         {feedback.close_note && (
           <div className="mt-4">
             <p className="text-gray-500 text-sm mb-1">結案備註</p>
             <div className="bg-gray-50 rounded p-3 text-gray-700">{feedback.close_note}</div>
+            {feedback.close_tags && feedback.close_tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {feedback.close_tags.map((tag: string) => {
+                  const tagData = availableTags.find(t => t.name === tag);
+                  return (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 rounded-full text-xs font-medium"
+                      style={{
+                        backgroundColor: tagData?.color || '#8b6f4e',
+                        color: '#fff',
+                      }}
+                    >
+                      #{tag}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -687,6 +725,40 @@ const FeedbackDetailPage: React.FC = () => {
                     className="w-full px-3 py-2 border rounded text-sm"
                     placeholder="請填寫結案說明..."
                   />
+
+                  {/* 結案標籤 */}
+                  {availableTags.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">結案標籤 <span className="text-xs text-gray-400 font-normal">（可複選）</span></p>
+                      <div className="flex flex-wrap gap-2">
+                        {availableTags.map(tag => {
+                          const isSelected = selectedTags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id}
+                              type="button"
+                              onClick={() => setSelectedTags(prev =>
+                                isSelected ? prev.filter(t => t !== tag.name) : [...prev, tag.name]
+                              )}
+                              className="px-3 py-1 rounded-full text-xs font-medium border transition-all"
+                              style={{
+                                backgroundColor: isSelected ? tag.color : '#fff',
+                                borderColor: tag.color,
+                                color: isSelected ? '#fff' : tag.color,
+                              }}
+                            >
+                              # {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {selectedTags.length > 0 && (
+                        <p className="text-xs" style={{ color: '#8b7355' }}>
+                          已選：{selectedTags.map(t => `#${t}`).join('、')}
+                        </p>
+                      )}
+                    </div>
+                  )}
 
                   {/* 結案推波通知（整合在結案表單） */}
                   <div className="border rounded p-3 bg-white space-y-3">
