@@ -25,6 +25,7 @@ interface Review {
   reviewer_name?: string;
   reviewer_responded_at?: string;
   close_note?: string;
+  immediate_response?: string;
   closed_at?: string;
   created_at: string;
   employees?: {
