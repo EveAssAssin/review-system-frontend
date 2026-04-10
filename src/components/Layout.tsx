@@ -42,6 +42,7 @@ export default function Layout() {
       label: '系統設定',
       items: [
         { path: '/feedback-categories', label: '回報類別', show: canManageReviews, icon: '📂' },
+        { path: '/feedback-sources', label: '回報來源', show: canManageReviews, icon: '📡' },
         { path: '/feedback-tags', label: '結案標籤', show: canManageReviews, icon: '🏷' },
         { path: '/categories', label: '評價分類', show: canManageReviews, icon: '🏷' },
         { path: '/alerts', label: '警示設定', show: canManageReviews, icon: '🔔' },

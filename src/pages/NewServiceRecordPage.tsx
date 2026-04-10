@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { serviceRecordsApi, feedbackApi, employeesApi } from '../services/api';
+import { serviceRecordsApi, feedbackApi, employeesApi, feedbackSourcesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Customer {
@@ -40,6 +40,8 @@ const NewServiceRecordPage: React.FC = () => {
   const [lookupError, setLookupError] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
+  const [feedbackSources, setFeedbackSources] = useState<any[]>([]);
+
   const [form, setForm] = useState({
     customer_name: '',
     customer_mobile: '',
@@ -47,6 +49,7 @@ const NewServiceRecordPage: React.FC = () => {
     customer_store: '',
     service_type: 'inquiry',
     handling_method: 'in_store',
+    source: '',
     content: '',
     handling_detail: '',
     assignee_id: '',
@@ -66,8 +69,12 @@ const NewServiceRecordPage: React.FC = () => {
   });
 
   useEffect(() => {
-    employeesApi.search({ limit: 500 }).then(res => {
-      setEmployees(res.data.data || []);
+    Promise.all([
+      employeesApi.search({ limit: 500 }),
+      feedbackSourcesApi.getAll(),
+    ]).then(([empRes, srcRes]) => {
+      setEmployees(empRes.data.data || []);
+      setFeedbackSources(srcRes.data || []);
     }).catch(() => {});
   }, []);
 
@@ -145,6 +152,7 @@ const NewServiceRecordPage: React.FC = () => {
         customer_store: form.customer_store || undefined,
         service_type: form.service_type,
         handling_method: form.handling_method,
+        source: form.source || undefined,
         content: form.content,
         handling_detail: form.handling_detail || undefined,
         assignee_id: form.assignee_id || undefined,
@@ -339,6 +347,19 @@ const NewServiceRecordPage: React.FC = () => {
                 <option value="phone">電話</option>
                 <option value="online">線上</option>
                 <option value="other">其他</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">回報來源</label>
+              <select
+                value={form.source}
+                onChange={e => setForm({ ...form, source: e.target.value })}
+                className="w-full px-3 py-2 border rounded"
+              >
+                <option value="">選擇來源</option>
+                {feedbackSources.map((s: any) => (
+                  <option key={s.id} value={s.value}>{s.name}</option>
+                ))}
               </select>
             </div>
           </div>

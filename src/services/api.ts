@@ -131,6 +131,16 @@ export const uploadsApi = {
   delete: (id: string) => api.delete(`/uploads/${id}`),
 };
 
+// Feedback Sources API（回報來源，回報與客服紀錄共用）
+export const feedbackSourcesApi = {
+  getAll: (includeInactive = false) =>
+    api.get('/feedback-sources', { params: { include_inactive: includeInactive } }),
+  create: (data: { name: string; value: string; sort_order?: number }) =>
+    api.post('/feedback-sources', data),
+  update: (id: string, data: any) => api.put(`/feedback-sources/${id}`, data),
+  delete: (id: string) => api.delete(`/feedback-sources/${id}`),
+};
+
 // Feedback Categories API
 export const feedbackCategoriesApi = {
   getAll: (includeInactive = false) =>

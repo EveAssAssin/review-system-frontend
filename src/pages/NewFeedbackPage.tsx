@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { feedbackApi, feedbackCategoriesApi, employeesApi } from '../services/api';
+import { feedbackApi, feedbackCategoriesApi, feedbackSourcesApi, employeesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 interface Customer {
@@ -110,6 +110,7 @@ const NewFeedbackPage: React.FC = () => {
   const { user } = useAuth();
 
   const [categories, setCategories] = useState<any[]>([]);
+  const [sources, setSources] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -165,9 +166,11 @@ const NewFeedbackPage: React.FC = () => {
   useEffect(() => {
     Promise.all([
       feedbackCategoriesApi.getAll(),
+      feedbackSourcesApi.getAll(),
       employeesApi.search({ limit: 500 }),
-    ]).then(([catsRes, empsRes]) => {
+    ]).then(([catsRes, srcRes, empsRes]) => {
       setCategories(catsRes.data);
+      setSources(srcRes.data);
       setEmployees(empsRes.data.data || []);
     }).catch(console.error);
   }, []);
@@ -441,12 +444,8 @@ const NewFeedbackPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">回報來源</label>
               <select value={form.source} onChange={e => setForm({ ...form, source: e.target.value })}
                 className="w-full px-3 py-2 border rounded">
-                <option value="phone">電話</option>
-                <option value="walk_in">到店</option>
-                <option value="line">LINE</option>
-                <option value="app">APP</option>
-                <option value="web">網路</option>
-                <option value="other">其他</option>
+                <option value="">選擇來源</option>
+                {sources.map(s => <option key={s.id} value={s.value}>{s.name}</option>)}
               </select>
             </div>
             <div>
