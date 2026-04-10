@@ -155,7 +155,7 @@ export const feedbackApi = {
   notifyEmployee: (id: string) => api.post(`/customer-feedback/${id}/notify-employee`, {}),
   resolve: (id: string, data: { resolve_detail: string; resolver_name: string }) =>
     api.post(`/customer-feedback/${id}/resolve`, data),
-  closeCase: (id: string, data: { close_note: string; closer_name: string; close_notify?: boolean; close_notify_method?: 'sms' | 'line'; close_notify_message?: string }) =>
+  closeCase: (id: string, data: { close_note: string; closer_name: string; close_notify?: boolean; close_notify_method?: 'sms' | 'line'; close_notify_message?: string; close_tags?: string[] }) =>
     api.post(`/customer-feedback/${id}/close-case`, data),
   sendCloseNotify: (id: string, data: { method: 'line' | 'sms'; message: string; sender_name: string }) =>
     api.post(`/customer-feedback/${id}/close-notify`, data),
