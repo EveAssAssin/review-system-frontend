@@ -23,6 +23,7 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import MyAssignedFeedbacksPage from './pages/MyAssignedFeedbacksPage';
 import MyAssignedFeedbackDetailPage from './pages/MyAssignedFeedbackDetailPage';
 import FeedbackTagsPage from './pages/FeedbackTagsPage';
+import FeedbackCategoriesPage from './pages/FeedbackCategoriesPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -213,6 +214,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <FeedbackTagsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/feedback-categories"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <FeedbackCategoriesPage />
               </ProtectedRoute>
             }
           />
