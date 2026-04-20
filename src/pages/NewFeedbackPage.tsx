@@ -130,6 +130,9 @@ const NewFeedbackPage: React.FC = () => {
   const [pendingRelation, setPendingRelation] = useState<any | null>(null);
   const [pendingReason, setPendingReason] = useState('');
 
+  // 陌生來客
+  const [isAnonymous, setIsAnonymous] = useState(false);
+
   // 回報者為內部人員
   const [reporterIsInternal, setReporterIsInternal] = useState(false);
   const [reporterEmployee, setReporterEmployee] = useState<any | null>(null);
@@ -227,7 +230,7 @@ const NewFeedbackPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.client_name.trim() && !reporterIsInternal) {
+    if (!form.client_name.trim() && !reporterIsInternal && !isAnonymous) {
       setError('請填寫客戶姓名');
       return;
     }
@@ -240,6 +243,7 @@ const NewFeedbackPage: React.FC = () => {
     try {
       const payload: any = {
         ...form,
+        client_name: isAnonymous ? (form.client_name.trim() || '陌生來客') : form.client_name,
         assigned_employee_id: assignedEmployee?.id || '',
         created_by: user?.name,
         // 回報者為內部人員
@@ -297,22 +301,53 @@ const NewFeedbackPage: React.FC = () => {
 
         {/* ── 客戶資料 ─────────────────────────────────────── */}
         <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h3 className="font-semibold text-gray-700">客戶資料</h3>
-            {/* 回報者為內部人員切換 */}
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={reporterIsInternal}
-                onChange={e => {
-                  setReporterIsInternal(e.target.checked);
-                  if (!e.target.checked) setReporterEmployee(null);
-                }}
-                className="w-4 h-4"
-              />
-              <span className="text-sm text-gray-600">回報者為內部人員</span>
-            </label>
+            <div className="flex items-center gap-4">
+              {/* 陌生來客 */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isAnonymous}
+                  onChange={e => {
+                    setIsAnonymous(e.target.checked);
+                    if (e.target.checked) {
+                      setReporterIsInternal(false);
+                      setReporterEmployee(null);
+                      clearCustomer();
+                    }
+                  }}
+                  className="w-4 h-4 accent-amber-600"
+                />
+                <span className="text-sm text-amber-700 font-medium">陌生來客</span>
+              </label>
+              {/* 回報者為內部人員切換 */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={reporterIsInternal}
+                  onChange={e => {
+                    setReporterIsInternal(e.target.checked);
+                    if (e.target.checked) setIsAnonymous(false);
+                    if (!e.target.checked) setReporterEmployee(null);
+                  }}
+                  className="w-4 h-4"
+                />
+                <span className="text-sm text-gray-600">回報者為內部人員</span>
+              </label>
+            </div>
           </div>
+
+          {/* 陌生來客提示 */}
+          {isAnonymous && (
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              <span className="text-amber-600 text-lg">👤</span>
+              <div className="flex-1">
+                <p className="text-sm font-medium text-amber-800">陌生來客 — 無需填寫客戶資料</p>
+                <p className="text-xs text-amber-600 mt-0.5">若客戶願意提供姓名或電話，可在下方補填</p>
+              </div>
+            </div>
+          )}
 
           {/* 內部人員搜尋 */}
           {reporterIsInternal ? (
@@ -403,10 +438,13 @@ const NewFeedbackPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4 pt-1">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">客戶姓名 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    客戶姓名 {isAnonymous ? <span className="text-gray-400 font-normal">（選填）</span> : <span className="text-red-500">*</span>}
+                  </label>
                   <input type="text" value={form.client_name}
                     onChange={e => setForm({ ...form, client_name: e.target.value })}
-                    className="w-full px-3 py-2 border rounded" placeholder="可手動輸入" />
+                    className="w-full px-3 py-2 border rounded"
+                    placeholder={isAnonymous ? '不知道可留空' : '可手動輸入'} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">電話號碼</label>
