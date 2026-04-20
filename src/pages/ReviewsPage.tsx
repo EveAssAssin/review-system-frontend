@@ -12,6 +12,17 @@ const ReviewsPage: React.FC = () => {
     source: '',
   });
 
+  const handleDelete = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!confirm('確定要刪除此評價？此操作無法復原。')) return;
+    try {
+      await reviewsApi.delete(id);
+      setReviews(prev => prev.filter(r => r.id !== id));
+    } catch (err) {
+      alert('刪除失敗，請再試一次');
+    }
+  };
+
   const fetchReviews = async () => {
     setLoading(true);
     try {
@@ -150,13 +161,19 @@ const ReviewsPage: React.FC = () => {
                   <td className="px-4 py-3 text-gray-600">
                     {new Date(review.created_at).toLocaleDateString('zh-TW')}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex items-center gap-3">
                     <Link
                       to={`/reviews/${review.id}`}
-                      className="text-[#8b6f4e] hover:underline"
+                      className="text-[#8b6f4e] hover:underline text-sm"
                     >
                       查看
                     </Link>
+                    <button
+                      onClick={(e) => handleDelete(review.id, e)}
+                      className="text-red-400 hover:text-red-600 text-sm"
+                    >
+                      刪除
+                    </button>
                   </td>
                 </tr>
               ))}
