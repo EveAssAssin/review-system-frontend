@@ -129,6 +129,15 @@ export const uploadsApi = {
   },
   getByReviewId: (reviewId: string) => api.get(`/uploads/review/${reviewId}`),
   delete: (id: string) => api.delete(`/uploads/${id}`),
+  uploadForFeedback: (feedbackId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post(`/uploads/feedback/${feedbackId}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getByFeedbackId: (feedbackId: string) => api.get(`/uploads/feedback/${feedbackId}`),
+  deleteFeedbackAttachment: (id: string) => api.delete(`/uploads/feedback-attachment/${id}`),
 };
 
 // Feedback Sources API（回報來源，回報與客服紀錄共用）

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { feedbackApi, feedbackCategoriesApi, feedbackSourcesApi, employeesApi } from '../services/api';
+import { feedbackApi, feedbackCategoriesApi, feedbackSourcesApi, employeesApi, uploadsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import FileUpload from '../components/FileUpload';
 
 interface Customer {
   id: number;
@@ -152,6 +153,9 @@ const NewFeedbackPage: React.FC = () => {
   // 即時應急回覆
   const [immediateResponse, setImmediateResponse] = useState('');
 
+  // 附件上傳
+  const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+
   const [form, setForm] = useState({
     feedback_type: 'suggestion',
     client_id: '',
@@ -272,6 +276,15 @@ const NewFeedbackPage: React.FC = () => {
       }
 
       const res = await feedbackApi.create(payload);
+
+      // 上傳附件
+      if (filesToUpload.length > 0) {
+        try {
+          await uploadsApi.uploadForFeedback(res.data.id, filesToUpload);
+        } catch {
+          // 附件上傳失敗不阻擋主流程
+        }
+      }
 
       // 建立關聯者
       for (const rel of relations) {
@@ -535,6 +548,20 @@ const NewFeedbackPage: React.FC = () => {
           <p className="text-xs" style={{ color: '#cdbea2' }}>
             💡 建議填寫：與客戶的溝通內容、當下承諾、臨時解決方案
           </p>
+        </div>
+
+        {/* ── 附件上傳 ─────────────────────────────────────── */}
+        <div className="bg-white rounded-lg shadow p-6 space-y-3">
+          <div>
+            <h3 className="font-semibold text-gray-700">附件 <span className="text-gray-400 text-sm font-normal">（圖片／影片，選填）</span></h3>
+            <p className="text-xs text-gray-400 mt-0.5">可上傳現場照片、截圖等佐證檔案，最多 5 個，每個最大 50MB</p>
+          </div>
+          <FileUpload
+            onFilesSelected={setFilesToUpload}
+            maxFiles={5}
+            maxSizeMB={50}
+            accept="image/*,video/*"
+          />
         </div>
 
         {/* ── 指派與通知 ─────────────────────────────────────── */}
