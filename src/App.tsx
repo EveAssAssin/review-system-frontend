@@ -181,7 +181,7 @@ function AppRoutes() {
           <Route
             path="/reviews/:id"
             element={
-              <ProtectedRoute requirePrAdmin>
+              <ProtectedRoute>
                 <ReviewDetailPage />
               </ProtectedRoute>
             }

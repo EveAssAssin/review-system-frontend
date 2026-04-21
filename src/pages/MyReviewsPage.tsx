@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { reviewsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS } from '../types';
 
 const MyReviewsPage: React.FC = () => {
   const { employee } = useAuth();
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,38 +88,40 @@ const MyReviewsPage: React.FC = () => {
         ) : (
           <div className="divide-y">
             {reviews.map((review) => (
-              <div key={review.id} className="p-4 hover:bg-[#f9f6f2]">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex gap-2">
-                    <span className={`px-2 py-1 rounded text-sm ${getTypeColor(review.review_type)}`}>
+              <div
+                key={review.id}
+                onClick={() => navigate(`/reviews/${review.id}`)}
+                className="p-4 hover:bg-[#f9f6f2] cursor-pointer active:bg-[#ede8e2] transition-colors"
+              >
+                <div className="flex justify-between items-start mb-2 flex-wrap gap-1">
+                  <div className="flex gap-2 flex-wrap">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getTypeColor(review.review_type)}`}>
                       {TYPE_LABELS[review.review_type]}
                     </span>
-                    <span className={`px-2 py-1 rounded text-sm ${getStatusColor(review.status)}`}>
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(review.status)}`}>
                       {STATUS_LABELS[review.status]}
                     </span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-xs text-gray-500 self-center">
                       {SOURCE_LABELS[review.source]}
                     </span>
                   </div>
-                  <span className="text-sm text-gray-500">{formatDate(review.created_at)}</span>
+                  <span className="text-xs text-gray-400">{formatDate(review.created_at)}</span>
                 </div>
                 {review.content && (
-                  <p className="text-gray-700 line-clamp-2">{review.content}</p>
+                  <p className="text-gray-700 text-sm line-clamp-2">{review.content}</p>
                 )}
                 {review.immediate_response && (
                   <div className="mt-2 p-2.5 rounded-lg text-sm" style={{ backgroundColor: '#faf7f4', borderLeft: '3px solid #cdbea2' }}>
                     <span className="text-xs font-semibold mr-1.5" style={{ color: '#8b6f4e' }}>即時應急回覆</span>
-                    <span className="text-gray-600">{review.immediate_response}</span>
+                    <span className="text-gray-600 text-xs">{review.immediate_response}</span>
                   </div>
                 )}
-                {review.status === 'pending' && review.requires_response && (
-                  <Link
-                    to={`/review/respond/${review.response_token}`}
-                    className="inline-block mt-2 text-[#8b6f4e] hover:underline text-sm"
-                  >
-                    前往回覆 →
-                  </Link>
-                )}
+                <div className="mt-2 flex items-center justify-between">
+                  {review.status === 'pending' && review.requires_response && (
+                    <span className="text-xs font-medium" style={{ color: '#5b7fad' }}>💬 需要回覆</span>
+                  )}
+                  <span className="text-xs text-gray-400 ml-auto">點擊查看詳情 →</span>
+                </div>
               </div>
             ))}
           </div>

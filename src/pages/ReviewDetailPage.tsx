@@ -67,14 +67,16 @@ interface Attachment {
 export default function ReviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, canManageReviews, employee } = useAuth();
   const [review, setReview] = useState<Review | null>(null);
   const [responses, setResponses] = useState<Response[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [showResponseForm, setShowResponseForm] = useState(false);
   const [showCloseForm, setShowCloseForm] = useState(false);
+  const [showEmployeeResponseForm, setShowEmployeeResponseForm] = useState(false);
   const [responseContent, setResponseContent] = useState('');
+  const [employeeResponseContent, setEmployeeResponseContent] = useState('');
   const [closeNote, setCloseNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
@@ -143,6 +145,26 @@ export default function ReviewDetailPage() {
     }
   };
 
+  const handleEmployeeResponse = async () => {
+    if (!employeeResponseContent.trim()) { alert('請輸入回覆內容'); return; }
+    if (!review?.response_token) { alert('此評價無法回覆'); return; }
+    setSubmitting(true);
+    try {
+      await reviewsApi.submitResponse(review.response_token, {
+        content: employeeResponseContent,
+        employee_name: user?.name || employee?.name || '員工',
+      });
+      setShowEmployeeResponseForm(false);
+      setEmployeeResponseContent('');
+      loadReview();
+    } catch (err) {
+      console.error('回覆失敗:', err);
+      alert('回覆失敗');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleDeleteAttachment = async (attachmentId: string) => {
     if (!confirm('確定要刪除此附件嗎？')) return;
     try {
@@ -189,12 +211,20 @@ export default function ReviewDetailPage() {
   }
 
   const reviewAttachments = attachments.filter(a => a.upload_context === 'review');
+  // 是否為本人評價（employee_id 或 actual_employee_id 匹配）
+  const isMyReview = employee && (review.employee_id === employee.id || review.actual_employee_id === employee.id);
+  const canRespond = isMyReview && review.status !== 'closed' && review.requires_response && review.response_token;
 
   return (
     <div className="max-w-3xl">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">評價詳情</h1>
-        <button onClick={() => navigate('/reviews')} className="text-gray-500 hover:text-gray-700">返回列表</button>
+        <button
+          onClick={() => navigate(canManageReviews ? '/reviews' : '/my-reviews')}
+          className="text-gray-500 hover:text-gray-700 text-sm"
+        >
+          ← 返回列表
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow p-6 space-y-6">
@@ -338,9 +368,44 @@ export default function ReviewDetailPage() {
 
         {/* 操作按鈕 */}
         {review.status !== 'closed' && (
-          <div className="border-t pt-4 flex gap-3">
-            <button onClick={() => setShowResponseForm(true)} className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:bg-blue-700">公關部回覆</button>
-            <button onClick={() => setShowCloseForm(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">結案</button>
+          <div className="border-t pt-4 flex flex-wrap gap-3">
+            {/* 公關部管理員才看得到 */}
+            {canManageReviews && (
+              <>
+                <button onClick={() => setShowResponseForm(true)} className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:opacity-80 text-sm">🏢 公關部回覆</button>
+                <button onClick={() => setShowCloseForm(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:opacity-80 text-sm">✓ 結案</button>
+              </>
+            )}
+            {/* 本人員工回覆 */}
+            {canRespond && !showEmployeeResponseForm && (
+              <button onClick={() => setShowEmployeeResponseForm(true)} className="px-4 py-2 text-white rounded hover:opacity-80 text-sm" style={{ backgroundColor: '#5b7fad' }}>👤 我要回覆</button>
+            )}
+          </div>
+        )}
+
+        {/* 員工回覆表單（inline，不用 Modal） */}
+        {showEmployeeResponseForm && (
+          <div className="border-t pt-4 space-y-3">
+            <div className="text-sm font-semibold" style={{ color: '#5b7fad' }}>👤 員工回覆</div>
+            <textarea
+              value={employeeResponseContent}
+              onChange={e => setEmployeeResponseContent(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border rounded text-sm"
+              placeholder="描述你的處理過程、與客戶的溝通結果、或你的說明..."
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button onClick={handleEmployeeResponse} disabled={submitting}
+                className="px-4 py-2 text-white rounded text-sm disabled:opacity-50"
+                style={{ backgroundColor: '#5b7fad' }}>
+                {submitting ? '送出中...' : '送出回覆'}
+              </button>
+              <button onClick={() => { setShowEmployeeResponseForm(false); setEmployeeResponseContent(''); }}
+                className="px-4 py-2 border rounded text-sm text-gray-600">
+                取消
+              </button>
+            </div>
           </div>
         )}
       </div>
