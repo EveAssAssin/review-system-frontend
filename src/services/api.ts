@@ -75,8 +75,10 @@ export const reviewsApi = {
   getById: (id: string) => api.get(`/reviews/${id}`),
   getByToken: (token: string) => api.get(`/reviews/token/${token}`),
   getResponses: (id: string) => api.get(`/reviews/${id}/responses`),
-  respond: (token: string, content: string) => 
+  respond: (token: string, content: string) =>
     api.post(`/reviews/token/${token}/respond`, { content }),
+  submitResponse: (token: string, data: { content: string; employee_name?: string }) =>
+    api.post(`/reviews/token/${token}/respond`, data),
   addReviewerResponse: (id: string, content: string, reviewerName: string) =>
     api.post(`/reviews/${id}/reviewer-response`, { content, reviewer_name: reviewerName }),
   close: (id: string, closeNote?: string) => 
