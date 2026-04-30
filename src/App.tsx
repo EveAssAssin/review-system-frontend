@@ -25,6 +25,9 @@ import MyAssignedFeedbackDetailPage from './pages/MyAssignedFeedbackDetailPage';
 import FeedbackTagsPage from './pages/FeedbackTagsPage';
 import FeedbackCategoriesPage from './pages/FeedbackCategoriesPage';
 import FeedbackSourcesPage from './pages/FeedbackSourcesPage';
+import DemeritCategoriesPage from './pages/DemeritCategoriesPage';
+import DemeritRecordPage from './pages/DemeritRecordPage';
+import DemeritSummaryPage from './pages/DemeritSummaryPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -160,6 +163,16 @@ function AppRoutes() {
           <Route path="/my-reviews" element={<MyReviewsPage />} />
           <Route path="/my-feedbacks" element={<MyAssignedFeedbacksPage />} />
           <Route path="/my-feedbacks/:id" element={<MyAssignedFeedbackDetailPage />} />
+          <Route path="/demerit/records" element={<DemeritRecordPage />} />
+          <Route path="/demerit/summary" element={<DemeritSummaryPage />} />
+          <Route
+            path="/demerit/categories"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <DemeritCategoriesPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* 公關部頁面（pr_admin 或 super_admin） */}
           <Route

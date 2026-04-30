@@ -41,6 +41,14 @@ export default function Layout() {
       ],
     },
     {
+      label: '扣分系統',
+      items: [
+        { path: '/demerit/records', label: '扣分登記', show: true, icon: '✏️' },
+        { path: '/demerit/summary', label: '扣分總表', show: true, icon: '📉' },
+        { path: '/demerit/categories', label: '品項管理', show: canManageReviews, icon: '⚙️' },
+      ],
+    },
+    {
       label: '系統設定',
       items: [
         { path: '/feedback-categories', label: '回報類別', show: canManageReviews, icon: '📂' },
