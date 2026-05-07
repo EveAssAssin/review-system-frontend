@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { reviewsApi, uploadsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { formatReviewNo } from '../types';
 import FileUpload from '../components/FileUpload';
 
 interface Review {
   id: string;
+  review_number?: number;
   employee_id: string;
   is_proxy: boolean;
   actual_employee_id?: string;
@@ -218,7 +220,12 @@ export default function ReviewDetailPage() {
   return (
     <div className="max-w-3xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">評價詳情</h1>
+        <h1 className="text-2xl font-bold text-gray-900 flex items-baseline gap-2">
+          評價詳情
+          {review.review_number != null && (
+            <span className="font-mono text-base text-gray-500">{formatReviewNo(review.review_number)}</span>
+          )}
+        </h1>
         <button
           onClick={() => navigate(canManageReviews ? '/reviews' : '/my-reviews')}
           className="text-gray-500 hover:text-gray-700 text-sm"
@@ -295,19 +302,51 @@ export default function ReviewDetailPage() {
         {review.content && (
           <div className="border-t pt-4">
             <div className="text-gray-500 text-sm mb-1">評價內容</div>
-            <div className="bg-gray-50 p-3 rounded">{review.content}</div>
+            <div className="bg-gray-50 p-3 rounded whitespace-pre-wrap">{review.content}</div>
           </div>
         )}
 
-        {/* 即時應急回覆 */}
+        {/* 與人員對話（對話式 / 建立評價時自動發起） */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold" style={{ color: '#5b7fad' }}>💬 與人員對話</div>
+            <span className="text-xs text-gray-400">建立評價時自動發起</span>
+          </div>
+          <div className="rounded-lg p-3 space-y-3" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
+            {responses.length === 0 ? (
+              <div className="text-center text-gray-400 text-sm py-4">尚無對話紀錄，{canManageReviews ? '可使用下方「公關部回覆」開始溝通' : (canRespond ? '請點擊下方「我要回覆」開始溝通' : '等待公關部開始溝通')}</div>
+            ) : (
+              responses.map((resp) => {
+                const isEmployee = resp.responder_type === 'employee';
+                return (
+                  <div key={resp.id} className={`flex ${isEmployee ? 'justify-start' : 'justify-end'}`}>
+                    <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${isEmployee ? 'bg-white text-gray-800' : 'text-white'}`}
+                      style={isEmployee ? { border: '1px solid #ede8e2' } : { backgroundColor: '#8b6f4e' }}>
+                      <div className={`flex items-center gap-2 mb-1 text-[11px] ${isEmployee ? 'text-gray-500' : 'text-white/80'}`}>
+                        <span className="font-medium">
+                          {isEmployee ? `👤 ${resp.responder_name || '員工'}` : `🏢 ${resp.responder_name || '公關部'}`}
+                        </span>
+                        <span>·</span>
+                        <span>{new Date(resp.created_at).toLocaleString()}</span>
+                      </div>
+                      <div className="whitespace-pre-wrap leading-relaxed">{resp.content}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* 即時應急回覆（客服當下留言給客人，讓客人知道公司已注意到） */}
         {review.immediate_response && (
           <div className="border-t pt-4">
             <div className="flex items-center gap-2 mb-2">
               <div className="text-sm font-semibold" style={{ color: '#8b6f4e' }}>即時應急回覆</div>
               <span className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>建立時記錄</span>
+                style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>客服→客人</span>
             </div>
-            <div className="p-3 rounded-lg text-sm text-gray-700 leading-relaxed"
+            <div className="p-3 rounded-lg text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"
               style={{ backgroundColor: '#faf7f4', borderLeft: '3px solid #cdbea2' }}>
               {review.immediate_response}
             </div>
@@ -329,26 +368,6 @@ export default function ReviewDetailPage() {
                     )}
                   </a>
                   <button onClick={() => handleDeleteAttachment(att.id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100 transition">✕</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 回覆記錄（多筆） */}
-        {responses.length > 0 && (
-          <div className="border-t pt-4">
-            <div className="text-gray-500 text-sm mb-3">回覆記錄</div>
-            <div className="space-y-3">
-              {responses.map((resp) => (
-                <div key={resp.id} className={resp.responder_type === 'employee' ? 'bg-[#f5f0eb] p-3 rounded' : 'bg-green-50 p-3 rounded'}>
-                  <div className="flex justify-between items-center mb-1">
-                    <span className={resp.responder_type === 'employee' ? 'font-medium text-blue-700' : 'font-medium text-green-700'}>
-                      {resp.responder_type === 'employee' ? '👤 員工回覆' : '🏢 公關部回覆'} - {resp.responder_name}
-                    </span>
-                    <span className="text-xs text-gray-400">{new Date(resp.created_at).toLocaleString()}</span>
-                  </div>
-                  <div className="text-gray-700">{resp.content}</div>
                 </div>
               ))}
             </div>

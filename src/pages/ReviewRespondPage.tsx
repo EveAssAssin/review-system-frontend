@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { reviewsApi, uploadsApi } from '../services/api';
+import { formatReviewNo } from '../types';
 import FileUpload from '../components/FileUpload';
 
 interface Review {
   id: string;
+  review_number?: number;
   employee_name?: string;
   content?: string;
   review_type: string;
@@ -132,7 +134,12 @@ export default function ReviewRespondPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-center mb-6">
               <div className="text-gray-500 text-xl mb-2">📋</div>
-              <h2 className="text-xl font-bold mb-2">此評價已結案</h2>
+              <h2 className="text-xl font-bold mb-2 flex items-baseline justify-center gap-2">
+                此評價已結案
+                {review?.review_number != null && (
+                  <span className="font-mono text-base text-gray-500">{formatReviewNo(review.review_number)}</span>
+                )}
+              </h2>
               <p className="text-gray-600">此評價已經處理完成，無法再進行回覆。</p>
             </div>
             
@@ -167,7 +174,12 @@ export default function ReviewRespondPage() {
     <div className="min-h-screen bg-gray-100 py-8">
       <div className="max-w-2xl mx-auto px-4">
         <div className="bg-white rounded-lg shadow p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">評價回覆</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-6 flex items-baseline gap-2">
+            評價回覆
+            {review?.review_number != null && (
+              <span className="font-mono text-base text-gray-500">{formatReviewNo(review.review_number)}</span>
+            )}
+          </h1>
 
           {/* 成功提示 */}
           {submitted && (

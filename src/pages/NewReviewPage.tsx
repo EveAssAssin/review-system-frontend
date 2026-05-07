@@ -334,17 +334,17 @@ export default function NewReviewPage() {
           />
         </div>
 
-        {/* 即時應急回覆 */}
+        {/* 即時應急回覆 — 客服當下留言給客人 */}
         <div className="bg-white rounded-lg shadow p-5 space-y-3">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="font-semibold text-gray-700">即時應急回覆</h3>
               <p className="text-xs mt-0.5" style={{ color: '#8b7355' }}>
-                記錄建立當下對客戶或員工的應急處理與回覆內容，此欄位可供被指派人員查閱
+                客服人員發現問題時，當下「留言給客人」的內容，讓客人知道公司已注意到這件事；此欄位反映客服在發評價當下的應急處理力
               </p>
             </div>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
-              style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>重要</span>
+              style={{ backgroundColor: '#f5f0eb', color: '#8b6f4e' }}>客服→客人</span>
           </div>
           <textarea
             value={form.immediate_response}
@@ -352,7 +352,7 @@ export default function NewReviewPage() {
             rows={4}
             className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none resize-none"
             style={{ borderColor: '#cdbea2' }}
-            placeholder="例：已電話聯繫員工說明情況，向其致歉並告知後續處理流程..."
+            placeholder="例：王先生您好，我們已收到您的反映，公司已立即介入處理，會盡快與您聯繫並給您一個交代，感謝您讓我們有機會改善..."
           />
         </div>
 

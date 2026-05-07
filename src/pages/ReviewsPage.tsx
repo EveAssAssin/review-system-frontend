@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reviewsApi } from '../services/api';
-import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS } from '../types';
+import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS, formatReviewNo } from '../types';
 
 const ReviewsPage: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -128,6 +128,7 @@ const ReviewsPage: React.FC = () => {
           <table className="w-full">
             <thead className="bg-[#f9f6f2]">
               <tr>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">編號</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">員工</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">類型</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">來源</th>
@@ -139,6 +140,9 @@ const ReviewsPage: React.FC = () => {
             <tbody className="divide-y">
               {reviews.map((review) => (
                 <tr key={review.id} className="hover:bg-[#f9f6f2]">
+                  <td className="px-4 py-3 font-mono text-sm text-gray-700">
+                    {formatReviewNo(review.review_number) || '-'}
+                  </td>
                   <td className="px-4 py-3 font-medium">
                     {review.employees?.name || review.employee_name || '-'}
                     {review.employees?.store_name && (

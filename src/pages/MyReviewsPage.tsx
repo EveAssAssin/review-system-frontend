@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { reviewsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS } from '../types';
+import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS, formatReviewNo } from '../types';
 
 const MyReviewsPage: React.FC = () => {
   const { employee } = useAuth();
@@ -94,7 +94,12 @@ const MyReviewsPage: React.FC = () => {
                 className="p-4 hover:bg-[#f9f6f2] cursor-pointer active:bg-[#ede8e2] transition-colors"
               >
                 <div className="flex justify-between items-start mb-2 flex-wrap gap-1">
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
+                    {review.review_number != null && (
+                      <span className="font-mono text-sm text-gray-700 mr-1">
+                        {formatReviewNo(review.review_number)}
+                      </span>
+                    )}
                     <span className={`px-2 py-1 rounded text-xs font-medium ${getTypeColor(review.review_type)}`}>
                       {TYPE_LABELS[review.review_type]}
                     </span>

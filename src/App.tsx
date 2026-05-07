@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { useEffect, useState } from 'react';
 import Layout from './components/Layout';
@@ -36,6 +36,7 @@ const RETRY_DELAY_MS = 5000; // 每次重試間隔 5 秒
 const AutoLogin = ({ children }: { children: React.ReactNode }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, user, isLoading } = useAuth();
   const [autoLoginState, setAutoLoginState] = useState<'idle' | 'logging_in' | 'done' | 'failed'>('idle');
   const [retryCount, setRetryCount] = useState(0);
@@ -66,7 +67,14 @@ const AutoLogin = ({ children }: { children: React.ReactNode }) => {
       login(appNumber.trim())
         .then(() => {
           setAutoLoginState('done');
-          navigate('/', { replace: true });
+          // 保留原本路徑（deep link），只把登入用的 query params 拿掉
+          // 這樣 LINE 通知 ?app_number=xxx 點進來指向 /reviews/<id> 才不會被吃掉
+          const cleanedParams = new URLSearchParams(location.search);
+          cleanedParams.delete('app_number');
+          cleanedParams.delete('uid');
+          const search = cleanedParams.toString();
+          const target = location.pathname + (search ? `?${search}` : '');
+          navigate(target || '/', { replace: true });
         })
         .catch((err) => {
           console.error(`自動登入失敗 (第 ${attempt} 次):`, err);

@@ -19,8 +19,13 @@ export interface Employee {
   updated_at: string;
 }
 
+/** 將數字型的評價編號格式化為顯示字串 (#0001) */
+export const formatReviewNo = (n?: number | null): string =>
+  n != null ? `#${String(n).padStart(4, '0')}` : '';
+
 export interface Review {
   id: string;
+  review_number?: number; // 自動遞增的顯示編號（#0001、#0002 ...）
   employee_id: string;
   employee_name?: string; // 部分 API 直接回傳（如 findByToken）
   employees?: {           // search / findById 回傳的巢狀物件
