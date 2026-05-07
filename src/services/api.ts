@@ -81,10 +81,26 @@ export const reviewsApi = {
     api.post(`/reviews/token/${token}/respond`, data),
   addReviewerResponse: (id: string, content: string, reviewerName: string) =>
     api.post(`/reviews/${id}/reviewer-response`, { content, reviewer_name: reviewerName }),
-  close: (id: string, closeNote?: string) => 
-    api.post(`/reviews/${id}/close`, { close_note: closeNote }),
+  close: (id: string, closeNote?: string, closeReason?: 'normal' | 'wash_failed' | 'wash_completed') =>
+    api.post(`/reviews/${id}/close`, { close_note: closeNote, close_reason: closeReason }),
   delete: (id: string) => api.delete(`/reviews/${id}`),
 };
+
+// Wash (洗評論) API
+export const washApi = {
+  get: (reviewId: string) => api.get(`/reviews/${reviewId}/wash-task`),
+  create: (reviewId: string, data: { required_count: number; deadline: string }, createdBy?: string) =>
+    api.post(`/reviews/${reviewId}/wash-task`, data, { params: createdBy ? { createdBy } : undefined }),
+  updateDeadline: (reviewId: string, deadline: string) =>
+    api.patch(`/reviews/${reviewId}/wash-task`, { deadline }),
+  uploadImage: (reviewId: string, slotIndex: number, imageUrl: string, uploadedBy?: string) =>
+    api.post(`/reviews/${reviewId}/wash-task/uploads/${slotIndex}`, { image_url: imageUrl }, { params: uploadedBy ? { uploadedBy } : undefined }),
+  approve: (reviewId: string, slotIndex: number, reviewedBy?: string) =>
+    api.post(`/reviews/${reviewId}/wash-task/uploads/${slotIndex}/approve`, {}, { params: reviewedBy ? { reviewedBy } : undefined }),
+  reject: (reviewId: string, slotIndex: number, rejectReason?: string, reviewedBy?: string) =>
+    api.post(`/reviews/${reviewId}/wash-task/uploads/${slotIndex}/reject`, { reject_reason: rejectReason }, { params: reviewedBy ? { reviewedBy } : undefined }),
+};
+
 
 // Alerts API
 export const alertsApi = {

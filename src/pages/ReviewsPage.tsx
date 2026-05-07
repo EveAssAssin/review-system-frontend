@@ -3,8 +3,27 @@ import { Link } from 'react-router-dom';
 import { reviewsApi } from '../services/api';
 import { Review, SOURCE_LABELS, TYPE_LABELS, STATUS_LABELS, formatReviewNo } from '../types';
 
+// 倒數秒數轉成「Xd Yh Zm」字串
+const formatCountdown = (deadline: string): string => {
+  const ms = new Date(deadline).getTime() - Date.now();
+  if (ms <= 0) return '已過期';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (d > 0) return `${d} 天 ${h} 時`;
+  if (h > 0) return `${h} 時 ${m} 分`;
+  return `${m} 分`;
+};
+
 const ReviewsPage: React.FC = () => {
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [, setTick] = useState(0);
+  // 每分鐘重繪以更新倒數
+  React.useEffect(() => {
+    const t = setInterval(() => setTick(x => x + 1), 60_000);
+    return () => clearInterval(t);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     review_type: '',
@@ -133,6 +152,7 @@ const ReviewsPage: React.FC = () => {
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">類型</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">來源</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">狀態</th>
+                <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">洗評論</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">建立時間</th>
                 <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">操作</th>
               </tr>
@@ -161,6 +181,34 @@ const ReviewsPage: React.FC = () => {
                     <span className={`px-2 py-1 text-xs rounded ${getStatusColor(review.status)}`}>
                       {STATUS_LABELS[review.status] || review.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs">
+                    {review.wash_task ? (
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-1.5">
+                          {review.wash_task.has_pending_review && (
+                            <span className="inline-block w-2 h-2 bg-red-500 rounded-full animate-pulse" title="有待審核照片"></span>
+                          )}
+                          {review.wash_task.status === 'completed' && (
+                            <span className="text-green-600 font-medium">✓ 完成</span>
+                          )}
+                          {review.wash_task.status === 'failed' && (
+                            <span className="text-red-600 font-medium">✗ 失敗</span>
+                          )}
+                          {review.wash_task.status === 'in_progress' && !review.wash_task.is_expired && (
+                            <span className="text-[#8b6f4e] font-medium">{formatCountdown(review.wash_task.deadline)}</span>
+                          )}
+                          {review.wash_task.status === 'in_progress' && review.wash_task.is_expired && (
+                            <span className="text-orange-600 font-medium">⚠️ 已過期</span>
+                          )}
+                        </div>
+                        <div className="text-gray-500">
+                          {review.wash_task.approved_count}/{review.wash_task.required_count}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {new Date(review.created_at).toLocaleDateString('zh-TW')}

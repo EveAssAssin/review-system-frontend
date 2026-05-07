@@ -61,6 +61,47 @@ export interface Review {
   updated_at: string;
   responses?: ReviewResponse[];
   attachments?: ReviewAttachment[];
+  // 洗評論摘要（後端 search/findById 自動 join）
+  wash_task?: WashTaskSummary | null;
+  close_reason?: 'normal' | 'wash_failed' | 'wash_completed' | null;
+}
+
+export interface WashTaskSummary {
+  id: string;
+  required_count: number;
+  deadline: string;
+  status: 'in_progress' | 'completed' | 'failed';
+  approved_count: number;
+  pending_review_count: number;
+  has_pending_review: boolean;
+  is_expired: boolean;
+}
+
+export interface WashTask {
+  id: string;
+  review_id: string;
+  required_count: number;
+  deadline: string;
+  status: 'in_progress' | 'completed' | 'failed';
+  completed_at?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WashUpload {
+  id: string;
+  task_id: string;
+  slot_index: number;
+  image_url?: string | null;
+  status: 'pending' | 'uploaded' | 'approved' | 'rejected';
+  uploaded_by?: string | null;
+  uploaded_at?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  reject_reason?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ReviewResponse {

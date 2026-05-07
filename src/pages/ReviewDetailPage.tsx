@@ -4,6 +4,7 @@ import { reviewsApi, uploadsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { formatReviewNo } from '../types';
 import FileUpload from '../components/FileUpload';
+import WashSection from '../components/WashSection';
 
 interface Review {
   id: string;
@@ -82,6 +83,8 @@ export default function ReviewDetailPage() {
   const [closeNote, setCloseNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [closeReason, setCloseReason] = useState<'normal' | 'wash_failed' | 'wash_completed'>('normal');
+  const [washFailedExposed, setWashFailedExposed] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -136,8 +139,9 @@ export default function ReviewDetailPage() {
   const handleClose = async () => {
     setSubmitting(true);
     try {
-      await reviewsApi.close(id!, closeNote);
+      await reviewsApi.close(id!, closeNote, closeReason);
       setShowCloseForm(false);
+      setCloseReason('normal');
       loadReview();
     } catch (err) {
       console.error('結案失敗:', err);
@@ -338,6 +342,17 @@ export default function ReviewDetailPage() {
           </div>
         </div>
 
+        {/* 洗評論（5-1～5-8） */}
+        <WashSection
+          reviewId={review.id}
+          reviewClosed={review.status === 'closed'}
+          isPrAdmin={!!canManageReviews}
+          isMyReview={!!isMyReview}
+          currentUserName={user?.name || employee?.name}
+          onChange={loadReview}
+          onWashFailedExposed={setWashFailedExposed}
+        />
+
         {/* 即時應急回覆（客服當下留言給客人，讓客人知道公司已注意到） */}
         {review.immediate_response && (
           <div className="border-t pt-4">
@@ -452,10 +467,36 @@ export default function ReviewDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4">結案</h2>
+
+            {/* 結案類型 */}
+            <div className="mb-4 space-y-2">
+              <div className="text-sm font-medium text-gray-700">結案類型</div>
+              <label className="flex items-start gap-2 p-2 border rounded cursor-pointer hover:bg-gray-50" style={{ borderColor: closeReason === 'normal' ? '#8b6f4e' : '#e5e7eb' }}>
+                <input type="radio" name="closeReason" value="normal" checked={closeReason === 'normal'} onChange={() => setCloseReason('normal')} className="mt-0.5" />
+                <div>
+                  <div className="text-sm font-medium">一般結案</div>
+                  <div className="text-xs text-gray-500">已正常處理結束</div>
+                </div>
+              </label>
+              {washFailedExposed && (
+                <label className="flex items-start gap-2 p-2 border rounded cursor-pointer hover:bg-red-50" style={{ borderColor: closeReason === 'wash_failed' ? '#dc2626' : '#fecaca' }}>
+                  <input type="radio" name="closeReason" value="wash_failed" checked={closeReason === 'wash_failed'} onChange={() => setCloseReason('wash_failed')} className="mt-0.5" />
+                  <div>
+                    <div className="text-sm font-medium text-red-700">人員未洗評價結案</div>
+                    <div className="text-xs text-red-500">標記為負面結案，AI 評價會反映較差，對外 API 會把此狀態傳出</div>
+                  </div>
+                </label>
+              )}
+            </div>
+
             <textarea value={closeNote} onChange={(e) => setCloseNote(e.target.value)} rows={3} className="w-full px-3 py-2 border rounded mb-4" placeholder="結案備註（選填）..." />
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCloseForm(false)} className="px-4 py-2 border rounded">取消</button>
-              <button onClick={handleClose} disabled={submitting} className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50">{submitting ? '處理中...' : '確認結案'}</button>
+              <button onClick={() => { setShowCloseForm(false); setCloseReason('normal'); }} className="px-4 py-2 border rounded">取消</button>
+              <button onClick={handleClose} disabled={submitting}
+                className="px-4 py-2 text-white rounded disabled:opacity-50"
+                style={{ backgroundColor: closeReason === 'wash_failed' ? '#dc2626' : '#16a34a' }}>
+                {submitting ? '處理中...' : '確認結案'}
+              </button>
             </div>
           </div>
         </div>
