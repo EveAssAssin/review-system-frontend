@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { reviewsApi, employeesApi, categoriesApi, uploadsApi } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import FileUpload from '../components/FileUpload';
 
 interface Employee {
@@ -17,20 +18,38 @@ interface Category {
   description?: string;
 }
 
+interface Response {
+  id: string;
+  review_id: string;
+  responder_type: 'employee' | 'reviewer';
+  responder_name: string;
+  content: string;
+  created_at: string;
+}
+
 export default function NewReviewPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
-  
+
   // 代理處理相關
   const [isProxy, setIsProxy] = useState(false);
   const [actualEmployeeSearch, setActualEmployeeSearch] = useState('');
   const [actualEmployees, setActualEmployees] = useState<Employee[]>([]);
   const [selectedActualEmployee, setSelectedActualEmployee] = useState<Employee | null>(null);
+
+  // 建立後的對話區塊
+  const [createdReviewId, setCreatedReviewId] = useState<string | null>(null);
+  const [responses, setResponses] = useState<Response[]>([]);
+  const [showResponseForm, setShowResponseForm] = useState(false);
+  const [responseContent, setResponseContent] = useState('');
+  const [responseFiles, setResponseFiles] = useState<File[]>([]);
+  const [submittingResponse, setSubmittingResponse] = useState(false);
 
   const [form, setForm] = useState({
     category_id: '',
@@ -81,9 +100,45 @@ export default function NewReviewPage() {
     }
   };
 
+  // 載入對話紀錄（建立評價後使用）
+  const loadResponses = async (reviewId: string) => {
+    try {
+      const res = await reviewsApi.getResponses(reviewId);
+      setResponses(res.data);
+    } catch (err) {
+      console.error('載入對話失敗:', err);
+    }
+  };
+
+  // 公關部回覆送出
+  const handleReviewerResponse = async () => {
+    if (!responseContent.trim()) {
+      alert('請輸入回覆內容');
+      return;
+    }
+    if (!createdReviewId) return;
+
+    setSubmittingResponse(true);
+    try {
+      await reviewsApi.addReviewerResponse(createdReviewId, responseContent, user?.name || '公關部');
+      if (responseFiles.length > 0) {
+        await uploadsApi.uploadForResponse(createdReviewId, responseFiles, 'reviewer');
+      }
+      setShowResponseForm(false);
+      setResponseContent('');
+      setResponseFiles([]);
+      loadResponses(createdReviewId);
+    } catch (err) {
+      console.error('回覆失敗:', err);
+      alert('回覆失敗');
+    } finally {
+      setSubmittingResponse(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!selectedEmployee) {
       alert('請選擇處理人員');
       return;
@@ -121,8 +176,13 @@ export default function NewReviewPage() {
         await uploadsApi.uploadForReview(reviewId, filesToUpload);
       }
 
-      alert('評價建立成功');
-      navigate('/reviews');
+      // 不再導向；切換成「已建立」狀態，下方顯示對話區塊
+      setCreatedReviewId(reviewId);
+      loadResponses(reviewId);
+      // 視覺提示捲到底
+      setTimeout(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }, 100);
     } catch (err: any) {
       console.error('建立評價失敗:', err);
       alert(err.response?.data?.message || '建立失敗');
@@ -397,23 +457,130 @@ export default function NewReviewPage() {
         )}
 
         {/* 提交按鈕 */}
-        <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={loading || !selectedEmployee}
-            className="flex-1 py-2 bg-[#8b6f4e] text-white rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? '建立中...' : '建立評價'}
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/reviews')}
-            className="px-6 py-2 border rounded hover:bg-[#f9f6f2]"
-          >
-            取消
-          </button>
-        </div>
+        {!createdReviewId ? (
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={loading || !selectedEmployee}
+              className="flex-1 py-2 bg-[#8b6f4e] text-white rounded hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? '建立中...' : '建立評價'}
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/reviews')}
+              className="px-6 py-2 border rounded hover:bg-[#f9f6f2]"
+            >
+              取消
+            </button>
+          </div>
+        ) : (
+          <div className="bg-green-50 border border-green-200 rounded p-3 text-sm text-green-700">
+            ✓ 評價已建立，可在下方與被評價者對話
+          </div>
+        )}
+
+        {/* 與被評價者對話（建立評價後出現，沿用 ReviewDetailPage 的留言架構） */}
+        {createdReviewId && (
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-semibold" style={{ color: '#5b7fad' }}>💬 與被評價者對話</div>
+              <span className="text-xs text-gray-400">建立評價時自動發起</span>
+            </div>
+            <div className="rounded-lg p-3 space-y-3" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
+              {responses.length === 0 ? (
+                <div className="text-center text-gray-400 text-sm py-4">尚無對話紀錄，可使用下方「公關部回覆」開始溝通</div>
+              ) : (
+                responses.map((resp) => {
+                  const isEmployee = resp.responder_type === 'employee';
+                  return (
+                    <div key={resp.id} className={`flex ${isEmployee ? 'justify-start' : 'justify-end'}`}>
+                      <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${isEmployee ? 'bg-white text-gray-800' : 'text-white'}`}
+                        style={isEmployee ? { border: '1px solid #ede8e2' } : { backgroundColor: '#8b6f4e' }}>
+                        <div className={`flex items-center gap-2 mb-1 text-[11px] ${isEmployee ? 'text-gray-500' : 'text-white/80'}`}>
+                          <span className="font-medium">
+                            {isEmployee ? `👤 ${resp.responder_name || '員工'}` : `🏢 ${resp.responder_name || '公關部'}`}
+                          </span>
+                          <span>·</span>
+                          <span>{new Date(resp.created_at).toLocaleString()}</span>
+                        </div>
+                        <div className="whitespace-pre-wrap leading-relaxed">{resp.content}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => setShowResponseForm(true)}
+                className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:opacity-80 text-sm"
+              >
+                🏢 公關部回覆
+              </button>
+              <button
+                type="button"
+                onClick={() => loadResponses(createdReviewId)}
+                className="px-4 py-2 border rounded hover:bg-gray-50 text-sm text-gray-600"
+              >
+                🔄 重新載入
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/reviews/${createdReviewId}`)}
+                className="px-4 py-2 border rounded hover:bg-gray-50 text-sm text-gray-600"
+              >
+                查看詳情
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/reviews')}
+                className="px-4 py-2 border rounded hover:bg-gray-50 text-sm text-gray-600"
+              >
+                完成並返回列表
+              </button>
+            </div>
+          </div>
+        )}
       </form>
+
+      {/* 公關部回覆 Modal */}
+      {showResponseForm && createdReviewId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+            <h2 className="text-xl font-bold mb-4">公關部回覆</h2>
+            <textarea
+              value={responseContent}
+              onChange={(e) => setResponseContent(e.target.value)}
+              rows={4}
+              className="w-full px-3 py-2 border rounded mb-4"
+              placeholder="請輸入回覆內容..."
+            />
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">附件</label>
+              <FileUpload onFilesSelected={setResponseFiles} maxFiles={5} maxSizeMB={50} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => { setShowResponseForm(false); setResponseFiles([]); }}
+                className="px-4 py-2 border rounded"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={handleReviewerResponse}
+                disabled={submittingResponse}
+                className="px-4 py-2 bg-[#8b6f4e] text-white rounded disabled:opacity-50"
+              >
+                {submittingResponse ? '送出中...' : '送出'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
