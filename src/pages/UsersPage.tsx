@@ -217,7 +217,7 @@ export default function UsersPage() {
         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
         <input
           type="text"
-          placeholder="搜尋姓名或員工編號..."
+          placeholder="搜尋姓名 / ERP / APP 編號..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className="w-full pl-9 pr-4 py-2.5 border rounded-lg text-sm focus:outline-none"

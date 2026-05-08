@@ -85,7 +85,7 @@ const DemeritSummaryPage: React.FC = () => {
             type="text"
             value={keyword}
             onChange={e => setKeyword(e.target.value)}
-            placeholder="搜尋姓名或編號..."
+            placeholder="搜尋姓名 / ERP / APP 編號..."
             className="px-3 py-2 border rounded-lg text-sm w-52"
           />
         )}

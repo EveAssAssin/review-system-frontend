@@ -53,7 +53,7 @@ const EmployeesPage: React.FC = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="搜尋員工姓名、編號、門市或部門..."
+          placeholder="搜尋姓名 / ERP / APP 編號 / 門市 / 部門..."
           className="w-full px-3 py-2 border rounded"
         />
         <div className="mt-2 text-sm text-gray-500">

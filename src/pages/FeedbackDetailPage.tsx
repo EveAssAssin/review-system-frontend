@@ -1007,7 +1007,7 @@ const FeedbackDetailPage: React.FC = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="輸入姓名搜尋員工..."
+                  placeholder="搜尋姓名 / ERP / APP 編號..."
                   value={relationSearch}
                   onChange={e => handleRelationSearch(e.target.value)}
                   className="w-full px-3 py-2 border rounded text-sm"

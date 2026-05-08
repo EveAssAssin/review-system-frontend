@@ -117,7 +117,7 @@ const DemeritRecordPage: React.FC = () => {
           <EmployeeQuickSearch
             value={selectedEmployee}
             onChange={setSelectedEmployee}
-            placeholder="輸入姓名或編號搜尋..."
+            placeholder="搜尋姓名 / ERP / APP 編號..."
           />
         </div>
 

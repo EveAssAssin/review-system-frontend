@@ -209,7 +209,7 @@ export default function NewReviewPage() {
           </label>
           <input
             type="text"
-            placeholder="輸入姓名或會員編號搜尋..."
+            placeholder="搜尋姓名 / ERP / APP 編號..."
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -274,7 +274,7 @@ export default function NewReviewPage() {
             </label>
             <input
               type="text"
-              placeholder="輸入姓名或會員編號搜尋..."
+              placeholder="搜尋姓名 / ERP / APP 編號..."
               value={actualEmployeeSearch}
               onChange={(e) => {
                 setActualEmployeeSearch(e.target.value);
