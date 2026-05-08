@@ -59,6 +59,7 @@ export default function NewReviewPage() {
     event_date: new Date().toISOString().split('T')[0],
     content: '',
     immediate_response: '',
+    initial_pr_message: '',
     requires_response: true,
     response_deadline_hours: 48,
   });
@@ -155,6 +156,10 @@ export default function NewReviewPage() {
         urgency: form.urgency,
         content: form.content,
         immediate_response: form.immediate_response || undefined,
+        initial_pr_message: form.initial_pr_message?.trim() || undefined,
+        initial_pr_message_sender: form.initial_pr_message?.trim()
+          ? (user?.name || '公關部')
+          : undefined,
         requires_response: form.requires_response,
         response_deadline_hours: form.response_deadline_hours,
       };
@@ -414,6 +419,29 @@ export default function NewReviewPage() {
             style={{ borderColor: '#cdbea2' }}
             placeholder="例：王先生您好，我們已收到您的反映，公司已立即介入處理，會盡快與您聯繫並給您一個交代，感謝您讓我們有機會改善..."
           />
+        </div>
+
+        {/* 公關部首句指令 — 建立評價同時送給被評價者 */}
+        <div className="bg-white rounded-lg shadow p-5 space-y-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="font-semibold text-gray-700">公關部首句指令</h3>
+              <p className="text-xs mt-0.5" style={{ color: '#5b7fad' }}>
+                建立評價同時，自動以公關部身份對被評價者送出第一則對話，並併入 LINE 通知；員工會與評價同步收到
+              </p>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+              style={{ backgroundColor: '#e8eef5', color: '#5b7fad' }}>公關部→員工</span>
+          </div>
+          <textarea
+            value={form.initial_pr_message}
+            onChange={(e) => setForm({ ...form, initial_pr_message: e.target.value })}
+            rows={3}
+            className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none resize-none"
+            style={{ borderColor: '#b8c8dd' }}
+            placeholder="例：這筆評價是怎麼回事，請查清楚並回覆我！"
+          />
+          <div className="text-xs text-gray-400">留空則不發送首句指令</div>
         </div>
 
         {/* 附件上傳 */}
