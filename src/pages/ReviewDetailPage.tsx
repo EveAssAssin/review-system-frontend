@@ -342,12 +342,11 @@ export default function ReviewDetailPage() {
           </div>
         </div>
 
-        {/* 洗評論（5-1～5-8） */}
+        {/* 洗評論（5-1～5-8）— 上傳開放給所有可看到本頁的使用者；審核仍限公關 */}
         <WashSection
           reviewId={review.id}
           reviewClosed={review.status === 'closed'}
           isPrAdmin={!!canManageReviews}
-          isMyReview={!!isMyReview}
           currentUserName={user?.name || employee?.name}
           onChange={loadReview}
           onWashFailedExposed={setWashFailedExposed}

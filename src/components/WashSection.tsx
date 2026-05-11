@@ -6,7 +6,6 @@ interface WashSectionProps {
   reviewId: string;
   reviewClosed: boolean;
   isPrAdmin: boolean;
-  isMyReview: boolean;
   currentUserName?: string;
   /** 父層 ReviewDetailPage 在洗評狀態變動時需要更新（例如收到通知扣分減半時也想刷新評價） */
   onChange?: () => void;
@@ -32,7 +31,6 @@ const WashSection: React.FC<WashSectionProps> = ({
   reviewId,
   reviewClosed,
   isPrAdmin,
-  isMyReview,
   currentUserName,
   onChange,
   onWashFailedExposed,
@@ -296,7 +294,10 @@ const WashSection: React.FC<WashSectionProps> = ({
           const isApproved = slot.status === 'approved';
           const isUploaded = slot.status === 'uploaded';
           const isRejected = slot.status === 'rejected';
-          const canEmployeeAct = isMyReview && !isCompleted && !reviewClosed && !isExpired && (slot.status === 'pending' || isRejected);
+          // 上傳開放給「所有有權限看到此頁的人」（不再限 isMyReview）
+          // 例如店長協助員工拍洗評論的照片、其他同事幫忙都可以
+          // 審核（合格/不合格）仍只限公關部
+          const canUpload = !isCompleted && !reviewClosed && !isExpired && (slot.status === 'pending' || isRejected);
 
           return (
             <div key={slot.id} className="border rounded-lg overflow-hidden bg-white" style={{ borderColor: isApproved ? '#16a34a' : isRejected ? '#dc2626' : '#ede8e2' }}>
@@ -333,8 +334,8 @@ const WashSection: React.FC<WashSectionProps> = ({
                   </div>
                 )}
 
-                {/* 員工：上傳/重傳按鈕 */}
-                {canEmployeeAct && (
+                {/* 上傳/重傳按鈕（所有權限皆可上傳） */}
+                {canUpload && (
                   <>
                     <input
                       ref={el => { fileInputs.current[slot.slot_index] = el; }}
