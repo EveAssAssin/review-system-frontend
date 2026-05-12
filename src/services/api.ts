@@ -242,7 +242,7 @@ export const interviewsApi = {
   listItems: (month?: string, includeInactive = false) =>
     api.get('/interviews/items', { params: { month, include_inactive: includeInactive } }),
   listItemMonths: () => api.get<string[]>('/interviews/items/months'),
-  createItem: (data: { month: string; title: string; description?: string; sort_order?: number }) =>
+  createItem: (data: { month: string; title: string; description?: string; item_type?: 'text' | 'scale_1_5'; sort_order?: number }) =>
     api.post('/interviews/items', data),
   updateItem: (id: string, data: any) => api.put(`/interviews/items/${id}`, data),
   deleteItem: (id: string) => api.delete(`/interviews/items/${id}`),

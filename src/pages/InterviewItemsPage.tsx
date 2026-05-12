@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
 import { interviewsApi } from '../services/api';
 
+type ItemType = 'text' | 'scale_1_5';
+
 interface InterviewItem {
   id: string;
   month: string;
   title: string;
   description?: string;
+  item_type: ItemType;
   sort_order: number;
   is_active: boolean;
 }
@@ -18,7 +21,12 @@ export default function InterviewItemsPage() {
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showCopy, setShowCopy] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', sort_order: 0 });
+  const [form, setForm] = useState<{ title: string; description: string; item_type: ItemType; sort_order: number }>({
+    title: '',
+    description: '',
+    item_type: 'text',
+    sort_order: 0,
+  });
   const [copyForm, setCopyForm] = useState({ from_month: '', to_month: currentMonth() });
 
   const load = async () => {
@@ -42,9 +50,10 @@ export default function InterviewItemsPage() {
         month,
         title: form.title,
         description: form.description || undefined,
+        item_type: form.item_type,
         sort_order: form.sort_order,
       });
-      setForm({ title: '', description: '', sort_order: 0 });
+      setForm({ title: '', description: '', item_type: 'text', sort_order: 0 });
       setShowCreate(false);
       await load();
     } catch (err: any) {
@@ -121,6 +130,7 @@ export default function InterviewItemsPage() {
             <thead className="bg-gray-50 text-xs text-gray-500">
               <tr>
                 <th className="px-3 py-2 text-left w-16">順序</th>
+                <th className="px-3 py-2 text-left w-24">類型</th>
                 <th className="px-3 py-2 text-left">題目</th>
                 <th className="px-3 py-2 text-left">說明</th>
                 <th className="px-3 py-2 text-center w-20">狀態</th>
@@ -131,6 +141,13 @@ export default function InterviewItemsPage() {
               {items.map(item => (
                 <tr key={item.id} className={`border-t ${item.is_active ? '' : 'opacity-50'}`}>
                   <td className="px-3 py-2 text-gray-500">{item.sort_order}</td>
+                  <td className="px-3 py-2">
+                    {item.item_type === 'scale_1_5' ? (
+                      <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: '#e8eef5', color: '#5b7fad' }}>1-5 量表</span>
+                    ) : (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">文字</span>
+                    )}
+                  </td>
                   <td className="px-3 py-2 font-medium">{item.title}</td>
                   <td className="px-3 py-2 text-gray-500">{item.description || '-'}</td>
                   <td className="px-3 py-2 text-center">
@@ -162,13 +179,42 @@ export default function InterviewItemsPage() {
             <h2 className="text-lg font-bold mb-4">新增題目（{month}）</h2>
             <div className="space-y-3">
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">題型</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className={`border rounded-lg p-3 cursor-pointer text-sm ${form.item_type === 'text' ? 'border-[#8b6f4e] bg-[#faf7f4]' : 'border-gray-300'}`}>
+                    <input
+                      type="radio"
+                      name="item_type"
+                      value="text"
+                      checked={form.item_type === 'text'}
+                      onChange={() => setForm({ ...form, item_type: 'text' })}
+                      className="mr-2"
+                    />
+                    <span className="font-medium">📝 文字題</span>
+                    <div className="text-xs text-gray-500 mt-1">員工以文字回答</div>
+                  </label>
+                  <label className={`border rounded-lg p-3 cursor-pointer text-sm ${form.item_type === 'scale_1_5' ? 'border-[#5b7fad] bg-[#f3f7fc]' : 'border-gray-300'}`}>
+                    <input
+                      type="radio"
+                      name="item_type"
+                      value="scale_1_5"
+                      checked={form.item_type === 'scale_1_5'}
+                      onChange={() => setForm({ ...form, item_type: 'scale_1_5' })}
+                      className="mr-2"
+                    />
+                    <span className="font-medium">📊 1-5 量表</span>
+                    <div className="text-xs text-gray-500 mt-1">類似心理測驗：1=非常不像我 ~ 5=非常像我</div>
+                  </label>
+                </div>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">題目</label>
                 <input
                   type="text"
                   value={form.title}
                   onChange={e => setForm({ ...form, title: e.target.value })}
                   className="w-full px-3 py-2 border rounded"
-                  placeholder="例：本月工作壓力來源"
+                  placeholder={form.item_type === 'scale_1_5' ? '例：我覺得最近工作壓力很大' : '例：本月工作壓力來源'}
                 />
               </div>
               <div>

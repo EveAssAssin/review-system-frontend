@@ -6,9 +6,26 @@ interface ItemWithResponse {
   id: string;
   title: string;
   description?: string;
+  item_type?: 'text' | 'scale_1_5';
   sort_order: number;
-  response?: { content: string; image_urls: string[] } | null;
+  response?: { content: string; image_urls: string[]; scale_value?: number | null } | null;
 }
+
+const SCALE_LABELS: Record<number, string> = {
+  1: '非常不像我',
+  2: '有點不像我',
+  3: '普通',
+  4: '有點像我',
+  5: '非常像我',
+};
+
+const SCALE_COLORS: Record<number, string> = {
+  1: '#dc2626', // red
+  2: '#f59e0b', // amber
+  3: '#9ca3af', // gray
+  4: '#10b981', // emerald
+  5: '#3b82f6', // blue
+};
 
 interface ChatMsg {
   role: 'user' | 'assistant';
@@ -39,7 +56,7 @@ export default function InterviewDetailPage() {
   const [loading, setLoading] = useState(true);
   // 由門市點名 picker 新建的訪談會帶 ?edit=1，直接進入編輯模式
   const [editMode, setEditMode] = useState(searchParams.get('edit') === '1');
-  const [responses, setResponses] = useState<Record<string, { content: string; image_urls: string[] }>>({});
+  const [responses, setResponses] = useState<Record<string, { content: string; image_urls: string[]; scale_value: number | null }>>({});
   const [aiBusy, setAiBusy] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -56,12 +73,16 @@ export default function InterviewDetailPage() {
     try {
       const res = await interviewsApi.getRecord(id);
       setRecord(res.data);
-      const map: Record<string, { content: string; image_urls: string[] }> = {};
+      const map: Record<string, { content: string; image_urls: string[]; scale_value: number | null }> = {};
       (res.data.items_with_responses || []).forEach((it: ItemWithResponse) => {
         if (it.response) {
-          map[it.id] = { content: it.response.content || '', image_urls: it.response.image_urls || [] };
+          map[it.id] = {
+            content: it.response.content || '',
+            image_urls: it.response.image_urls || [],
+            scale_value: it.response.scale_value ?? null,
+          };
         } else {
-          map[it.id] = { content: '', image_urls: [] };
+          map[it.id] = { content: '', image_urls: [], scale_value: null };
         }
       });
       setResponses(map);
@@ -88,6 +109,7 @@ export default function InterviewDetailPage() {
         item_id: it.id,
         content: responses[it.id]?.content || '',
         image_urls: responses[it.id]?.image_urls || [],
+        scale_value: responses[it.id]?.scale_value ?? null,
       }));
       await interviewsApi.updateRecord(id, { responses: payload });
       setEditMode(false);
@@ -180,6 +202,7 @@ export default function InterviewDetailPage() {
       [itemId]: {
         content: prev[itemId]?.content || '',
         image_urls: [...(prev[itemId]?.image_urls || []), url.trim()],
+        scale_value: prev[itemId]?.scale_value ?? null,
       },
     }));
   };
@@ -190,6 +213,18 @@ export default function InterviewDetailPage() {
       [itemId]: {
         content: prev[itemId]?.content || '',
         image_urls: (prev[itemId]?.image_urls || []).filter((_, i) => i !== idx),
+        scale_value: prev[itemId]?.scale_value ?? null,
+      },
+    }));
+  };
+
+  const handleSetScale = (itemId: string, value: number) => {
+    setResponses(prev => ({
+      ...prev,
+      [itemId]: {
+        content: prev[itemId]?.content || '',
+        image_urls: prev[itemId]?.image_urls || [],
+        scale_value: prev[itemId]?.scale_value === value ? null : value, // 點同一顆取消
       },
     }));
   };
@@ -352,45 +387,108 @@ export default function InterviewDetailPage() {
           <div className="text-sm font-semibold text-gray-700 mb-3">逐題回答</div>
           <div className="space-y-4">
             {record.items_with_responses.map((it, idx) => {
-              const resp = responses[it.id] || { content: '', image_urls: [] };
+              const resp = responses[it.id] || { content: '', image_urls: [], scale_value: null };
+              const isScale = it.item_type === 'scale_1_5';
               return (
                 <div key={it.id} className="border rounded-lg p-3 bg-gray-50">
-                  <div className="text-sm font-semibold text-gray-700 mb-1">{idx + 1}. {it.title}</div>
+                  <div className="flex items-start gap-2 mb-1">
+                    {isScale && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: '#e8eef5', color: '#5b7fad' }}>量表</span>
+                    )}
+                    <div className="text-sm font-semibold text-gray-700">{idx + 1}. {it.title}</div>
+                  </div>
                   {it.description && <p className="text-xs text-gray-500 mb-2">{it.description}</p>}
-                  {editMode ? (
-                    <>
-                      <textarea
-                        rows={3}
-                        value={resp.content}
-                        onChange={e => setResponses(prev => ({
-                          ...prev,
-                          [it.id]: { content: e.target.value, image_urls: prev[it.id]?.image_urls || [] },
-                        }))}
-                        className="w-full px-3 py-2 border rounded text-sm bg-white"
-                      />
-                      {resp.image_urls.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {resp.image_urls.map((url, i) => (
-                            <div key={i} className="relative">
-                              <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
-                              <button onClick={() => handleRemoveImage(it.id, i)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs">✕</button>
-                            </div>
-                          ))}
-                        </div>
+
+                  {isScale ? (
+                    /* === 1-5 量表題 === */
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-5 gap-2">
+                        {[1, 2, 3, 4, 5].map(v => {
+                          const selected = resp.scale_value === v;
+                          return (
+                            <button
+                              key={v}
+                              type="button"
+                              onClick={() => editMode && handleSetScale(it.id, v)}
+                              disabled={!editMode}
+                              className={`flex flex-col items-center gap-1 py-2 px-1 rounded-lg border-2 text-xs transition-all ${selected ? 'shadow' : ''} ${editMode ? 'cursor-pointer hover:opacity-90' : 'cursor-default'}`}
+                              style={{
+                                borderColor: selected ? SCALE_COLORS[v] : '#d1d5db',
+                                backgroundColor: selected ? SCALE_COLORS[v] : '#ffffff',
+                                color: selected ? '#ffffff' : '#4b5563',
+                                opacity: !editMode && !selected ? 0.4 : 1,
+                              }}
+                            >
+                              <span className="text-lg font-bold leading-none">{v}</span>
+                              <span className="leading-tight text-center">{SCALE_LABELS[v]}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* 量表題的補充備註（選填） */}
+                      {editMode && (
+                        <textarea
+                          rows={2}
+                          value={resp.content}
+                          onChange={e => setResponses(prev => ({
+                            ...prev,
+                            [it.id]: {
+                              content: e.target.value,
+                              image_urls: prev[it.id]?.image_urls || [],
+                              scale_value: prev[it.id]?.scale_value ?? null,
+                            },
+                          }))}
+                          className="w-full px-3 py-2 border rounded text-xs bg-white"
+                          placeholder="補充備註（選填）..."
+                        />
                       )}
-                      <button onClick={() => handleAddImage(it.id)} className="mt-2 text-xs text-blue-600 hover:underline">+ 加入圖片網址</button>
-                    </>
+                      {!editMode && resp.content && (
+                        <div className="text-xs text-gray-500 bg-white p-2 rounded">備註：{resp.content}</div>
+                      )}
+                    </div>
                   ) : (
+                    /* === 文字題（既有行為） === */
                     <>
-                      <div className="bg-white p-2 rounded text-sm whitespace-pre-wrap">{resp.content || '（未填）'}</div>
-                      {resp.image_urls.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {resp.image_urls.map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                              <img src={url} alt="" className="w-20 h-20 object-cover rounded border" />
-                            </a>
-                          ))}
-                        </div>
+                      {editMode ? (
+                        <>
+                          <textarea
+                            rows={3}
+                            value={resp.content}
+                            onChange={e => setResponses(prev => ({
+                              ...prev,
+                              [it.id]: {
+                                content: e.target.value,
+                                image_urls: prev[it.id]?.image_urls || [],
+                                scale_value: prev[it.id]?.scale_value ?? null,
+                              },
+                            }))}
+                            className="w-full px-3 py-2 border rounded text-sm bg-white"
+                          />
+                          {resp.image_urls.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {resp.image_urls.map((url, i) => (
+                                <div key={i} className="relative">
+                                  <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
+                                  <button onClick={() => handleRemoveImage(it.id, i)} className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs">✕</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <button onClick={() => handleAddImage(it.id)} className="mt-2 text-xs text-blue-600 hover:underline">+ 加入圖片網址</button>
+                        </>
+                      ) : (
+                        <>
+                          <div className="bg-white p-2 rounded text-sm whitespace-pre-wrap">{resp.content || '（未填）'}</div>
+                          {resp.image_urls.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {resp.image_urls.map((url, i) => (
+                                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                  <img src={url} alt="" className="w-20 h-20 object-cover rounded border" />
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </>
                       )}
                     </>
                   )}

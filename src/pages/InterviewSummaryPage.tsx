@@ -13,10 +13,19 @@ interface MonthBlock {
     item_id: string;
     item_title?: string;
     item_description?: string;
+    item_type?: 'text' | 'scale_1_5';
     content?: string;
+    scale_value?: number | null;
     image_urls: string[];
   }[];
 }
+
+const SCALE_LABELS: Record<number, string> = {
+  1: '非常不像我', 2: '有點不像我', 3: '普通', 4: '有點像我', 5: '非常像我',
+};
+const SCALE_COLORS: Record<number, string> = {
+  1: '#dc2626', 2: '#f59e0b', 3: '#9ca3af', 4: '#10b981', 5: '#3b82f6',
+};
 
 interface SummaryData {
   employee: {
@@ -133,21 +142,44 @@ export default function InterviewSummaryPage() {
                 {m.responses.length === 0 ? (
                   <div className="text-xs text-gray-400">無作答</div>
                 ) : (
-                  m.responses.map(r => (
-                    <div key={r.item_id} className="border-l-2 border-gray-200 pl-3">
-                      <div className="text-xs font-semibold text-gray-700">{r.item_title}</div>
-                      <div className="text-sm text-gray-600 whitespace-pre-wrap">{r.content || '（未填）'}</div>
-                      {r.image_urls.length > 0 && (
-                        <div className="mt-1 flex gap-1">
-                          {r.image_urls.map((url, i) => (
-                            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                              <img src={url} alt="" className="w-12 h-12 object-cover rounded border" />
-                            </a>
-                          ))}
+                  m.responses.map(r => {
+                    const isScale = r.item_type === 'scale_1_5';
+                    return (
+                      <div key={r.item_id} className="border-l-2 border-gray-200 pl-3">
+                        <div className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                          {isScale && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: '#e8eef5', color: '#5b7fad' }}>量表</span>
+                          )}
+                          {r.item_title}
                         </div>
-                      )}
-                    </div>
-                  ))
+                        {isScale ? (
+                          r.scale_value != null ? (
+                            <div className="mt-1 inline-flex items-center gap-2 px-2 py-1 rounded-full text-white text-xs font-medium"
+                              style={{ backgroundColor: SCALE_COLORS[r.scale_value] }}>
+                              <span className="text-base font-bold">{r.scale_value}</span>
+                              <span>{SCALE_LABELS[r.scale_value]}</span>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-400">（未填）</div>
+                          )
+                        ) : (
+                          <div className="text-sm text-gray-600 whitespace-pre-wrap">{r.content || '（未填）'}</div>
+                        )}
+                        {isScale && r.content && (
+                          <div className="text-xs text-gray-500 mt-1">備註：{r.content}</div>
+                        )}
+                        {r.image_urls.length > 0 && (
+                          <div className="mt-1 flex gap-1">
+                            {r.image_urls.map((url, i) => (
+                              <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                                <img src={url} alt="" className="w-12 h-12 object-cover rounded border" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </div>
