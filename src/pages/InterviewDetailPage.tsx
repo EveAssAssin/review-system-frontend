@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { interviewsApi } from '../services/api';
 
 interface ItemWithResponse {
@@ -26,9 +26,11 @@ interface RecordDetail {
 export default function InterviewDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [record, setRecord] = useState<RecordDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
+  // 由門市點名 picker 新建的訪談會帶 ?edit=1，直接進入編輯模式
+  const [editMode, setEditMode] = useState(searchParams.get('edit') === '1');
   const [summary, setSummary] = useState('');
   const [responses, setResponses] = useState<Record<string, { content: string; image_urls: string[] }>>({});
   const [aiBusy, setAiBusy] = useState(false);
@@ -70,6 +72,11 @@ export default function InterviewDetailPage() {
       }));
       await interviewsApi.updateRecord(id, { summary, responses: payload });
       setEditMode(false);
+      // 儲存後把 ?edit=1 query param 拿掉，避免之後重整又進編輯模式
+      if (searchParams.get('edit')) {
+        searchParams.delete('edit');
+        setSearchParams(searchParams, { replace: true });
+      }
       await load();
     } catch (err: any) {
       alert(err.response?.data?.message || '儲存失敗');

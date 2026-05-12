@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { interviewsApi, employeesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,13 +9,13 @@ interface Employee {
   app_number?: string;
   store_name?: string;
   department?: string;
+  is_active: boolean;
 }
 
-interface InterviewItem {
+interface InterviewRecord {
   id: string;
-  title: string;
-  description?: string;
-  sort_order: number;
+  employee_id: string;
+  month: string;
 }
 
 const currentMonth = () => new Date().toISOString().slice(0, 7);
@@ -24,220 +24,219 @@ export default function NewInterviewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [month, setMonth] = useState(currentMonth());
-  const [items, setItems] = useState<InterviewItem[]>([]);
-  const [itemsLoading, setItemsLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [summary, setSummary] = useState('');
-  const [responses, setResponses] = useState<Record<string, { content: string; image_urls: string[] }>>({});
-  const [busy, setBusy] = useState(false);
+  const [records, setRecords] = useState<InterviewRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [hasItems, setHasItems] = useState(true);
 
-  // 載入該月份題目
-  useEffect(() => {
-    setItemsLoading(true);
-    interviewsApi.listItems(month, false)
-      .then(res => setItems(res.data))
-      .catch(err => console.error(err))
-      .finally(() => setItemsLoading(false));
-  }, [month]);
-
-  const searchEmployees = async (query: string) => {
-    if (query.length < 2) { setEmployees([]); return; }
+  const load = async () => {
+    setLoading(true);
     try {
-      const res = await employeesApi.search({ q: query, limit: 10 });
-      setEmployees(res.data.data);
+      const [empRes, recRes, itemRes] = await Promise.all([
+        employeesApi.search({ is_active: true, limit: 1000 }),
+        interviewsApi.listRecords({ month, limit: 1000 }),
+        interviewsApi.listItems(month, false),
+      ]);
+      setEmployees(empRes.data.data);
+      // listRecords 回的 record 結構：{ id, employee_id, month, employees: {...} }
+      setRecords(recRes.data.data.map((r: any) => ({
+        id: r.id,
+        employee_id: r.employee_id,
+        month: r.month,
+      })));
+      setHasItems((itemRes.data || []).length > 0);
     } catch (err) {
-      console.error(err);
+      console.error('載入失敗:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updateResponse = (itemId: string, field: 'content' | 'image_urls', value: any) => {
-    setResponses(prev => ({
-      ...prev,
-      [itemId]: {
-        content: prev[itemId]?.content || '',
-        image_urls: prev[itemId]?.image_urls || [],
-        ...{ [field]: value },
-      },
-    }));
-  };
+  useEffect(() => { load(); }, [month]);
 
-  const handleAddImageUrl = (itemId: string) => {
-    const url = prompt('請貼上圖片網址 (https://...)');
-    if (!url || !url.trim()) return;
-    const prev = responses[itemId]?.image_urls || [];
-    updateResponse(itemId, 'image_urls', [...prev, url.trim()]);
-  };
+  // employee_id -> record_id 對應表
+  const recordMap = useMemo(() => {
+    const m = new Map<string, string>();
+    records.forEach(r => m.set(r.employee_id, r.id));
+    return m;
+  }, [records]);
 
-  const handleRemoveImage = (itemId: string, idx: number) => {
-    const prev = responses[itemId]?.image_urls || [];
-    updateResponse(itemId, 'image_urls', prev.filter((_, i) => i !== idx));
-  };
+  // 依門市 / 部門分組，並依搜尋過濾
+  const groupedEmployees = useMemo(() => {
+    const kw = search.trim().toLowerCase();
+    const filtered = kw
+      ? employees.filter(e =>
+          e.name.toLowerCase().includes(kw) ||
+          (e.store_name || '').toLowerCase().includes(kw) ||
+          (e.department || '').toLowerCase().includes(kw) ||
+          (e.app_number || '').includes(kw))
+      : employees;
 
-  const handleSubmit = async () => {
-    if (!selectedEmployee) { alert('請選擇員工'); return; }
-    if (items.length === 0) { alert('本月份尚無題目，請先到「題目管理」建立'); return; }
+    const groups = new Map<string, Employee[]>();
+    filtered.forEach(emp => {
+      const key = emp.store_name || emp.department || '未分類';
+      const arr = groups.get(key) || [];
+      arr.push(emp);
+      groups.set(key, arr);
+    });
 
-    setBusy(true);
+    // 排序：有門市名稱的先，其他部門後面
+    return [...groups.entries()].sort(([a], [b]) => {
+      const aIsStore = !!employees.find(e => e.store_name === a);
+      const bIsStore = !!employees.find(e => e.store_name === b);
+      if (aIsStore && !bIsStore) return -1;
+      if (!aIsStore && bIsStore) return 1;
+      return a.localeCompare(b);
+    });
+  }, [employees, search]);
+
+  const handlePick = async (emp: Employee) => {
+    const existingId = recordMap.get(emp.id);
+    if (existingId) {
+      // 已有：直接進入詳情編輯
+      navigate(`/interviews/${existingId}`);
+      return;
+    }
+    // 沒有：建立新紀錄後進入詳情編輯
+    if (!hasItems) {
+      alert(`${month} 尚未建立題目，請先到「題目管理」建立`);
+      return;
+    }
+    setCreating(emp.id);
     try {
-      const responsePayload = items
-        .map(it => ({
-          item_id: it.id,
-          content: responses[it.id]?.content || '',
-          image_urls: responses[it.id]?.image_urls || [],
-        }))
-        .filter(r => r.content || r.image_urls.length > 0);
-
       const res = await interviewsApi.createRecord(
-        {
-          employee_id: selectedEmployee.id,
-          month,
-          interviewer_name: user?.name || '',
-          summary: summary || undefined,
-          responses: responsePayload,
-        },
+        { employee_id: emp.id, month, interviewer_name: user?.name || '' },
         user?.name,
       );
-      navigate(`/interviews/${res.data.id}`);
+      navigate(`/interviews/${res.data.id}?edit=1`);
     } catch (err: any) {
+      // race condition：剛剛被別人建了 → 重抓並導向
+      if (err.response?.status === 400 && err.response?.data?.message?.includes('已有訪談紀錄')) {
+        await load();
+        const refreshed = recordMap.get(emp.id);
+        if (refreshed) {
+          navigate(`/interviews/${refreshed}`);
+          return;
+        }
+      }
       alert(err.response?.data?.message || '建立失敗');
     } finally {
-      setBusy(false);
+      setCreating(null);
     }
   };
 
-  return (
-    <div className="max-w-3xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">新增訪談紀錄</h1>
+  const totalEmployees = employees.length;
+  const interviewed = records.length;
+  const interviewedRate = totalEmployees > 0
+    ? Math.round((interviewed / totalEmployees) * 100)
+    : 0;
 
-      <div className="bg-white rounded-lg shadow p-6 space-y-5">
-        {/* 月份 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">訪談月份</label>
+  return (
+    <div className="max-w-5xl">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">新增訪談紀錄</h1>
+        <button onClick={() => navigate('/interviews')} className="text-gray-500 hover:text-gray-700 text-sm">
+          ← 返回列表
+        </button>
+      </div>
+
+      {/* 月份切換 + 統計 */}
+      <div className="bg-white rounded-lg shadow p-4 mb-4">
+        <div className="flex items-center gap-3 flex-wrap">
+          <label className="text-sm font-medium text-gray-700">訪談月份：</label>
           <input
             type="month"
             value={month}
             onChange={e => setMonth(e.target.value)}
-            className="px-3 py-2 border rounded"
+            className="px-3 py-1.5 border rounded text-sm"
           />
-          <p className="text-xs text-gray-400 mt-1">會自動載入該月份的題目；若無題目請先到「題目管理」建立</p>
+          <div className="text-sm text-gray-500">
+            已訪 <span className="font-semibold text-[#8b6f4e]">{interviewed}</span>
+            <span className="text-gray-400"> / </span>
+            <span>{totalEmployees}</span> 人
+            <span className="ml-2 text-xs text-gray-400">({interviewedRate}%)</span>
+          </div>
+          <div className="ml-auto">
+            <input
+              type="text"
+              placeholder="搜尋 姓名 / 門市 / 部門 / APP 編號..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="px-3 py-1.5 border rounded text-sm w-64"
+            />
+          </div>
         </div>
-
-        {/* 員工搜尋 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            受訪員工 <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            placeholder="搜尋姓名 / ERP / APP 編號..."
-            value={searchQuery}
-            onChange={e => {
-              setSearchQuery(e.target.value);
-              searchEmployees(e.target.value);
-            }}
-            className="w-full px-3 py-2 border rounded"
-          />
-          {employees.length > 0 && (
-            <div className="mt-1 border rounded max-h-40 overflow-y-auto">
-              {employees.map(emp => (
-                <div
-                  key={emp.id}
-                  onClick={() => {
-                    setSelectedEmployee(emp);
-                    setSearchQuery(emp.name);
-                    setEmployees([]);
-                  }}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                >
-                  {emp.name} - {emp.store_name || emp.department} ({emp.app_number})
-                </div>
-              ))}
-            </div>
-          )}
-          {selectedEmployee && (
-            <div className="mt-2 p-2 bg-[#f5f0eb] rounded text-sm">
-              已選擇：<strong>{selectedEmployee.name}</strong>（{selectedEmployee.store_name || selectedEmployee.department}）
-            </div>
-          )}
-        </div>
-
-        {/* 整體總結 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">訪談者總結（選填）</label>
-          <textarea
-            rows={3}
-            value={summary}
-            onChange={e => setSummary(e.target.value)}
-            className="w-full px-3 py-2 border rounded"
-            placeholder="本次訪談的整體印象、重點觀察..."
-          />
-        </div>
-
-        {/* 題目作答 */}
-        <div className="border-t pt-4">
-          <h3 className="font-semibold text-gray-700 mb-3">逐題作答（{month}）</h3>
-          {itemsLoading ? (
-            <div className="text-gray-400 text-sm">載入題目中...</div>
-          ) : items.length === 0 ? (
-            <div className="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-700">
-              ⚠️ {month} 尚未建立題目，請先到「題目管理」建立或從上個月複製
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {items.map((it, idx) => {
-                const resp = responses[it.id] || { content: '', image_urls: [] };
-                return (
-                  <div key={it.id} className="border rounded-lg p-3 bg-gray-50">
-                    <div className="flex items-baseline gap-2 mb-2">
-                      <span className="text-sm font-semibold text-gray-700">{idx + 1}. {it.title}</span>
-                    </div>
-                    {it.description && (
-                      <p className="text-xs text-gray-500 mb-2">{it.description}</p>
-                    )}
-                    <textarea
-                      rows={3}
-                      value={resp.content}
-                      onChange={e => updateResponse(it.id, 'content', e.target.value)}
-                      className="w-full px-3 py-2 border rounded text-sm bg-white"
-                      placeholder="員工回答..."
-                    />
-                    {/* 圖片 URL 列表 */}
-                    {resp.image_urls.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {resp.image_urls.map((url, i) => (
-                          <div key={i} className="relative">
-                            <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
-                            <button
-                              onClick={() => handleRemoveImage(it.id, i)}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 text-xs"
-                            >✕</button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <button
-                      onClick={() => handleAddImageUrl(it.id)}
-                      className="mt-2 text-xs text-blue-600 hover:underline"
-                    >+ 加入圖片網址</button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="flex gap-3 pt-4 border-t">
-          <button
-            onClick={handleSubmit}
-            disabled={busy || !selectedEmployee}
-            className="flex-1 py-2 text-white rounded disabled:opacity-50"
-            style={{ backgroundColor: '#8b6f4e' }}
-          >{busy ? '建立中...' : '建立訪談紀錄'}</button>
-          <button onClick={() => navigate('/interviews')} className="px-6 py-2 border rounded">取消</button>
-        </div>
+        {!hasItems && (
+          <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded p-2 text-xs text-yellow-700">
+            ⚠️ {month} 尚未建立題目，請先到
+            <Link to="/interviews/items" className="text-blue-600 hover:underline mx-1">題目管理</Link>
+            建立後再開始訪談
+          </div>
+        )}
       </div>
+
+      {/* 圖例 */}
+      <div className="flex items-center gap-4 mb-3 text-xs text-gray-500 px-2">
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded" style={{ backgroundColor: '#8b6f4e' }} />
+          未訪談（點擊新增）
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-3 h-3 rounded bg-gray-300" />
+          已訪談（點擊編輯）
+        </span>
+      </div>
+
+      {/* 門市分組清單 */}
+      {loading ? (
+        <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400">載入中...</div>
+      ) : groupedEmployees.length === 0 ? (
+        <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400">無符合員工</div>
+      ) : (
+        <div className="space-y-4">
+          {groupedEmployees.map(([groupName, emps]) => {
+            const groupDone = emps.filter(e => recordMap.has(e.id)).length;
+            const isStore = emps.some(e => e.store_name === groupName);
+            return (
+              <div key={groupName} className="bg-white rounded-lg shadow overflow-hidden">
+                <div className="px-4 py-2 flex items-center justify-between" style={{ backgroundColor: '#faf7f4', borderBottom: '1px solid #ede8e2' }}>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold" style={{ color: '#5c4033' }}>
+                      {isStore ? '🏬' : '🏢'} {groupName}
+                    </span>
+                    <span className="text-xs text-gray-400">{emps.length} 人</span>
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    已訪 {groupDone}/{emps.length}
+                  </span>
+                </div>
+                <div className="p-3 flex flex-wrap gap-2">
+                  {emps.map(emp => {
+                    const hasRecord = recordMap.has(emp.id);
+                    const isCreating = creating === emp.id;
+                    return (
+                      <button
+                        key={emp.id}
+                        onClick={() => handlePick(emp)}
+                        disabled={isCreating}
+                        title={hasRecord ? '已訪談，點擊可編輯' : '點擊新增訪談紀錄'}
+                        className="px-3 py-1.5 rounded-lg text-sm font-medium transition-all disabled:opacity-50"
+                        style={hasRecord
+                          ? { backgroundColor: '#e5e0d8', color: '#a89c8a', textDecoration: 'line-through' }
+                          : { backgroundColor: '#8b6f4e', color: '#ffffff' }}
+                      >
+                        {isCreating ? '建立中...' : emp.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
