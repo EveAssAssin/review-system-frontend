@@ -269,6 +269,14 @@ export const interviewsApi = {
     api.post<{ ai_summary: string }>(`/interviews/employees/${employeeId}/ai-analyze`, {}),
   aiAnalyzeMonth: (month: string) =>
     api.post<{ ai_summary: string }>(`/interviews/months/${month}/ai-analyze`, {}),
+
+  // AI 人員分析 + 對談（讀員工所有評價做訪談前 briefing）
+  runEmployeeAnalysis: (id: string) =>
+    api.post<{ employee_analysis: string; analysis_generated_at: string }>(`/interviews/records/${id}/employee-analysis`, {}),
+  appendAnalysisChat: (id: string, message: string) =>
+    api.post<{ chat: { role: 'user' | 'assistant'; content: string; created_at: string }[] }>(`/interviews/records/${id}/analysis-chat`, { message }),
+  resetAnalysisChat: (id: string) =>
+    api.delete(`/interviews/records/${id}/analysis-chat`),
 };
 
 // Analytics API

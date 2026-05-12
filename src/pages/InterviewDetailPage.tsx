@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { interviewsApi } from '../services/api';
 
@@ -10,13 +10,21 @@ interface ItemWithResponse {
   response?: { content: string; image_urls: string[] } | null;
 }
 
+interface ChatMsg {
+  role: 'user' | 'assistant';
+  content: string;
+  created_at?: string;
+}
+
 interface RecordDetail {
   id: string;
   month: string;
   interviewer_name?: string;
-  summary?: string;
   ai_summary?: string;
   ai_summarized_at?: string;
+  employee_analysis?: string;
+  analysis_chat?: ChatMsg[];
+  analysis_generated_at?: string;
   created_at: string;
   updated_at: string;
   employees?: { id: string; name: string; store_name?: string; department?: string; app_number?: string };
@@ -31,10 +39,16 @@ export default function InterviewDetailPage() {
   const [loading, setLoading] = useState(true);
   // 由門市點名 picker 新建的訪談會帶 ?edit=1，直接進入編輯模式
   const [editMode, setEditMode] = useState(searchParams.get('edit') === '1');
-  const [summary, setSummary] = useState('');
   const [responses, setResponses] = useState<Record<string, { content: string; image_urls: string[] }>>({});
   const [aiBusy, setAiBusy] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  // AI 人員分析 + 對談
+  const [analysisBusy, setAnalysisBusy] = useState(false);
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatBusy, setChatBusy] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -42,7 +56,6 @@ export default function InterviewDetailPage() {
     try {
       const res = await interviewsApi.getRecord(id);
       setRecord(res.data);
-      setSummary(res.data.summary || '');
       const map: Record<string, { content: string; image_urls: string[] }> = {};
       (res.data.items_with_responses || []).forEach((it: ItemWithResponse) => {
         if (it.response) {
@@ -52,6 +65,7 @@ export default function InterviewDetailPage() {
         }
       });
       setResponses(map);
+      setChatMessages(Array.isArray(res.data.analysis_chat) ? res.data.analysis_chat : []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -60,6 +74,11 @@ export default function InterviewDetailPage() {
   };
 
   useEffect(() => { load(); }, [id]);
+
+  // 對話新訊息自動捲到底
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages.length]);
 
   const handleSave = async () => {
     if (!id || !record) return;
@@ -70,9 +89,8 @@ export default function InterviewDetailPage() {
         content: responses[it.id]?.content || '',
         image_urls: responses[it.id]?.image_urls || [],
       }));
-      await interviewsApi.updateRecord(id, { summary, responses: payload });
+      await interviewsApi.updateRecord(id, { responses: payload });
       setEditMode(false);
-      // 儲存後把 ?edit=1 query param 拿掉，避免之後重整又進編輯模式
       if (searchParams.get('edit')) {
         searchParams.delete('edit');
         setSearchParams(searchParams, { replace: true });
@@ -90,13 +108,57 @@ export default function InterviewDetailPage() {
     setAiBusy(true);
     try {
       const res = await interviewsApi.aiAnalyzeRecord(id);
-      // 重新載入以拿到 ai_summarized_at
       await load();
       if (record) setRecord(prev => prev ? { ...prev, ai_summary: res.data.ai_summary } : prev);
     } catch (err: any) {
       alert(err.response?.data?.message || 'AI 分析失敗');
     } finally {
       setAiBusy(false);
+    }
+  };
+
+  const handleEmployeeAnalysis = async () => {
+    if (!id) return;
+    if (record?.employee_analysis && !confirm('已有分析結果，重新分析會清空對談歷史。確定要重跑？')) return;
+    setAnalysisBusy(true);
+    try {
+      await interviewsApi.runEmployeeAnalysis(id);
+      await load();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'AI 人員分析失敗');
+    } finally {
+      setAnalysisBusy(false);
+    }
+  };
+
+  const handleSendChat = async () => {
+    if (!id || !chatInput.trim()) return;
+    const text = chatInput.trim();
+    setChatInput('');
+    // 樂觀更新：先把使用者訊息推進畫面
+    setChatMessages(prev => [...prev, { role: 'user', content: text }]);
+    setChatBusy(true);
+    try {
+      const res = await interviewsApi.appendAnalysisChat(id, text);
+      setChatMessages(res.data.chat);
+    } catch (err: any) {
+      // 回滾
+      setChatMessages(prev => prev.slice(0, -1));
+      setChatInput(text);
+      alert(err.response?.data?.message || '送出失敗');
+    } finally {
+      setChatBusy(false);
+    }
+  };
+
+  const handleResetChat = async () => {
+    if (!id) return;
+    if (!confirm('確定清空對談歷史？分析結果會保留。')) return;
+    try {
+      await interviewsApi.resetAnalysisChat(id);
+      setChatMessages([]);
+    } catch (err) {
+      alert('清空失敗');
     }
   };
 
@@ -161,30 +223,99 @@ export default function InterviewDetailPage() {
           </div>
         </div>
 
-        {/* 總結 */}
+        {/* AI 人員分析（取代原訪談者總結） */}
         <div className="border-t pt-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-semibold text-gray-700">訪談者總結</div>
-            {!editMode && (
-              <button onClick={() => setEditMode(true)} className="text-xs text-blue-600 hover:underline">編輯</button>
-            )}
+            <div className="text-sm font-semibold" style={{ color: '#7c5cab' }}>🧠 AI 人員分析（讀員工歷次評價做會前 briefing）</div>
+            <button
+              onClick={handleEmployeeAnalysis}
+              disabled={analysisBusy}
+              className="text-xs px-3 py-1 text-white rounded disabled:opacity-50"
+              style={{ backgroundColor: '#7c5cab' }}
+            >
+              {analysisBusy ? '分析中...' : record.employee_analysis ? '重新分析' : '執行 AI 分析'}
+            </button>
           </div>
-          {editMode ? (
-            <textarea
-              rows={3}
-              value={summary}
-              onChange={e => setSummary(e.target.value)}
-              className="w-full px-3 py-2 border rounded text-sm"
-            />
+
+          {record.employee_analysis ? (
+            <div className="bg-purple-50 border border-purple-200 rounded p-3 text-sm whitespace-pre-wrap leading-relaxed">
+              {record.employee_analysis}
+              {record.analysis_generated_at && (
+                <div className="text-xs text-gray-400 mt-2">分析時間：{new Date(record.analysis_generated_at).toLocaleString()}</div>
+              )}
+            </div>
           ) : (
-            <div className="bg-gray-50 p-3 rounded text-sm whitespace-pre-wrap">{record.summary || '-'}</div>
+            <div className="text-xs text-gray-400">尚未執行 AI 分析。點「執行 AI 分析」會把這位員工所有評價當參考資料，產生一份訪談會前 briefing。</div>
+          )}
+
+          {/* AI 對談區（必須先有分析才能對談） */}
+          {record.employee_analysis && (
+            <div className="mt-4 border rounded-lg overflow-hidden" style={{ borderColor: '#e1d4ec' }}>
+              <div className="px-3 py-2 flex items-center justify-between" style={{ backgroundColor: '#f5eef9' }}>
+                <span className="text-xs font-semibold" style={{ color: '#7c5cab' }}>💬 跟 AI 討論訪談注意事項</span>
+                {chatMessages.length > 0 && (
+                  <button onClick={handleResetChat} className="text-xs text-gray-500 hover:underline">清空對話</button>
+                )}
+              </div>
+
+              {/* 對話訊息 */}
+              <div className="bg-white p-3 space-y-2 max-h-96 overflow-y-auto">
+                {chatMessages.length === 0 ? (
+                  <div className="text-center text-gray-400 text-xs py-3">
+                    例：「他過去 3 次都不太回應，怎麼開場？」「結案備註裡有失誤，要怎麼讓他願意承認？」「最近負評多，怎麼避免讓他覺得被責備？」
+                  </div>
+                ) : (
+                  chatMessages.map((m, i) => (
+                    <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      <div
+                        className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed`}
+                        style={m.role === 'user'
+                          ? { backgroundColor: '#7c5cab', color: '#fff' }
+                          : { backgroundColor: '#f5eef9', color: '#3d2a52', border: '1px solid #e1d4ec' }}>
+                        {m.content}
+                      </div>
+                    </div>
+                  ))
+                )}
+                {chatBusy && (
+                  <div className="flex justify-start">
+                    <div className="px-3 py-2 text-xs text-gray-400">AI 思考中...</div>
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* 輸入區 */}
+              <div className="border-t p-2 flex gap-2" style={{ borderColor: '#e1d4ec' }}>
+                <textarea
+                  rows={2}
+                  value={chatInput}
+                  onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && !e.shiftKey && !chatBusy) {
+                      e.preventDefault();
+                      handleSendChat();
+                    }
+                  }}
+                  className="flex-1 px-3 py-2 border rounded text-sm resize-none focus:outline-none"
+                  placeholder="輸入你想問的訪談問題（Enter 送出，Shift+Enter 換行）..."
+                  disabled={chatBusy}
+                />
+                <button
+                  onClick={handleSendChat}
+                  disabled={chatBusy || !chatInput.trim()}
+                  className="px-4 text-white rounded text-sm disabled:opacity-50 self-stretch"
+                  style={{ backgroundColor: '#7c5cab' }}
+                >送出</button>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* AI 分析 */}
+        {/* AI 心理分析（針對本次訪談答案） */}
         <div className="border-t pt-4">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-semibold" style={{ color: '#5b7fad' }}>🧠 AI 心理分析</div>
+            <div className="text-sm font-semibold" style={{ color: '#5b7fad' }}>🧠 AI 心理分析（針對本次訪談答案）</div>
             <button
               onClick={handleAi}
               disabled={aiBusy}
@@ -268,7 +399,7 @@ export default function InterviewDetailPage() {
             </>
           ) : (
             <>
-              <button onClick={() => setEditMode(true)} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#8b6f4e' }}>編輯內容</button>
+              <button onClick={() => setEditMode(true)} className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#8b6f4e' }}>編輯答案</button>
               <button onClick={handleDelete} className="px-4 py-2 border border-red-300 text-red-600 rounded hover:bg-red-50">刪除</button>
             </>
           )}
