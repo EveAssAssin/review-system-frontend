@@ -28,6 +28,11 @@ import FeedbackSourcesPage from './pages/FeedbackSourcesPage';
 import DemeritCategoriesPage from './pages/DemeritCategoriesPage';
 import DemeritRecordPage from './pages/DemeritRecordPage';
 import DemeritSummaryPage from './pages/DemeritSummaryPage';
+import InterviewItemsPage from './pages/InterviewItemsPage';
+import InterviewsPage from './pages/InterviewsPage';
+import NewInterviewPage from './pages/NewInterviewPage';
+import InterviewDetailPage from './pages/InterviewDetailPage';
+import InterviewSummaryPage from './pages/InterviewSummaryPage';
 
 // 自動登入處理元件
 const MAX_RETRY = 3;
@@ -314,6 +319,48 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <AnalyticsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 訪談紀錄模組（限公關部） */}
+          <Route
+            path="/interviews"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <InterviewsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/new"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <NewInterviewPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/items"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <InterviewItemsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/employees/:employeeId"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <InterviewSummaryPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interviews/:id"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <InterviewDetailPage />
               </ProtectedRoute>
             }
           />

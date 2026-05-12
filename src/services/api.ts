@@ -236,6 +236,41 @@ export const feedbackApi = {
     api.get('/customer-feedback/pr-capability', { params: { from, to } }),
 };
 
+// Interviews API（訪談紀錄）
+export const interviewsApi = {
+  // 題目
+  listItems: (month?: string, includeInactive = false) =>
+    api.get('/interviews/items', { params: { month, include_inactive: includeInactive } }),
+  listItemMonths: () => api.get<string[]>('/interviews/items/months'),
+  createItem: (data: { month: string; title: string; description?: string; sort_order?: number }) =>
+    api.post('/interviews/items', data),
+  updateItem: (id: string, data: any) => api.put(`/interviews/items/${id}`, data),
+  deleteItem: (id: string) => api.delete(`/interviews/items/${id}`),
+  copyMonth: (data: { from_month: string; to_month: string }) =>
+    api.post('/interviews/items/copy', data),
+
+  // 紀錄
+  listRecords: (params?: { employee_id?: string; month?: string; limit?: number; offset?: number }) =>
+    api.get('/interviews/records', { params }),
+  getRecord: (id: string) => api.get(`/interviews/records/${id}`),
+  createRecord: (data: any, createdBy?: string) =>
+    api.post('/interviews/records', data, { params: createdBy ? { createdBy } : undefined }),
+  updateRecord: (id: string, data: any) => api.put(`/interviews/records/${id}`, data),
+  deleteRecord: (id: string) => api.delete(`/interviews/records/${id}`),
+
+  // 員工跨月總結
+  employeeSummary: (employeeId: string) =>
+    api.get(`/interviews/employees/${employeeId}/summary`),
+
+  // AI 分析
+  aiAnalyzeRecord: (id: string) =>
+    api.post<{ ai_summary: string }>(`/interviews/records/${id}/ai-analyze`, {}),
+  aiAnalyzeEmployee: (employeeId: string) =>
+    api.post<{ ai_summary: string }>(`/interviews/employees/${employeeId}/ai-analyze`, {}),
+  aiAnalyzeMonth: (month: string) =>
+    api.post<{ ai_summary: string }>(`/interviews/months/${month}/ai-analyze`, {}),
+};
+
 // Analytics API
 export const analyticsApi = {
   getSummary: (from?: string, to?: string) =>

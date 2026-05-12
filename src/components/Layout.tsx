@@ -49,6 +49,14 @@ export default function Layout() {
       ],
     },
     {
+      label: '訪談紀錄',
+      items: [
+        { path: '/interviews', label: '訪談列表', show: canManageReviews, icon: '🗒' },
+        { path: '/interviews/new', label: '新增訪談', show: canManageReviews, icon: '＋' },
+        { path: '/interviews/items', label: '題目管理', show: canManageReviews, icon: '⚙️' },
+      ],
+    },
+    {
       label: '系統設定',
       items: [
         { path: '/feedback-categories', label: '回報類別', show: canManageReviews, icon: '📂' },
