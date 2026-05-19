@@ -296,6 +296,14 @@ export const interviewsApi = {
   // Whisper 轉錄
   transcribeAudio: (recordId: string, url: string) =>
     api.post<{ transcript: string }>(`/interviews/records/${recordId}/audio/transcribe`, { url }),
+
+  // Claude 區分講者
+  diarizeAudio: (recordId: string, url: string, interviewerRole = '主管', intervieweeRole = '員工') =>
+    api.post<{ transcript_diarized: string }>(`/interviews/records/${recordId}/audio/diarize`, {
+      url,
+      interviewer_role: interviewerRole,
+      interviewee_role: intervieweeRole,
+    }),
 };
 
 // Analytics API

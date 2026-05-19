@@ -41,6 +41,10 @@ interface AudioMeta {
   created_at?: string;
   transcript?: string;
   transcribed_at?: string;
+  transcript_diarized?: string;
+  diarized_at?: string;
+  interviewer_role?: string;
+  interviewee_role?: string;
 }
 
 interface RecordDetail {
@@ -88,7 +92,10 @@ export default function InterviewDetailPage() {
   const [audioUploading, setAudioUploading] = useState(false);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
   const [transcribingUrl, setTranscribingUrl] = useState<string | null>(null);
+  const [diarizingUrl, setDiarizingUrl] = useState<string | null>(null);
   const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
+  // 每段錄音是否顯示原始 Whisper（未區分）版本；預設 false 表示顯示區分後的
+  const [showRawTranscript, setShowRawTranscript] = useState<Set<string>>(new Set());
 
   const load = async () => {
     if (!id) return;
@@ -267,6 +274,33 @@ export default function InterviewDetailPage() {
 
   const toggleTranscript = (url: string) => {
     setExpandedTranscripts(prev => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url); else next.add(url);
+      return next;
+    });
+  };
+
+  const handleDiarize = async (audio: AudioMeta) => {
+    if (!id) return;
+    if (!audio.transcript) {
+      alert('請先執行 AI 轉文字稿');
+      return;
+    }
+    if (audio.transcript_diarized && !confirm('已區分過講者，重新區分會覆寫。確定？')) return;
+    setDiarizingUrl(audio.url);
+    try {
+      await interviewsApi.diarizeAudio(id, audio.url);
+      await load();
+      setExpandedTranscripts(prev => new Set([...prev, audio.url]));
+    } catch (err: any) {
+      alert(err.response?.data?.message || '區分講者失敗');
+    } finally {
+      setDiarizingUrl(null);
+    }
+  };
+
+  const toggleRawTranscript = (url: string) => {
+    setShowRawTranscript(prev => {
       const next = new Set(prev);
       if (next.has(url)) next.delete(url); else next.add(url);
       return next;
@@ -514,7 +548,7 @@ export default function InterviewDetailPage() {
                       您的瀏覽器不支援音訊播放
                     </audio>
 
-                    {/* AI 轉文字稿 */}
+                    {/* AI 轉文字稿 + 區分講者 */}
                     <div className="mt-2 flex items-center gap-2 flex-wrap">
                       <button
                         onClick={() => handleTranscribe(audio)}
@@ -529,8 +563,29 @@ export default function InterviewDetailPage() {
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                           </svg>
                         )}
-                        {isTranscribing ? '轉錄中（可能要等 30 秒~2 分鐘）...' : audio.transcript ? '🔄 重新轉錄' : '🎙️ AI 轉文字稿'}
+                        {isTranscribing ? '轉錄中（30秒~2分鐘）...' : audio.transcript ? '🔄 重新轉錄' : '🎙️ AI 轉文字稿'}
                       </button>
+
+                      {/* 區分講者按鈕（必須先有 transcript） */}
+                      {audio.transcript && (
+                        <button
+                          onClick={() => handleDiarize(audio)}
+                          disabled={diarizingUrl === audio.url}
+                          className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded text-white disabled:opacity-50"
+                          style={{ backgroundColor: '#7c5cab' }}
+                        >
+                          {diarizingUrl === audio.url && (
+                            <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                          )}
+                          {diarizingUrl === audio.url
+                            ? '分析中...'
+                            : audio.transcript_diarized ? '🔄 重新區分' : '🎭 區分講者 (主管/員工)'}
+                        </button>
+                      )}
+
                       {audio.transcript && (
                         <button
                           onClick={() => toggleTranscript(audio.url)}
@@ -548,9 +603,31 @@ export default function InterviewDetailPage() {
                     </div>
 
                     {audio.transcript && isExpanded && (
-                      <div className="mt-2 bg-white border border-blue-200 rounded p-3 text-sm whitespace-pre-wrap leading-relaxed">
-                        <div className="text-xs text-blue-600 font-semibold mb-1">📝 Whisper 逐字稿</div>
-                        {audio.transcript}
+                      <div className="mt-2 bg-white border rounded p-3 text-sm whitespace-pre-wrap leading-relaxed"
+                        style={{ borderColor: audio.transcript_diarized && !showRawTranscript.has(audio.url) ? '#cbb8e0' : '#bfdbfe' }}>
+                        <div className="flex items-center justify-between mb-2">
+                          {audio.transcript_diarized && !showRawTranscript.has(audio.url) ? (
+                            <div className="text-xs font-semibold" style={{ color: '#7c5cab' }}>
+                              🎭 已區分講者（{audio.interviewer_role || '主管'} / {audio.interviewee_role || '員工'}）
+                              {audio.diarized_at && (
+                                <span className="text-gray-400 font-normal ml-2">分析於 {new Date(audio.diarized_at).toLocaleString()}</span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-blue-600 font-semibold">📝 Whisper 原始逐字稿</div>
+                          )}
+                          {audio.transcript_diarized && (
+                            <button
+                              onClick={() => toggleRawTranscript(audio.url)}
+                              className="text-xs text-gray-500 hover:underline"
+                            >
+                              {showRawTranscript.has(audio.url) ? '看區分後版本' : '看原始版本'}
+                            </button>
+                          )}
+                        </div>
+                        {audio.transcript_diarized && !showRawTranscript.has(audio.url)
+                          ? audio.transcript_diarized
+                          : audio.transcript}
                       </div>
                     )}
                   </div>
