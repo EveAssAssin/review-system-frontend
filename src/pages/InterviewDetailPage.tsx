@@ -39,6 +39,8 @@ interface AudioMeta {
   size: number;
   mime?: string;
   created_at?: string;
+  transcript?: string;
+  transcribed_at?: string;
 }
 
 interface RecordDetail {
@@ -85,6 +87,8 @@ export default function InterviewDetailPage() {
   // 錄音檔
   const [audioUploading, setAudioUploading] = useState(false);
   const audioInputRef = useRef<HTMLInputElement | null>(null);
+  const [transcribingUrl, setTranscribingUrl] = useState<string | null>(null);
+  const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
 
   const load = async () => {
     if (!id) return;
@@ -243,6 +247,30 @@ export default function InterviewDetailPage() {
     } catch (err: any) {
       alert(err.response?.data?.message || '刪除失敗');
     }
+  };
+
+  const handleTranscribe = async (audio: AudioMeta) => {
+    if (!id) return;
+    if (audio.transcript && !confirm('已有逐字稿，重新轉錄會覆寫。確定？')) return;
+    setTranscribingUrl(audio.url);
+    try {
+      await interviewsApi.transcribeAudio(id, audio.url);
+      await load();
+      // 自動展開新轉好的逐字稿
+      setExpandedTranscripts(prev => new Set([...prev, audio.url]));
+    } catch (err: any) {
+      alert(err.response?.data?.message || '轉錄失敗');
+    } finally {
+      setTranscribingUrl(null);
+    }
+  };
+
+  const toggleTranscript = (url: string) => {
+    setExpandedTranscripts(prev => {
+      const next = new Set(prev);
+      if (next.has(url)) next.delete(url); else next.add(url);
+      return next;
+    });
   };
 
   const handleAddImage = (itemId: string) => {
@@ -462,27 +490,72 @@ export default function InterviewDetailPage() {
             <div className="text-xs text-gray-400">尚未上傳錄音檔。支援 mp3 / m4a / wav 等音訊格式，單檔上限 200MB</div>
           ) : (
             <div className="space-y-2">
-              {(record.audio_urls || []).map((audio, idx) => (
-                <div key={audio.url + idx} className="border rounded-lg p-3 bg-gray-50">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-sm">
-                      <div className="font-medium text-gray-700">{audio.name || `錄音檔 ${idx + 1}`}</div>
-                      <div className="text-xs text-gray-400">
-                        {formatSize(audio.size || 0)}
-                        {audio.created_at && ` · ${new Date(audio.created_at).toLocaleString()}`}
+              {(record.audio_urls || []).map((audio, idx) => {
+                const isTranscribing = transcribingUrl === audio.url;
+                const isExpanded = expandedTranscripts.has(audio.url);
+                const tooLargeForWhisper = audio.size > 25 * 1024 * 1024;
+                return (
+                  <div key={audio.url + idx} className="border rounded-lg p-3 bg-gray-50">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-sm">
+                        <div className="font-medium text-gray-700">{audio.name || `錄音檔 ${idx + 1}`}</div>
+                        <div className="text-xs text-gray-400">
+                          {formatSize(audio.size || 0)}
+                          {audio.created_at && ` · ${new Date(audio.created_at).toLocaleString()}`}
+                        </div>
                       </div>
+                      <button
+                        onClick={() => handleAudioDelete(audio.url)}
+                        className="text-xs text-red-500 hover:underline"
+                      >刪除</button>
                     </div>
-                    <button
-                      onClick={() => handleAudioDelete(audio.url)}
-                      className="text-xs text-red-500 hover:underline"
-                    >刪除</button>
+                    <audio controls preload="none" className="w-full h-10">
+                      <source src={audio.url} type={audio.mime || 'audio/mpeg'} />
+                      您的瀏覽器不支援音訊播放
+                    </audio>
+
+                    {/* AI 轉文字稿 */}
+                    <div className="mt-2 flex items-center gap-2 flex-wrap">
+                      <button
+                        onClick={() => handleTranscribe(audio)}
+                        disabled={isTranscribing || tooLargeForWhisper}
+                        title={tooLargeForWhisper ? '超過 Whisper 25MB 限制' : ''}
+                        className="inline-flex items-center gap-1 text-xs px-3 py-1 rounded text-white disabled:opacity-50"
+                        style={{ backgroundColor: '#5b7fad' }}
+                      >
+                        {isTranscribing && (
+                          <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        )}
+                        {isTranscribing ? '轉錄中（可能要等 30 秒~2 分鐘）...' : audio.transcript ? '🔄 重新轉錄' : '🎙️ AI 轉文字稿'}
+                      </button>
+                      {audio.transcript && (
+                        <button
+                          onClick={() => toggleTranscript(audio.url)}
+                          className="text-xs text-gray-600 hover:underline"
+                        >{isExpanded ? '收合逐字稿' : '展開逐字稿'}</button>
+                      )}
+                      {audio.transcribed_at && (
+                        <span className="text-xs text-gray-400">
+                          轉錄於 {new Date(audio.transcribed_at).toLocaleString()}
+                        </span>
+                      )}
+                      {tooLargeForWhisper && !audio.transcript && (
+                        <span className="text-xs text-orange-600">⚠️ 超過 25MB，無法用 Whisper 轉錄</span>
+                      )}
+                    </div>
+
+                    {audio.transcript && isExpanded && (
+                      <div className="mt-2 bg-white border border-blue-200 rounded p-3 text-sm whitespace-pre-wrap leading-relaxed">
+                        <div className="text-xs text-blue-600 font-semibold mb-1">📝 Whisper 逐字稿</div>
+                        {audio.transcript}
+                      </div>
+                    )}
                   </div>
-                  <audio controls preload="none" className="w-full h-10">
-                    <source src={audio.url} type={audio.mime || 'audio/mpeg'} />
-                    您的瀏覽器不支援音訊播放
-                  </audio>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

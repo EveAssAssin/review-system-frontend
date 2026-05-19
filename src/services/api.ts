@@ -292,6 +292,10 @@ export const interviewsApi = {
     api.post<{ chat: { role: 'user' | 'assistant'; content: string; created_at: string }[] }>(`/interviews/records/${id}/analysis-chat`, { message }),
   resetAnalysisChat: (id: string) =>
     api.delete(`/interviews/records/${id}/analysis-chat`),
+
+  // Whisper 轉錄
+  transcribeAudio: (recordId: string, url: string) =>
+    api.post<{ transcript: string }>(`/interviews/records/${recordId}/audio/transcribe`, { url }),
 };
 
 // Analytics API
