@@ -156,6 +156,21 @@ export const uploadsApi = {
   },
   getByFeedbackId: (feedbackId: string) => api.get(`/uploads/feedback/${feedbackId}`),
   deleteFeedbackAttachment: (id: string) => api.delete(`/uploads/feedback-attachment/${id}`),
+
+  // 訪談錄音檔
+  uploadForInterview: (recordId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post<{ audios: { url: string; name: string; size: number; mime: string; created_at: string }[] }>(
+      `/uploads/interview/${recordId}/audio`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  },
+  deleteInterviewAudio: (recordId: string, audioUrl: string) =>
+    api.delete(`/uploads/interview/${recordId}/audio`, {
+      headers: { 'x-audio-url': audioUrl },
+    }),
 };
 
 // Feedback Sources API（回報來源，回報與客服紀錄共用）

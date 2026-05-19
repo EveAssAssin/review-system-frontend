@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { interviewsApi } from '../services/api';
+import { interviewsApi, uploadsApi } from '../services/api';
 
 interface ItemWithResponse {
   id: string;
@@ -33,6 +33,14 @@ interface ChatMsg {
   created_at?: string;
 }
 
+interface AudioMeta {
+  url: string;
+  name: string;
+  size: number;
+  mime?: string;
+  created_at?: string;
+}
+
 interface RecordDetail {
   id: string;
   month: string;
@@ -42,11 +50,18 @@ interface RecordDetail {
   employee_analysis?: string;
   analysis_chat?: ChatMsg[];
   analysis_generated_at?: string;
+  audio_urls?: AudioMeta[];
   created_at: string;
   updated_at: string;
   employees?: { id: string; name: string; store_name?: string; department?: string; app_number?: string };
   items_with_responses: ItemWithResponse[];
 }
+
+const formatSize = (n: number): string => {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+};
 
 export default function InterviewDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -66,6 +81,10 @@ export default function InterviewDetailPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatBusy, setChatBusy] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // 錄音檔
+  const [audioUploading, setAudioUploading] = useState(false);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -191,6 +210,38 @@ export default function InterviewDetailPage() {
       navigate('/interviews');
     } catch (err) {
       alert('刪除失敗');
+    }
+  };
+
+  const handleAudioUpload = async (files: FileList | null) => {
+    if (!id || !files || files.length === 0) return;
+    const fileArr = Array.from(files);
+    // 簡單前端檢查：200MB
+    for (const f of fileArr) {
+      if (f.size > 200 * 1024 * 1024) {
+        alert(`「${f.name}」超過 200MB 限制`);
+        return;
+      }
+    }
+    setAudioUploading(true);
+    try {
+      await uploadsApi.uploadForInterview(id, fileArr);
+      await load();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '上傳失敗');
+    } finally {
+      setAudioUploading(false);
+      if (audioInputRef.current) audioInputRef.current.value = '';
+    }
+  };
+
+  const handleAudioDelete = async (audioUrl: string) => {
+    if (!id || !confirm('確定刪除此錄音檔？')) return;
+    try {
+      await uploadsApi.deleteInterviewAudio(id, audioUrl);
+      await load();
+    } catch (err: any) {
+      alert(err.response?.data?.message || '刪除失敗');
     }
   };
 
@@ -379,6 +430,60 @@ export default function InterviewDetailPage() {
             </div>
           ) : (
             <div className="text-xs text-gray-400">尚未執行 AI 分析</div>
+          )}
+        </div>
+
+        {/* 錄音檔 */}
+        <div className="border-t pt-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold text-gray-700">🎙️ 訪談錄音</div>
+            <label className="text-xs px-3 py-1 text-white rounded cursor-pointer inline-flex items-center gap-2"
+              style={{ backgroundColor: audioUploading ? '#9ca3af' : '#8b6f4e' }}>
+              {audioUploading && (
+                <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*"
+                multiple
+                disabled={audioUploading}
+                onChange={e => handleAudioUpload(e.target.files)}
+                className="hidden"
+              />
+              {audioUploading ? '上傳中...' : '＋ 上傳錄音'}
+            </label>
+          </div>
+
+          {(record.audio_urls || []).length === 0 ? (
+            <div className="text-xs text-gray-400">尚未上傳錄音檔。支援 mp3 / m4a / wav 等音訊格式，單檔上限 200MB</div>
+          ) : (
+            <div className="space-y-2">
+              {(record.audio_urls || []).map((audio, idx) => (
+                <div key={audio.url + idx} className="border rounded-lg p-3 bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-sm">
+                      <div className="font-medium text-gray-700">{audio.name || `錄音檔 ${idx + 1}`}</div>
+                      <div className="text-xs text-gray-400">
+                        {formatSize(audio.size || 0)}
+                        {audio.created_at && ` · ${new Date(audio.created_at).toLocaleString()}`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleAudioDelete(audio.url)}
+                      className="text-xs text-red-500 hover:underline"
+                    >刪除</button>
+                  </div>
+                  <audio controls preload="none" className="w-full h-10">
+                    <source src={audio.url} type={audio.mime || 'audio/mpeg'} />
+                    您的瀏覽器不支援音訊播放
+                  </audio>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

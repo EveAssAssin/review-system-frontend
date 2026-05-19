@@ -14,7 +14,10 @@ const LoginPage: React.FC = () => {
     const urlAppNumber = searchParams.get('app_number');
     if (urlAppNumber) {
       setAppNumber(urlAppNumber);
-      setError('自動登入失敗，請確認會員編號後重新登入');
+      // 只在「AutoLogin 已經試過並失敗」才顯示錯誤；否則 AutoLogin 還在嘗試
+      // AutoLogin 重試 3 次共 ~15 秒；超過後才會跳出來進到 LoginPage
+      // 進到這個畫面代表已經失敗
+      setError(`自動登入失敗：找不到會員編號「${urlAppNumber}」的有效員工，請確認後重新登入，或聯絡管理員觸發員工同步`);
     }
   }, [searchParams]);
 
