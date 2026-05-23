@@ -49,6 +49,12 @@ export default function Layout() {
       ],
     },
     {
+      label: '服務評鑑',
+      items: [
+        { path: '/service-evaluations', label: '服務評鑑', show: canManageReviews, icon: '🏅' },
+      ],
+    },
+    {
       label: '訪談紀錄',
       items: [
         { path: '/interviews', label: '訪談列表', show: canManageReviews, icon: '🗒' },

@@ -332,4 +332,20 @@ export const serviceRecordsApi = {
   delete: (id: string) => api.delete(`/service-records/${id}`),
 };
 
+// Service Evaluation (服務評鑑) API
+export const serviceEvaluationApi = {
+  listByMonth: (yearMonth: string) =>
+    api.get('/service-evaluations', { params: { year_month: yearMonth } }),
+  overview: (yearMonth: string) =>
+    api.get('/service-evaluations/overview', { params: { year_month: yearMonth } }),
+  getById: (id: string) => api.get(`/service-evaluations/${id}`),
+  byEmployee: (employeeId: string) => api.get(`/service-evaluations/employee/${employeeId}`),
+  create: (data: { employee_id: string; year_month: string; glasses_count?: number }, createdBy?: string) =>
+    api.post('/service-evaluations', data, { params: createdBy ? { createdBy } : undefined }),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.patch(`/service-evaluations/${id}`, data),
+  recalc: (id: string) => api.post(`/service-evaluations/${id}/recalc`, {}),
+  remove: (id: string) => api.delete(`/service-evaluations/${id}`),
+};
+
 export default api;

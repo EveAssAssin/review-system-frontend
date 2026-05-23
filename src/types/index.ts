@@ -280,3 +280,36 @@ export const FEEDBACK_SOURCE_LABELS: Record<string, string> = {
   web: '網路',
   other: '其他',
 };
+
+// ─── 服務評鑑 ───────────────────────────────────────────
+export interface ServiceEvaluationScore {
+  review_rate: number;
+  review_rate_score: number;
+  process_score: number;
+  phone_score: number;
+  deduction: number;
+  total: number;
+}
+
+export interface ServiceEvaluation {
+  id: string;
+  employee_id: string;
+  year_month: string;
+  glasses_count: number;
+  website_review_count: number;
+  negative_review_count: number;
+  google_low_star_count: number;
+  service_process_score: number;
+  phone_survey_score: number;
+  note?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  score?: ServiceEvaluationScore;
+  employees?: { id: string; name: string; store_name?: string; department?: string; app_number?: string };
+}
+
+export interface ServiceEvaluationOverviewRow {
+  employee: { id: string; name: string; store_name?: string; department?: string; app_number?: string };
+  evaluation: ServiceEvaluation | null;
+}
