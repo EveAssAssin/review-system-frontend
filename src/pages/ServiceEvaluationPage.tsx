@@ -53,6 +53,9 @@ const ServiceEvaluationPage: React.FC = () => {
     order_names_without_evaluation: { sale_op_id: string; employee_name: string; customers: number }[];
     total_order_customers: number;
   } | null>(null);
+  const [reviewSyncing, setReviewSyncing] = useState(false);
+  const [snapshotting, setSnapshotting] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -99,6 +102,40 @@ const ServiceEvaluationPage: React.FC = () => {
     }
   };
 
+  const handleSyncWebsiteReviews = async () => {
+    if (!confirm(`確定要同步 ${yearMonth} 的官網新增評價量？\n會以「次月快照 - 本月快照」推算增量；當月則用即時 API。`)) return;
+    setReviewSyncing(true);
+    setReviewMsg(null);
+    try {
+      const res = await serviceEvaluationApi.syncWebsiteReviews(yearMonth);
+      const d = res.data;
+      let msg = `官網評價量同步完成（終值來源：${d.end_source === 'live' ? '即時 API' : '次月快照'}）。成功更新 ${d.updated.length} 位。`;
+      if (d.missing_start_snapshot.length > 0) msg += ` ⚠️ 缺本月快照：${d.missing_start_snapshot.join('、')}。`;
+      if (d.missing_end_value.length > 0) msg += ` ⚠️ 缺次月快照：${d.missing_end_value.join('、')}。`;
+      setReviewMsg(msg);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || '同步失敗');
+    } finally {
+      setReviewSyncing(false);
+    }
+  };
+
+  const handleTakeSnapshot = async () => {
+    if (!confirm('確定要立即執行官網評價快照？\n會撈所有在職人員目前的官網評價累計數（約需 30~60 秒）。\n系統每月 1 號會自動快照，這裡是手動補拍/初始化用。')) return;
+    setSnapshotting(true);
+    setReviewMsg(null);
+    try {
+      const res = await serviceEvaluationApi.takeSnapshot();
+      const d = res.data;
+      setReviewMsg(`快照完成（${d.snapshot_ym}）：${d.employee_count} 位人員、共 ${d.total_reviews} 則評價。`);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || '快照失敗');
+    } finally {
+      setSnapshotting(false);
+    }
+  };
+
   const evaluatedCount = rows.filter(r => r.evaluation).length;
   const avgScore = evaluatedCount > 0
     ? Math.round(rows.filter(r => r.evaluation).reduce((sum, r) => sum + (r.evaluation!.score?.total || 0), 0) / evaluatedCount)
@@ -123,8 +160,30 @@ const ServiceEvaluationPage: React.FC = () => {
             style={{ backgroundColor: '#5b7fad' }}>
             {syncing ? '同步中...（約 30~60 秒）' : '🔄 同步配鏡數'}
           </button>
+          <button
+            onClick={handleSyncWebsiteReviews}
+            disabled={reviewSyncing}
+            className="px-4 py-2 text-sm text-white rounded disabled:opacity-50"
+            style={{ backgroundColor: '#5b7fad' }}>
+            {reviewSyncing ? '同步中...' : '🔄 同步官網評價量'}
+          </button>
+          <button
+            onClick={handleTakeSnapshot}
+            disabled={snapshotting}
+            className="px-4 py-2 text-sm border rounded disabled:opacity-50"
+            title="系統每月 1 號自動快照，這裡是手動補拍/初始化用">
+            {snapshotting ? '快照中...' : '📸 立即快照'}
+          </button>
         </div>
       </div>
+
+      {/* 官網評價量同步訊息 */}
+      {reviewMsg && (
+        <div className="bg-white rounded-lg shadow p-4 text-sm flex items-start justify-between gap-3">
+          <span className="text-gray-700">{reviewMsg}</span>
+          <button onClick={() => setReviewMsg(null)} className="text-gray-400 hover:text-gray-600 text-xs flex-shrink-0">關閉 ✕</button>
+        </div>
+      )}
 
       {/* 同步結果 */}
       {syncResult && (

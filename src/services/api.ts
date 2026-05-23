@@ -350,6 +350,16 @@ export const serviceEvaluationApi = {
       params: { year_month: yearMonth },
       timeout: 120000, // E0123 整月掃描較久
     }),
+  takeSnapshot: (snapshotYm?: string) =>
+    api.post('/service-evaluations/take-snapshot', {}, {
+      params: snapshotYm ? { snapshot_ym: snapshotYm } : undefined,
+      timeout: 180000, // 逐一打 API 取每位人員評價數
+    }),
+  syncWebsiteReviews: (yearMonth: string) =>
+    api.post('/service-evaluations/sync-website-reviews', {}, {
+      params: { year_month: yearMonth },
+      timeout: 180000,
+    }),
   remove: (id: string) => api.delete(`/service-evaluations/${id}`),
 };
 
