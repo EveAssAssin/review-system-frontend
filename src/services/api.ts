@@ -345,6 +345,11 @@ export const serviceEvaluationApi = {
   update: (id: string, data: Record<string, unknown>) =>
     api.patch(`/service-evaluations/${id}`, data),
   recalc: (id: string) => api.post(`/service-evaluations/${id}/recalc`, {}),
+  syncGlasses: (yearMonth: string) =>
+    api.post('/service-evaluations/sync-glasses', {}, {
+      params: { year_month: yearMonth },
+      timeout: 120000, // E0123 整月掃描較久
+    }),
   remove: (id: string) => api.delete(`/service-evaluations/${id}`),
 };
 

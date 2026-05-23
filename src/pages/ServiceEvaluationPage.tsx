@@ -46,6 +46,13 @@ const ServiceEvaluationPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ServiceEvaluation | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null>(null); // employee_id 建立中
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{
+    updated: { employee_name: string; erpid: string; glasses_count: number }[];
+    evaluations_without_orders: string[];
+    order_names_without_evaluation: { sale_op_id: string; employee_name: string; customers: number }[];
+    total_order_customers: number;
+  } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -77,6 +84,21 @@ const ServiceEvaluationPage: React.FC = () => {
     }
   };
 
+  const handleSyncGlasses = async () => {
+    if (!confirm(`確定要同步 ${yearMonth} 的配鏡數？\n會從 E0123 抓取整月主力眼鏡訂單（約需 30~60 秒），依 erpid 比對更新各人員配鏡數。`)) return;
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await serviceEvaluationApi.syncGlasses(yearMonth);
+      setSyncResult(res.data);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || '同步失敗，請稍後再試');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const evaluatedCount = rows.filter(r => r.evaluation).length;
   const avgScore = evaluatedCount > 0
     ? Math.round(rows.filter(r => r.evaluation).reduce((sum, r) => sum + (r.evaluation!.score?.total || 0), 0) / evaluatedCount)
@@ -94,8 +116,43 @@ const ServiceEvaluationPage: React.FC = () => {
             onChange={e => setYearMonth(e.target.value)}
             className="px-3 py-2 border rounded"
           />
+          <button
+            onClick={handleSyncGlasses}
+            disabled={syncing}
+            className="px-4 py-2 text-sm text-white rounded disabled:opacity-50"
+            style={{ backgroundColor: '#5b7fad' }}>
+            {syncing ? '同步中...（約 30~60 秒）' : '🔄 同步配鏡數'}
+          </button>
         </div>
       </div>
+
+      {/* 同步結果 */}
+      {syncResult && (
+        <div className="bg-white rounded-lg shadow p-4 text-sm space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-[#8b6f4e]">配鏡數同步結果</span>
+            <button onClick={() => setSyncResult(null)} className="text-gray-400 hover:text-gray-600 text-xs">關閉 ✕</button>
+          </div>
+          <div className="text-gray-600">
+            E0123 整月主力眼鏡共 <strong>{syncResult.total_order_customers}</strong> 張；
+            成功更新 <strong className="text-green-600">{syncResult.updated.length}</strong> 位人員的配鏡數。
+          </div>
+          {syncResult.evaluations_without_orders.length > 0 && (
+            <div className="text-orange-600 text-xs">
+              ⚠️ 有評鑑但訂單對不到（erpid 無主力眼鏡訂單）：
+              {syncResult.evaluations_without_orders.join('、')}
+            </div>
+          )}
+          {syncResult.order_names_without_evaluation.length > 0 && (
+            <div className="text-gray-500 text-xs">
+              ℹ️ 有主力眼鏡訂單但尚未建立評鑑：
+              {syncResult.order_names_without_evaluation
+                .map(o => `${o.employee_name || '(未填名)'}[${o.sale_op_id}]×${o.customers}`)
+                .join('、')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 統計卡 */}
       <div className="grid grid-cols-3 gap-4">
