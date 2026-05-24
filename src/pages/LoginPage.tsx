@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const [appNumber, setAppNumber] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -14,12 +14,22 @@ const LoginPage: React.FC = () => {
     const urlAppNumber = searchParams.get('app_number');
     if (urlAppNumber) {
       setAppNumber(urlAppNumber);
-      // 只在「AutoLogin 已經試過並失敗」才顯示錯誤；否則 AutoLogin 還在嘗試
-      // AutoLogin 重試 3 次共 ~15 秒；超過後才會跳出來進到 LoginPage
-      // 進到這個畫面代表已經失敗
-      setError(`自動登入失敗：找不到會員編號「${urlAppNumber}」的有效員工，請確認後重新登入，或聯絡管理員觸發員工同步`);
+      // 只有「尚未登入」又停在這個畫面，才代表自動登入真的失敗了。
+      // 若使用者已登入（例如帶著有效 token 又點了 /login?app_number=xxx 的 LINE 連結），
+      // 會由下方的 <Navigate> 直接導回首頁，不應顯示這個錯誤訊息。
+      if (!user) {
+        setError(`自動登入失敗：找不到會員編號「${urlAppNumber}」的有效員工，請確認後重新登入，或聯絡管理員觸發員工同步`);
+      }
     }
-  }, [searchParams]);
+  }, [searchParams, user]);
+
+  // 已登入者不應停留在登入頁。
+  // 例如：使用者已有有效登入狀態，又點了 LINE 的 /login?app_number=xxx 連結時，
+  // AutoLogin 會因為「已登入」而略過自動登入流程、也不會清掉網址上的 app_number 參數，
+  // 使這個畫面誤判成「自動登入失敗」並顯示錯誤。直接導回首頁即可。
+  if (user) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
