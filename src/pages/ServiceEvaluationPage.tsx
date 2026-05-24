@@ -56,6 +56,8 @@ const ServiceEvaluationPage: React.FC = () => {
   const [reviewSyncing, setReviewSyncing] = useState(false);
   const [snapshotting, setSnapshotting] = useState(false);
   const [reviewMsg, setReviewMsg] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [locking, setLocking] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -136,7 +138,45 @@ const ServiceEvaluationPage: React.FC = () => {
     }
   };
 
+  const handleOpenMonth = async () => {
+    if (!confirm(`確定要開啟 ${yearMonth} 的評鑑？\n會為「評鑑名單」內、尚未建立評鑑的人員自動建立評鑑。`)) return;
+    setOpening(true);
+    try {
+      const res = await serviceEvaluationApi.openMonth(yearMonth, user?.name);
+      const d = res.data;
+      setReviewMsg(`已開啟 ${d.year_month} 評鑑：名單 ${d.roster_count} 人，新建 ${d.created} 筆，略過 ${d.skipped} 筆。`);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || '開啟失敗');
+    } finally {
+      setOpening(false);
+    }
+  };
+
+  const handleLockToggle = async () => {
+    const isLocked = rows.some(r => r.evaluation?.is_locked);
+    const action = isLocked ? '解鎖' : '鎖定';
+    const extra = isLocked ? '\n解鎖後即可再次編輯。' : '\n鎖定後該月分數即定案、不能再修改（仍可再解鎖）。';
+    if (!confirm(`確定要${action} ${yearMonth} 的所有評鑑？${extra}`)) return;
+    setLocking(true);
+    try {
+      if (isLocked) {
+        const res = await serviceEvaluationApi.unlockMonth(yearMonth);
+        setReviewMsg(`已解鎖 ${yearMonth}：${res.data.unlocked} 筆。`);
+      } else {
+        const res = await serviceEvaluationApi.lockMonth(yearMonth, user?.name);
+        setReviewMsg(`已鎖定 ${yearMonth}：${res.data.locked} 筆，分數已定案保存。`);
+      }
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || `${action}失敗`);
+    } finally {
+      setLocking(false);
+    }
+  };
+
   const evaluatedCount = rows.filter(r => r.evaluation).length;
+  const monthLocked = rows.some(r => r.evaluation?.is_locked);
   const avgScore = evaluatedCount > 0
     ? Math.round(rows.filter(r => r.evaluation).reduce((sum, r) => sum + (r.evaluation!.score?.total || 0), 0) / evaluatedCount)
     : 0;
@@ -173,6 +213,20 @@ const ServiceEvaluationPage: React.FC = () => {
             className="px-4 py-2 text-sm border rounded disabled:opacity-50"
             title="系統每月 1 號自動快照，這裡是手動補拍/初始化用">
             {snapshotting ? '快照中...' : '📸 立即快照'}
+          </button>
+          <button
+            onClick={handleOpenMonth}
+            disabled={opening}
+            className="px-4 py-2 text-sm text-white rounded disabled:opacity-50"
+            style={{ backgroundColor: '#8b6f4e' }}>
+            {opening ? '開啟中...' : '＋ 開啟本月評鑑'}
+          </button>
+          <button
+            onClick={handleLockToggle}
+            disabled={locking}
+            className="px-4 py-2 text-sm border rounded disabled:opacity-50"
+            style={monthLocked ? { backgroundColor: '#fef2f2', borderColor: '#fecaca', color: '#b91c1c' } : {}}>
+            {locking ? '處理中...' : monthLocked ? '🔓 解鎖本月' : '🔒 鎖定本月'}
           </button>
         </div>
       </div>
@@ -217,7 +271,7 @@ const ServiceEvaluationPage: React.FC = () => {
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-lg shadow text-center">
           <div className="text-2xl font-bold text-[#8b6f4e]">{rows.length}</div>
-          <div className="text-gray-500 text-sm">在職人員</div>
+          <div className="text-gray-500 text-sm">評鑑名單</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow text-center">
           <div className="text-2xl font-bold text-green-600">{evaluatedCount}</div>
@@ -237,12 +291,20 @@ const ServiceEvaluationPage: React.FC = () => {
         － google 2星以下 ×5 － 評價負評 ×5　＝　總分（0~100）
       </div>
 
+      {monthLocked && (
+        <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
+          🔒 {yearMonth} 評鑑已鎖定（月結算定案），分數已保存。需修改請按上方「🔓 解鎖本月」。
+        </div>
+      )}
+
       {/* 列表 */}
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         {loading ? (
           <div className="p-8 text-center text-gray-500">載入中...</div>
         ) : rows.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">沒有在職人員資料</div>
+          <div className="p-8 text-center text-gray-500">
+            尚無評鑑名單。請到「員工列表」把要評鑑的人員「需評鑑」開關打開，再回此頁按「開啟本月評鑑」。
+          </div>
         ) : (
           <table className="w-full min-w-[820px]">
             <thead className="bg-[#f9f6f2]">
@@ -284,12 +346,13 @@ const ServiceEvaluationPage: React.FC = () => {
                           <span className="text-lg font-bold" style={{ color: scoreColor(sc?.total || 0) }}>
                             {sc?.total}
                           </span>
+                          {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
                         </td>
                         <td className="px-3 py-3 text-center">
                           <button
                             onClick={() => setEditing(ev)}
                             className="text-[#8b6f4e] hover:underline text-sm">
-                            編輯
+                            {ev.is_locked ? '檢視' : '編輯'}
                           </button>
                         </td>
                       </>
@@ -345,6 +408,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
   const [recalcing, setRecalcing] = useState(false);
 
   const sc = computeScore(form);
+  const locked = !!evaluation.is_locked;
 
   const numField = (key: keyof typeof form, value: string) => {
     const n = value === '' ? 0 : parseInt(value, 10);
@@ -418,6 +482,12 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
             </div>
           </div>
 
+          {locked && (
+            <div className="rounded-lg p-3 mb-4 text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
+              🔒 此評鑑已於月結算時鎖定，所有欄位唯讀。需修改請先在列表上方「🔓 解鎖本月」。
+            </div>
+          )}
+
           <div className="space-y-3">
             {/* 配鏡數 */}
             <div>
@@ -426,6 +496,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </label>
               <input type="number" min={0} value={form.glasses_count}
                 onChange={e => numField('glasses_count', e.target.value)}
+                disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
@@ -436,6 +507,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </label>
               <input type="number" min={0} value={form.website_review_count}
                 onChange={e => numField('website_review_count', e.target.value)}
+                disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
@@ -446,6 +518,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </label>
               <input type="number" min={0} value={form.negative_review_count}
                 onChange={e => numField('negative_review_count', e.target.value)}
+                disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
@@ -456,6 +529,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </label>
               <input type="number" min={0} value={form.google_low_star_count}
                 onChange={e => numField('google_low_star_count', e.target.value)}
+                disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
@@ -466,6 +540,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </label>
               <input type="number" min={0} max={20} value={form.service_process_score}
                 onChange={e => numField('service_process_score', e.target.value)}
+                disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
@@ -476,38 +551,45 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </label>
               <input type="number" min={0} max={20} value={form.phone_survey_score}
                 onChange={e => numField('phone_survey_score', e.target.value)}
+                disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
             {/* 備註 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
-              <textarea rows={2} value={form.note}
+              <textarea rows={2} disabled={locked} value={form.note}
                 onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
                 className="w-full px-3 py-2 border rounded text-sm" placeholder="選填..." />
             </div>
           </div>
 
-          <div className="flex items-center justify-between mt-5">
-            <div className="flex gap-2">
-              <button onClick={handleRecalc} disabled={recalcing}
-                className="px-3 py-2 text-sm border rounded hover:bg-gray-50 disabled:opacity-50">
-                {recalcing ? '計算中...' : '🔄 重新計算自動值'}
-              </button>
-              <button onClick={handleDelete} disabled={saving}
-                className="px-3 py-2 text-sm text-red-500 border border-red-200 rounded hover:bg-red-50 disabled:opacity-50">
-                刪除
-              </button>
+          {locked ? (
+            <div className="flex items-center justify-end mt-5">
+              <button onClick={onClose} className="px-4 py-2 border rounded text-sm">關閉</button>
             </div>
-            <div className="flex gap-2">
-              <button onClick={onClose} className="px-4 py-2 border rounded text-sm">取消</button>
-              <button onClick={handleSave} disabled={saving}
-                className="px-4 py-2 text-white rounded text-sm disabled:opacity-50"
-                style={{ backgroundColor: '#8b6f4e' }}>
-                {saving ? '儲存中...' : '儲存'}
-              </button>
+          ) : (
+            <div className="flex items-center justify-between mt-5">
+              <div className="flex gap-2">
+                <button onClick={handleRecalc} disabled={recalcing}
+                  className="px-3 py-2 text-sm border rounded hover:bg-gray-50 disabled:opacity-50">
+                  {recalcing ? '計算中...' : '🔄 重新計算自動值'}
+                </button>
+                <button onClick={handleDelete} disabled={saving}
+                  className="px-3 py-2 text-sm text-red-500 border border-red-200 rounded hover:bg-red-50 disabled:opacity-50">
+                  刪除
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={onClose} className="px-4 py-2 border rounded text-sm">取消</button>
+                <button onClick={handleSave} disabled={saving}
+                  className="px-4 py-2 text-white rounded text-sm disabled:opacity-50"
+                  style={{ backgroundColor: '#8b6f4e' }}>
+                  {saving ? '儲存中...' : '儲存'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

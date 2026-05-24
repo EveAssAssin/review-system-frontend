@@ -8,6 +8,7 @@ const EmployeesPage: React.FC = () => {
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [flagSaving, setFlagSaving] = useState<string | null>(null);
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -43,6 +44,25 @@ const EmployeesPage: React.FC = () => {
     }
   }, [searchQuery, employees]);
 
+  // 切換「是否納入服務評鑑名單」
+  const toggleServiceEval = async (emp: Employee) => {
+    const next = !emp.needs_service_evaluation;
+    setFlagSaving(emp.id);
+    try {
+      await employeesApi.setServiceEvalFlag(emp.id, next);
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === emp.id ? { ...e, needs_service_evaluation: next } : e))
+      );
+    } catch (error) {
+      console.error('Failed to update service-eval flag:', error);
+      alert('更新評鑑名單失敗，請稍後再試');
+    } finally {
+      setFlagSaving(null);
+    }
+  };
+
+  const rosterCount = employees.filter((e) => e.needs_service_evaluation).length;
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">員工列表</h2>
@@ -57,7 +77,8 @@ const EmployeesPage: React.FC = () => {
           className="w-full px-3 py-2 border rounded"
         />
         <div className="mt-2 text-sm text-gray-500">
-          共 {filteredEmployees.length} 筆 / 總計 {employees.length} 筆
+          共 {filteredEmployees.length} 筆 / 總計 {employees.length} 筆 ·{' '}
+          <span className="text-[#8b6f4e] font-medium">服務評鑑名單 {rosterCount} 人</span>
         </div>
       </div>
 
@@ -76,6 +97,7 @@ const EmployeesPage: React.FC = () => {
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">員工編號</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">門市/部門</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-gray-600">職稱</th>
+                  <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">需評鑑</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">正評</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">負評</th>
                   <th className="px-4 py-3 text-center text-sm font-medium text-gray-600">總計</th>
@@ -90,6 +112,24 @@ const EmployeesPage: React.FC = () => {
                     <td className="px-4 py-3 text-gray-600">{emp.store_name || emp.department || '-'}</td>
                     <td className="px-4 py-3 text-gray-600">{emp.jobtitle || '-'}</td>
                     <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => toggleServiceEval(emp)}
+                        disabled={flagSaving === emp.id}
+                        title="是否納入每月服務評鑑名單"
+                        className="relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 align-middle"
+                        style={{ backgroundColor: emp.needs_service_evaluation ? '#8b6f4e' : '#d1cabf' }}
+                      >
+                        <span
+                          className="inline-block h-4 w-4 rounded-full bg-white transition-transform"
+                          style={{
+                            transform: emp.needs_service_evaluation
+                              ? 'translateX(24px)'
+                              : 'translateX(4px)',
+                          }}
+                        />
+                      </button>
+                    </td>
+                    <td className="px-4 py-3 text-center">
                       <span className="text-green-600 font-medium">{emp.positive_count}</span>
                     </td>
                     <td className="px-4 py-3 text-center">
@@ -99,10 +139,7 @@ const EmployeesPage: React.FC = () => {
                       <span className="text-[#8b6f4e] font-medium">{emp.total_reviews}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        to={`/employees/${emp.id}`}
-                        className="text-[#8b6f4e] hover:underline"
-                      >
+                      <Link to={`/employees/${emp.id}`} className="text-[#8b6f4e] hover:underline">
                         查看
                       </Link>
                     </td>

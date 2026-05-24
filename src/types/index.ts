@@ -9,6 +9,7 @@ export interface Employee {
   department?: string;
   line_uid?: string;
   is_active: boolean;
+  needs_service_evaluation?: boolean;
   total_reviews: number;
   positive_count: number;
   negative_count: number;
@@ -305,6 +306,11 @@ export interface ServiceEvaluation {
   created_by?: string | null;
   created_at: string;
   updated_at: string;
+  is_locked?: boolean;
+  locked_at?: string | null;
+  locked_by?: string | null;
+  locked_score?: number | null;
+  last_auto_sync_at?: string | null;
   score?: ServiceEvaluationScore;
   employees?: { id: string; name: string; store_name?: string; department?: string; app_number?: string };
 }

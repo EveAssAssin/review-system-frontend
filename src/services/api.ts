@@ -65,6 +65,8 @@ export const employeesApi = {
   search: (params?: any) => api.get('/employees', { params }),
   getStats: () => api.get('/employees/stats'),
   getById: (id: string) => api.get(`/employees/${id}`),
+  setServiceEvalFlag: (id: string, needs: boolean) =>
+    api.patch(`/employees/${id}/service-eval-flag`, { needs }),
 };
 
 // Reviews API
@@ -361,6 +363,14 @@ export const serviceEvaluationApi = {
       timeout: 180000,
     }),
   remove: (id: string) => api.delete(`/service-evaluations/${id}`),
+  openMonth: (yearMonth: string, createdBy?: string) =>
+    api.post('/service-evaluations/open-month', {}, { params: { year_month: yearMonth, createdBy } }),
+  syncMonth: (yearMonth: string) =>
+    api.post('/service-evaluations/sync-month', {}, { params: { year_month: yearMonth }, timeout: 180000 }),
+  lockMonth: (yearMonth: string, lockedBy?: string) =>
+    api.post('/service-evaluations/lock-month', {}, { params: { year_month: yearMonth, lockedBy } }),
+  unlockMonth: (yearMonth: string) =>
+    api.post('/service-evaluations/unlock-month', {}, { params: { year_month: yearMonth } }),
 };
 
 export default api;
