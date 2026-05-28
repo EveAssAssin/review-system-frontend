@@ -371,6 +371,20 @@ export const serviceEvaluationApi = {
     api.post('/service-evaluations/lock-month', {}, { params: { year_month: yearMonth, lockedBy } }),
   unlockMonth: (yearMonth: string) =>
     api.post('/service-evaluations/unlock-month', {}, { params: { year_month: yearMonth } }),
+
+  // 電訪好評 — 錄音 + 文字稿
+  uploadPhoneSurveyAudio: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/service-evaluations/${id}/phone-survey-audio`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+  },
+  getPhoneSurveyAudio: (id: string) =>
+    api.get(`/service-evaluations/${id}/phone-survey-audio`),
+  deletePhoneSurveyAudio: (id: string) =>
+    api.delete(`/service-evaluations/${id}/phone-survey-audio`),
 };
 
 export default api;

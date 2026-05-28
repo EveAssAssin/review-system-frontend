@@ -47,6 +47,7 @@ const ServiceEvaluationPage: React.FC = () => {
   const [editing, setEditing] = useState<ServiceEvaluation | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
+  const [phoneSurveyFor, setPhoneSurveyFor] = useState<ServiceEvaluation | null>(null);
 
   const handleInlineProcessSave = async (id: string, value: number) => {
     setSavingProcessId(id);
@@ -377,7 +378,21 @@ const ServiceEvaluationPage: React.FC = () => {
                             />
                           )}
                         </td>
-                        <td className="px-3 py-3 text-center text-sm">{ev.phone_survey_score}</td>
+                        <td className="px-3 py-3 text-center text-sm">
+                          <button
+                            type="button"
+                            onClick={() => setPhoneSurveyFor(ev)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded hover:bg-[#f5f0eb] focus:outline-none"
+                            title="點擊上傳錄音 / 編輯分數"
+                          >
+                            <span className="font-medium">{ev.phone_survey_score}</span>
+                            {ev.phone_survey_audio_url ? (
+                              <span className="text-xs" title="已上傳錄音">🎧</span>
+                            ) : (
+                              <span className="text-xs text-gray-400" title="尚未上傳錄音">📁</span>
+                            )}
+                          </button>
+                        </td>
                         <td className="px-3 py-3 text-center text-sm text-red-600">
                           -{sc?.deduction}
                           <div className="text-xs text-gray-400">低星{ev.google_low_star_count}/負評{ev.negative_review_count}</div>
@@ -421,6 +436,14 @@ const ServiceEvaluationPage: React.FC = () => {
           evaluation={editing}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
+
+      {phoneSurveyFor && (
+        <PhoneSurveyModal
+          evaluation={phoneSurveyFor}
+          onClose={() => setPhoneSurveyFor(null)}
+          onSaved={() => { setPhoneSurveyFor(null); load(); }}
         />
       )}
     </div>
@@ -629,6 +652,259 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
                 </button>
               </div>
             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ── 電訪好評 Modal ───────────────────────────────────────────
+interface PhoneSurveyModalProps {
+  evaluation: ServiceEvaluation;
+  onClose: () => void;
+  onSaved: () => void;
+}
+
+const PhoneSurveyModal: React.FC<PhoneSurveyModalProps> = ({ evaluation, onClose, onSaved }) => {
+  const [row, setRow] = useState<any>({
+    phone_survey_audio_url: evaluation.phone_survey_audio_url,
+    phone_survey_audio_name: evaluation.phone_survey_audio_name,
+    phone_survey_audio_uploaded_at: evaluation.phone_survey_audio_uploaded_at,
+    phone_survey_transcript: evaluation.phone_survey_transcript,
+    phone_survey_transcript_status: evaluation.phone_survey_transcript_status || 'idle',
+    phone_survey_transcript_error: evaluation.phone_survey_transcript_error,
+  });
+  const [score, setScore] = useState<number>(evaluation.phone_survey_score || 0);
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [showRawText, setShowRawText] = useState(false);
+
+  const isLocked = !!evaluation.is_locked;
+  const status = row.phone_survey_transcript_status as 'idle' | 'transcribing' | 'done' | 'failed';
+  const hasAudio = !!row.phone_survey_audio_url;
+  const canSaveScore = hasAudio; // 「必須有錄音才能存分數」這條規則
+  const transcribing = status === 'transcribing';
+
+  // 輪詢轉錄狀態
+  useEffect(() => {
+    if (!transcribing) return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const res = await serviceEvaluationApi.getPhoneSurveyAudio(evaluation.id);
+        if (stopped) return;
+        setRow(res.data);
+      } catch {
+        /* 短暫網路錯誤忽略 */
+      }
+    };
+    const t = setInterval(tick, 3000);
+    return () => { stopped = true; clearInterval(t); };
+  }, [transcribing, evaluation.id]);
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    if (!f.type.startsWith('audio/')) {
+      setErr(`不是音檔（${f.type || '未知'}）`);
+      return;
+    }
+    if (f.size > 50 * 1024 * 1024) {
+      setErr(`檔案 ${(f.size / 1048576).toFixed(1)}MB 超過 50MB`);
+      return;
+    }
+    setErr(null);
+    setUploading(true);
+    try {
+      const res = await serviceEvaluationApi.uploadPhoneSurveyAudio(evaluation.id, f);
+      setRow(res.data);
+    } catch (ex: any) {
+      setErr(ex?.response?.data?.message || '上傳失敗');
+    } finally {
+      setUploading(false);
+      e.target.value = ''; // reset
+    }
+  };
+
+  const onDeleteAudio = async () => {
+    if (!confirm('確定要刪除這段錄音？\n刪除後分數會自動歸 0。')) return;
+    setDeleting(true);
+    setErr(null);
+    try {
+      await serviceEvaluationApi.deletePhoneSurveyAudio(evaluation.id);
+      setRow({
+        phone_survey_audio_url: null,
+        phone_survey_audio_name: null,
+        phone_survey_audio_uploaded_at: null,
+        phone_survey_transcript: null,
+        phone_survey_transcript_status: 'idle',
+        phone_survey_transcript_error: null,
+      });
+      setScore(0);
+    } catch (ex: any) {
+      setErr(ex?.response?.data?.message || '刪除失敗');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const onSaveScore = async () => {
+    if (!canSaveScore && score > 0) {
+      setErr('沒有錄音不能存分數');
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    try {
+      await serviceEvaluationApi.update(evaluation.id, { phone_survey_score: score });
+      await serviceEvaluationApi.recalc(evaluation.id);
+      onSaved();
+    } catch (ex: any) {
+      setErr(ex?.response?.data?.message || '儲存失敗');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="px-5 py-4 border-b flex items-center justify-between">
+          <div>
+            <div className="font-semibold">電訪好評 — {evaluation.employees?.name || '員工'}</div>
+            <div className="text-xs text-gray-500">{evaluation.year_month}</div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          {err && (
+            <div className="px-3 py-2 rounded bg-red-50 text-red-700 text-sm border border-red-200">{err}</div>
+          )}
+
+          {/* Step 1: 錄音 */}
+          <section>
+            <div className="text-sm font-medium mb-2">① 電訪錄音</div>
+            {!hasAudio ? (
+              <div>
+                <label className={`inline-block px-3 py-1.5 text-sm rounded cursor-pointer text-white ${uploading || isLocked ? 'bg-gray-400' : 'bg-[#8b6f4e] hover:bg-[#7a6040]'}`}>
+                  {uploading ? '上傳中…' : '選擇錄音檔'}
+                  <input
+                    type="file"
+                    accept="audio/*"
+                    className="hidden"
+                    onChange={onFile}
+                    disabled={uploading || isLocked}
+                  />
+                </label>
+                <p className="text-xs text-gray-500 mt-1">支援 mp3 / wav / m4a / webm / ogg；上限 50MB；上傳後會背景跑文字稿（Whisper + Claude）。</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="text-sm flex items-center gap-2">
+                  <span className="text-gray-500">📎</span>
+                  <span className="break-all">{row.phone_survey_audio_name || '錄音檔'}</span>
+                </div>
+                <audio src={row.phone_survey_audio_url} controls className="w-full" />
+                <div className="flex gap-2">
+                  <label className={`text-xs px-2 py-1 rounded border cursor-pointer ${uploading || isLocked ? 'opacity-50' : 'hover:bg-gray-50'}`}>
+                    重新上傳
+                    <input type="file" accept="audio/*" className="hidden" onChange={onFile} disabled={uploading || isLocked} />
+                  </label>
+                  {!isLocked && (
+                    <button
+                      onClick={onDeleteAudio}
+                      disabled={deleting}
+                      className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      {deleting ? '刪除中…' : '刪除錄音'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Step 2: 文字稿 */}
+          {hasAudio && (
+            <section>
+              <div className="text-sm font-medium mb-2 flex items-center gap-2">
+                ② 文字稿（電訪者 / 客戶）
+                {status === 'transcribing' && (
+                  <span className="text-xs text-amber-600">⏳ 轉錄中… (Whisper + Claude，約需 30~90 秒)</span>
+                )}
+                {status === 'done' && (
+                  <span className="text-xs text-green-600">✓ 完成</span>
+                )}
+                {status === 'failed' && (
+                  <span className="text-xs text-red-600">✗ 失敗</span>
+                )}
+              </div>
+              {status === 'failed' && row.phone_survey_transcript_error && (
+                <div className="px-3 py-2 rounded bg-red-50 text-red-700 text-xs border border-red-200 mb-2">
+                  {row.phone_survey_transcript_error}
+                </div>
+              )}
+              {status === 'done' && row.phone_survey_transcript && (
+                <div>
+                  <pre className="text-sm whitespace-pre-wrap bg-[#faf8f5] border border-[#e8ddd0] rounded p-3 max-h-72 overflow-y-auto">
+                    {row.phone_survey_transcript}
+                  </pre>
+                  <button
+                    onClick={() => setShowRawText(v => !v)}
+                    className="text-xs text-gray-500 hover:underline mt-1"
+                  >
+                    {showRawText ? '收起說明' : '看不到電訪者/客戶標籤？'}
+                  </button>
+                  {showRawText && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      講者標籤是用 Claude 從內容判斷的（非聲紋）。若 Anthropic API key 沒設定或回應失敗，會 fallback 為純文字稿。
+                    </p>
+                  )}
+                </div>
+              )}
+              {status === 'transcribing' && (
+                <div className="text-sm text-gray-500 italic">背景處理中，這個 modal 可以關閉，文字稿完成後重開查看即可。</div>
+              )}
+            </section>
+          )}
+
+          {/* Step 3: 分數 */}
+          <section>
+            <div className="text-sm font-medium mb-2">③ 電訪好評分數（0 ~ {EVAL.PHONE_MAX}）</div>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                max={EVAL.PHONE_MAX}
+                value={score}
+                onChange={(e) => setScore(Math.max(0, Math.min(EVAL.PHONE_MAX, Number(e.target.value) || 0)))}
+                disabled={!canSaveScore || isLocked}
+                className="w-24 border rounded px-2 py-1 disabled:bg-gray-100"
+              />
+              <span className="text-xs text-gray-500">
+                {!canSaveScore && '⚠️ 沒上傳錄音不能存分數'}
+                {canSaveScore && status === 'transcribing' && '（仍可先存分數，不必等文字稿）'}
+              </span>
+            </div>
+          </section>
+        </div>
+
+        <div className="px-5 py-3 border-t bg-gray-50 flex justify-end gap-2">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm rounded border hover:bg-white">取消</button>
+          {!isLocked && (
+            <button
+              onClick={onSaveScore}
+              disabled={saving || (!canSaveScore && score > 0)}
+              className="px-3 py-1.5 text-sm rounded text-white disabled:opacity-50"
+              style={{ backgroundColor: '#8b6f4e' }}
+            >
+              {saving ? '儲存中…' : '存檔'}
+            </button>
           )}
         </div>
       </div>
