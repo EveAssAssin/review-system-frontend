@@ -302,6 +302,14 @@ export interface ServiceEvaluation {
   google_low_star_count: number;
   service_process_score: number;
   phone_survey_score: number;
+  cumulative_review_count?: number;
+  // 電訪好評 — 錄音檔 + 文字稿
+  phone_survey_audio_url?: string | null;
+  phone_survey_audio_name?: string | null;
+  phone_survey_audio_uploaded_at?: string | null;
+  phone_survey_transcript?: string | null;
+  phone_survey_transcript_status?: 'idle' | 'transcribing' | 'done' | 'failed';
+  phone_survey_transcript_error?: string | null;
   note?: string | null;
   created_by?: string | null;
   created_at: string;

@@ -45,7 +45,21 @@ const ServiceEvaluationPage: React.FC = () => {
   const [rows, setRows] = useState<ServiceEvaluationOverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ServiceEvaluation | null>(null);
-  const [creatingFor, setCreatingFor] = useState<string | null>(null); // employee_id 建立中
+  const [creatingFor, setCreatingFor] = useState<string | null>(null);
+  const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
+
+  const handleInlineProcessSave = async (id: string, value: number) => {
+    setSavingProcessId(id);
+    try {
+      await serviceEvaluationApi.update(id, { service_process_score: value });
+      await serviceEvaluationApi.recalc(id);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || '儲存失敗');
+    } finally {
+      setSavingProcessId(null);
+    }
+  }; // employee_id 建立中
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{
     updated: { employee_name: string; erpid: string; glasses_count: number }[];
@@ -332,11 +346,37 @@ const ServiceEvaluationPage: React.FC = () => {
                     {ev ? (
                       <>
                         <td className="px-3 py-3 text-center text-sm">{ev.glasses_count}</td>
-                        <td className="px-3 py-3 text-center text-sm">
+                        <td
+                          className="px-3 py-3 text-center text-sm cursor-help"
+                          title={`本月新增 ${ev.website_review_count} 則 / 累計 ${ev.cumulative_review_count ?? 0} 則`}
+                        >
                           {sc?.review_rate}%
-                          <div className="text-xs text-gray-400">{sc?.review_rate_score} 分</div>
+                          <div className="text-xs text-gray-400">
+                            {ev.website_review_count}/{ev.cumulative_review_count ?? 0}
+                          </div>
                         </td>
-                        <td className="px-3 py-3 text-center text-sm">{ev.service_process_score}</td>
+                        <td className="px-3 py-3 text-center text-sm">
+                          {ev.is_locked ? (
+                            ev.service_process_score
+                          ) : (
+                            <input
+                              type="number"
+                              min={0}
+                              max={EVAL.PROCESS_MAX}
+                              step={1}
+                              defaultValue={ev.service_process_score}
+                              disabled={savingProcessId === ev.id}
+                              onBlur={(e) => {
+                                const v = Math.max(0, Math.min(EVAL.PROCESS_MAX, Number(e.currentTarget.value) || 0));
+                                if (v !== ev.service_process_score) handleInlineProcessSave(ev.id, v);
+                                else e.currentTarget.value = String(ev.service_process_score);
+                              }}
+                              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+                              className="w-16 text-center border rounded px-1 py-0.5 disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
+                              title={`0~${EVAL.PROCESS_MAX} 分，按 Enter 或失焦自動存檔`}
+                            />
+                          )}
+                        </td>
                         <td className="px-3 py-3 text-center text-sm">{ev.phone_survey_score}</td>
                         <td className="px-3 py-3 text-center text-sm text-red-600">
                           -{sc?.deduction}
