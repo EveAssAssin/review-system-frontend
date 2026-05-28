@@ -29,6 +29,7 @@ import DemeritCategoriesPage from './pages/DemeritCategoriesPage';
 import DemeritRecordPage from './pages/DemeritRecordPage';
 import DemeritSummaryPage from './pages/DemeritSummaryPage';
 import ServiceEvaluationPage from './pages/ServiceEvaluationPage';
+import MyServiceEvaluationPage from './pages/MyServiceEvaluationPage';
 import InterviewItemsPage from './pages/InterviewItemsPage';
 import InterviewsPage from './pages/InterviewsPage';
 import NewInterviewPage from './pages/NewInterviewPage';
@@ -177,6 +178,7 @@ function AppRoutes() {
           <Route path="/my-reviews" element={<MyReviewsPage />} />
           <Route path="/my-feedbacks" element={<MyAssignedFeedbacksPage />} />
           <Route path="/my-feedbacks/:id" element={<MyAssignedFeedbackDetailPage />} />
+          <Route path="/my-service-evaluation" element={<MyServiceEvaluationPage />} />
           <Route path="/demerit/records" element={<DemeritRecordPage />} />
           <Route path="/demerit/summary" element={<DemeritSummaryPage />} />
           <Route
