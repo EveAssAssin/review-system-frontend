@@ -137,6 +137,13 @@ export const uploadsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  uploadForWash: (reviewId: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return api.post(`/uploads/review/${reviewId}/wash`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   uploadForResponse: (reviewId: string, files: File[], uploadBy: 'reviewer' | 'employee' = 'employee') => {
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));

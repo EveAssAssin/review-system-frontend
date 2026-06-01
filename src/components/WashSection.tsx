@@ -160,8 +160,9 @@ const WashSection: React.FC<WashSectionProps> = ({
     if (!file) return;
     setBusy(true);
     try {
-      // 1) 先上傳檔案到 supabase storage（透過既有 uploads API）
-      const uploadRes = await uploadsApi.uploadForReview(reviewId, [file]);
+      // 1) 先上傳檔案到 supabase storage
+      // 注意：要用 uploadForWash（任何登入者都可），不是 uploadForReview（公關專用）
+      const uploadRes = await uploadsApi.uploadForWash(reviewId, [file]);
       const items = (uploadRes.data?.attachments || uploadRes.data) as any[];
       const url = (items[0] as any)?.file_url || (items[0] as any)?.url;
       if (!url) throw new Error('上傳後沒有取得 URL');
