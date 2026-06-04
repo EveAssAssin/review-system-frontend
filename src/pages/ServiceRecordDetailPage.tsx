@@ -46,11 +46,16 @@ const ServiceRecordDetailPage: React.FC = () => {
   });
   const [addingRelation, setAddingRelation] = useState(false);
 
+  // 指定交辦人員
+  const [assigneeSelect, setAssigneeSelect] = useState('');
+  const [assigning, setAssigning] = useState(false);
+
   const fetchRecord = async () => {
     if (!id) return;
     try {
       const res = await serviceRecordsApi.getById(id);
       setRecord(res.data);
+      setAssigneeSelect(res.data.assignee_id || '');
     } catch {
       navigate('/service-records');
     } finally {
@@ -102,6 +107,27 @@ const ServiceRecordDetailPage: React.FC = () => {
       alert(err.response?.data?.message || '操作失敗');
     } finally {
       setClosingLoading(false);
+    }
+  };
+
+  const handleAssign = async () => {
+    if (!id) return;
+    setAssigning(true);
+    try {
+      const emp = employees.find(e => e.id === assigneeSelect);
+      await serviceRecordsApi.update(id, {
+        assignee_id: emp?.id || null,
+        assignee_name: emp?.name || null,
+        assignee_app_number: emp?.app_number || null,
+        assignee_store: emp?.store_name || null,
+        updater_name: user?.name,
+      });
+      await fetchRecord();
+      alert(emp ? `已交辦給 ${emp.name}，並發送 LINE 通知` : '已取消交辦');
+    } catch (err: any) {
+      alert(err.response?.data?.message || '交辦失敗');
+    } finally {
+      setAssigning(false);
     }
   };
 
@@ -238,6 +264,43 @@ const ServiceRecordDetailPage: React.FC = () => {
             )}
           </div>
         )}
+      </div>
+
+      {/* 指定交辦人員 */}
+      <div className="bg-white rounded-lg shadow p-6 space-y-3">
+        <h3 className="font-semibold text-gray-700">指定交辦人員</h3>
+        {record.assignee_name ? (
+          <p className="text-sm text-gray-600">
+            目前交辦給：<span className="font-medium">{record.assignee_name}</span>
+            {record.assignee_store && <span className="text-gray-400 ml-1">（{record.assignee_store}）</span>}
+          </p>
+        ) : (
+          <p className="text-sm text-gray-400">尚未指定交辦人員</p>
+        )}
+        {record.status !== 'closed' && (
+          <div className="flex items-center gap-3">
+            <select
+              value={assigneeSelect}
+              onChange={e => setAssigneeSelect(e.target.value)}
+              className="flex-1 px-3 py-2 border rounded"
+            >
+              <option value="">不指派</option>
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name}{emp.store_name ? ` (${emp.store_name})` : ''}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleAssign}
+              disabled={assigning || assigneeSelect === (record.assignee_id || '')}
+              className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#7a6040] text-white rounded disabled:opacity-50"
+            >
+              {assigning ? '處理中...' : '儲存交辦'}
+            </button>
+          </div>
+        )}
+        <p className="text-xs text-gray-400">儲存後會自動發送 LINE 通知給被指派人員（需該員工已綁定 LINE）</p>
       </div>
 
       {/* 關聯者 */}
