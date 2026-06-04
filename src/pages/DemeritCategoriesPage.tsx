@@ -191,7 +191,7 @@ const DemeritCategoriesPage: React.FC = () => {
               <input
                 type="text"
                 value={form.name}
-                onChange={e => setForm({ ...form, name: e.target.value })}
+                onChange={e => { setForm({ ...form, name: e.target.value }); if (error) setError(''); }}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
                 placeholder="例：遲到、未戴名牌"
                 autoFocus
@@ -217,7 +217,7 @@ const DemeritCategoriesPage: React.FC = () => {
                 type="number"
                 min={1}
                 value={form.threshold}
-                onChange={e => setForm({ ...form, threshold: Number(e.target.value) })}
+                onChange={e => { setForm({ ...form, threshold: Number(e.target.value) }); if (error) setError(''); }}
                 className="w-full px-3 py-2 border rounded-lg text-sm"
               />
               <p className="text-xs text-gray-400 mt-0.5">累積扣分達此次數即標記「達標」</p>
