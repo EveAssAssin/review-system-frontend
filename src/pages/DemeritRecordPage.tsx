@@ -65,6 +65,7 @@ const DemeritRecordPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canManageReviews) { setError('僅主管可登記扣分'); return; }
     if (!selectedEmployee) { setError('請選擇被扣分人員'); return; }
     if (!categoryId) { setError('請選擇扣分品項'); return; }
 
@@ -106,7 +107,12 @@ const DemeritRecordPage: React.FC = () => {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">扣分登記</h2>
 
-      {/* 新增扣分表單 */}
+      {/* 新增扣分表單（僅主管可登記） */}
+      {!canManageReviews ? (
+        <div className="bg-white rounded-xl shadow p-6 text-sm text-gray-500">
+          僅主管／管理員可登記扣分。您可於下方檢視最近扣分紀錄。
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-4">
         <h3 className="font-semibold text-gray-700">新增扣分</h3>
 
@@ -164,6 +170,7 @@ const DemeritRecordPage: React.FC = () => {
           {submitting ? '送出中...' : '送出扣分'}
         </button>
       </form>
+      )}
 
       {/* 最近紀錄 */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
