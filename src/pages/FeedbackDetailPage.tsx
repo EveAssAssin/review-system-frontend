@@ -34,6 +34,11 @@ const FeedbackDetailPage: React.FC = () => {
   const [closeNote, setCloseNote] = useState('');
   const [updateMsg, setUpdateMsg] = useState('');
 
+  // 完成提醒（鬧鐘）
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderTime, setReminderTime] = useState('');
+  const [reminderLead, setReminderLead] = useState('60');
+
   // 處理紀錄
   const [newRecord, setNewRecord] = useState('');
   const [addingRecord, setAddingRecord] = useState(false);
@@ -89,6 +94,16 @@ const FeedbackDetailPage: React.FC = () => {
       setEditUrgency(res.data.urgency);
       setEditAssigned(res.data.assigned_employee_id || '');
       setEditCategory(res.data.category_id || '');
+      // 還原完成提醒設定（DB 存 UTC，顯示為台灣時間 UTC+8）
+      setReminderLead(String(res.data.reminder_lead_minutes || 60));
+      if (res.data.reminder_deadline) {
+        const tw = new Date(new Date(res.data.reminder_deadline).getTime() + 8 * 60 * 60 * 1000);
+        setReminderDate(tw.toISOString().slice(0, 10));
+        setReminderTime(tw.toISOString().slice(11, 16));
+      } else {
+        setReminderDate('');
+        setReminderTime('');
+      }
     } catch (err) {
       console.error('Failed to load feedback:', err);
     } finally {
@@ -119,12 +134,19 @@ const FeedbackDetailPage: React.FC = () => {
 
   const handleUpdate = async () => {
     try {
+      // 完成提醒期限：日期＋時間視為台灣時間(UTC+8) → 轉 ISO；未選時間表示取消提醒
+      const reminder_deadline =
+        reminderDate && reminderTime
+          ? new Date(`${reminderDate}T${reminderTime}:00+08:00`).toISOString()
+          : null;
       await feedbackApi.update(id!, {
         status: editStatus,
         urgency: editUrgency,
         assigned_employee_id: editAssigned || null,
         category_id: editCategory || null,
         close_note: editStatus === 'closed' ? closeNote : undefined,
+        reminder_deadline,
+        reminder_lead_minutes: Number(reminderLead),
         updater_name: user?.name,
       });
       setUpdateMsg('已更新');
@@ -584,6 +606,63 @@ const FeedbackDetailPage: React.FC = () => {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* 完成提醒（鬧鐘） */}
+        <div className="border-t mt-2 pt-4 mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            ⏰ 完成提醒（鬧鐘）
+            <span className="text-gray-400 font-normal text-xs ml-2">
+              設定後於期限前依「提前開始」起，每 15 分鐘 LINE 提醒負責人員；完成或結案即自動停止
+            </span>
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">期限日期</label>
+              <input
+                type="date"
+                value={reminderDate}
+                onChange={e => setReminderDate(e.target.value)}
+                className="w-full px-3 py-2 border rounded"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">完成時間</label>
+              <select
+                value={reminderTime}
+                onChange={e => setReminderTime(e.target.value)}
+                className="w-full px-3 py-2 border rounded"
+              >
+                <option value="">不提醒</option>
+                {Array.from({ length: 48 }).map((_, i) => {
+                  const hh = String(Math.floor(i / 2)).padStart(2, '0');
+                  const mm = i % 2 === 0 ? '00' : '30';
+                  const v = `${hh}:${mm}`;
+                  return <option key={v} value={v}>{v}</option>;
+                })}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">提前開始</label>
+              <select
+                value={reminderLead}
+                onChange={e => setReminderLead(e.target.value)}
+                className="w-full px-3 py-2 border rounded"
+              >
+                <option value="30">30 分鐘前</option>
+                <option value="60">60 分鐘前</option>
+                <option value="90">90 分鐘前</option>
+                <option value="120">120 分鐘前</option>
+              </select>
+            </div>
+          </div>
+          {feedback.reminder_deadline && (
+            <p className="text-xs text-blue-600 mt-2">
+              目前提醒：{new Date(feedback.reminder_deadline).toLocaleString('zh-TW', { hour12: false })} 完成
+              {feedback.reminder_overdue_notified && <span className="text-red-500 ml-1">（已發逾期通知）</span>}
+            </p>
+          )}
+          <p className="text-xs text-gray-400 mt-1">※ 需負責人員已綁定 LINE（app_number）才能收到提醒；完成時間僅提供整點與半點</p>
         </div>
 
         {editStatus === 'closed' && (
