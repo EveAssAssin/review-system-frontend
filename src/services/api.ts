@@ -324,6 +324,10 @@ export const interviewsApi = {
       url,
       transcript_diarized: transcriptDiarized,
     }),
+
+  // 確認主客順序後存入逐字稿庫
+  saveTranscript: (payload: any) =>
+    api.post('/interviews/transcripts', payload),
 };
 
 // Analytics API

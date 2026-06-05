@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { interviewsApi, uploadsApi } from '../services/api';
 
 interface ItemWithResponse {
@@ -71,6 +72,7 @@ const formatSize = (n: number): string => {
 
 export default function InterviewDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [record, setRecord] = useState<RecordDetail | null>(null);
@@ -99,6 +101,10 @@ export default function InterviewDetailPage() {
   const [editingUrl, setEditingUrl] = useState<string | null>(null);
   const [editBuffer, setEditBuffer] = useState('');
   const [savingDiarize, setSavingDiarize] = useState(false);
+  const [saveMethod, setSaveMethod] = useState<Record<string, string>>({});
+  const [saveStatus, setSaveStatus] = useState<Record<string, string>>({});
+  const [saveConfirmed, setSaveConfirmed] = useState<Record<string, boolean>>({});
+  const [savingTranscript, setSavingTranscript] = useState<string | null>(null);
 
   const load = async () => {
     if (!id) return;
@@ -332,6 +338,32 @@ export default function InterviewDetailPage() {
   const startEditDiarized = (audio: AudioMeta) => {
     setEditBuffer(audio.transcript_diarized || '');
     setEditingUrl(audio.url);
+  };
+
+  const handleSaveTranscript = async (audio: AudioMeta) => {
+    if (!id || !saveConfirmed[audio.url]) return;
+    setSavingTranscript(audio.url);
+    try {
+      await interviewsApi.saveTranscript({
+        record_id: id,
+        audio_url: audio.url,
+        interview_date: (audio.created_at || record?.created_at || new Date().toISOString()).slice(0, 10),
+        store_name: record?.employees?.store_name || '',
+        interviewee_name: record?.employees?.name || '',
+        app_number: record?.employees?.app_number || '',
+        interview_method: saveMethod[audio.url] || 'phone',
+        employee_status: saveStatus[audio.url] || '',
+        transcript_detail: audio.transcript_diarized || audio.transcript || '',
+        transcript_summary: record?.ai_summary || '',
+        speaker_confirmed: true,
+        created_by: user?.name,
+      });
+      alert('已存入逐字稿庫');
+    } catch (err: any) {
+      alert(err.response?.data?.message || '存檔失敗');
+    } finally {
+      setSavingTranscript(null);
+    }
   };
 
   const toggleRawTranscript = (url: string) => {
@@ -693,6 +725,39 @@ export default function InterviewDetailPage() {
                         ) : audio.transcript_diarized && !showRawTranscript.has(audio.url)
                           ? audio.transcript_diarized
                           : audio.transcript}
+
+                        {audio.transcript_diarized && editingUrl !== audio.url && (
+                          <div className="mt-3 pt-3 border-t" style={{ borderColor: '#eee' }}>
+                            <div className="text-xs font-semibold mb-2" style={{ color: '#7c5cab' }}>存入逐字稿庫</div>
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <select value={saveMethod[audio.url] || 'phone'}
+                                onChange={e => setSaveMethod(m => ({ ...m, [audio.url]: e.target.value }))}
+                                className="px-2 py-1 border rounded text-xs">
+                                <option value="phone">電訪</option>
+                                <option value="in_person">面談</option>
+                              </select>
+                              <select value={saveStatus[audio.url] || ''}
+                                onChange={e => setSaveStatus(m => ({ ...m, [audio.url]: e.target.value }))}
+                                className="px-2 py-1 border rounded text-xs">
+                                <option value="">受訪者狀態（選填）</option>
+                                <option value="良好">良好</option>
+                                <option value="待觀察">待觀察</option>
+                                <option value="警戒">警戒</option>
+                              </select>
+                            </div>
+                            <label className="flex items-center gap-2 text-xs text-gray-600 mb-2 cursor-pointer">
+                              <input type="checkbox" checked={!!saveConfirmed[audio.url]}
+                                onChange={e => setSaveConfirmed(m => ({ ...m, [audio.url]: e.target.checked }))} />
+                              我已確認主客順序正確
+                            </label>
+                            <button onClick={() => handleSaveTranscript(audio)}
+                              disabled={!saveConfirmed[audio.url] || savingTranscript === audio.url}
+                              className="px-3 py-1 text-xs text-white rounded disabled:opacity-50"
+                              style={{ backgroundColor: '#8b6f4e' }}>
+                              {savingTranscript === audio.url ? '存檔中...' : '存入逐字稿庫'}
+                            </button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
