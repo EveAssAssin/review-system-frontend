@@ -87,6 +87,12 @@ export const reviewsApi = {
     api.post(`/reviews/token/${token}/respond`, data),
   addReviewerResponse: (id: string, content: string, reviewerName: string) =>
     api.post(`/reviews/${id}/reviewer-response`, { content, reviewer_name: reviewerName }),
+  aiReplyDraft: (content: string, tone?: string) =>
+    api.post<{ draft: string }>('/reviews/ai-reply-draft', { content, tone }),
+  listReplyTemplates: () => api.get('/reviews/reply-templates'),
+  createReplyTemplate: (data: { name: string; tone?: string; content: string; created_by?: string }) =>
+    api.post('/reviews/reply-templates', data),
+  deleteReplyTemplate: (id: string) => api.delete(`/reviews/reply-templates/${id}`),
   close: (id: string, closeNote?: string, closeReason?: 'normal' | 'wash_failed' | 'wash_completed') =>
     api.post(`/reviews/${id}/close`, { close_note: closeNote, close_reason: closeReason }),
   delete: (id: string) => api.delete(`/reviews/${id}`),

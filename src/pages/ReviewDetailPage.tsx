@@ -85,6 +85,11 @@ export default function ReviewDetailPage() {
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
   const [closeReason, setCloseReason] = useState<'normal' | 'wash_failed' | 'wash_completed'>('normal');
   const [washFailedExposed, setWashFailedExposed] = useState(false);
+  const [aiTone, setAiTone] = useState('誠懇道歉');
+  const [aiCustomTone, setAiCustomTone] = useState('');
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [replyTemplates, setReplyTemplates] = useState<any[]>([]);
+  useEffect(() => { reviewsApi.listReplyTemplates().then(r => setReplyTemplates(r.data || [])).catch(() => {}); }, []);
 
   useEffect(() => {
     if (id) {
@@ -108,6 +113,44 @@ export default function ReviewDetailPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAiGenerate = async () => {
+    if (!review?.content) { alert('此評價沒有內容可供生成'); return; }
+    const tone = aiTone === '自訂' ? (aiCustomTone.trim() || '誠懇、專業') : aiTone;
+    setAiGenerating(true);
+    try {
+      const res = await reviewsApi.aiReplyDraft(review.content, tone);
+      if (res.data?.draft) setResponseContent(res.data.draft);
+      else alert('AI 未生成內容（可能後端未設定金鑰）');
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'AI 生成失敗');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!responseContent.trim()) { alert('回覆內容是空的'); return; }
+    const name = prompt('範本名稱：');
+    if (!name || !name.trim()) return;
+    try {
+      await reviewsApi.createReplyTemplate({ name: name.trim(), tone: aiTone, content: responseContent, created_by: user?.name });
+      const r = await reviewsApi.listReplyTemplates();
+      setReplyTemplates(r.data || []);
+      alert('已儲存範本');
+    } catch (err: any) {
+      alert(err.response?.data?.message || '儲存失敗');
+    }
+  };
+
+  const handleUploadTemplateFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setResponseContent(String(reader.result || ''));
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   const handleReviewerResponse = async () => {
@@ -448,7 +491,47 @@ export default function ReviewDetailPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
             <h2 className="text-xl font-bold mb-4">公關部回覆</h2>
-            <textarea value={responseContent} onChange={(e) => setResponseContent(e.target.value)} rows={4} className="w-full px-3 py-2 border rounded mb-4" placeholder="請輸入回覆內容..." />
+
+            {/* AI 生成回覆範本 */}
+            <div className="border rounded p-3 mb-3" style={{ borderColor: '#d6c9ea', backgroundColor: '#faf8fd' }}>
+              <div className="text-sm font-semibold mb-2" style={{ color: '#7c5cab' }}>✨ AI 生成回覆範本</div>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {['誠懇道歉', '專業正式', '親切感謝', '自訂'].map((t) => (
+                  <button key={t} type="button" onClick={() => setAiTone(t)}
+                    className="text-xs px-3 py-1 rounded-full border"
+                    style={{ backgroundColor: aiTone === t ? '#7c5cab' : '#fff', color: aiTone === t ? '#fff' : '#6b5b8a', borderColor: '#d6c9ea' }}>
+                    {t}
+                  </button>
+                ))}
+              </div>
+              {aiTone === '自訂' && (
+                <input type="text" value={aiCustomTone} onChange={(e) => setAiCustomTone(e.target.value)}
+                  placeholder="輸入想要的語氣，例如：簡短、強調補償方案" className="w-full px-2 py-1 border rounded text-xs mb-2" />
+              )}
+              <button type="button" onClick={handleAiGenerate} disabled={aiGenerating}
+                className="text-xs px-3 py-1.5 rounded text-white disabled:opacity-50" style={{ backgroundColor: '#7c5cab' }}>
+                {aiGenerating ? 'AI 生成中...' : '✨ AI 生成'}
+              </button>
+              <span className="text-xs text-gray-400 ml-2">會讀取此評價內容生成草稿</span>
+            </div>
+
+            <textarea value={responseContent} onChange={(e) => setResponseContent(e.target.value)} rows={4} className="w-full px-3 py-2 border rounded mb-2" placeholder="請輸入回覆內容..." />
+
+            {/* 範本操作 */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <button type="button" onClick={handleSaveTemplate} className="text-xs px-3 py-1 border rounded text-gray-600">📑 儲存為範本</button>
+              <select value="" onChange={(e) => { const t = replyTemplates.find((x) => x.id === e.target.value); if (t) setResponseContent(t.content); }}
+                className="text-xs px-2 py-1 border rounded">
+                <option value="">載入範本…</option>
+                {replyTemplates.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}{t.tone ? `（${t.tone}）` : ''}</option>
+                ))}
+              </select>
+              <label className="text-xs px-3 py-1 border rounded text-gray-600 cursor-pointer">
+                ⬆ 上傳檔案
+                <input type="file" accept=".txt,text/plain" className="hidden" onChange={handleUploadTemplateFile} />
+              </label>
+            </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">附件</label>
               <FileUpload onFilesSelected={setFilesToUpload} maxFiles={5} maxSizeMB={50} />
