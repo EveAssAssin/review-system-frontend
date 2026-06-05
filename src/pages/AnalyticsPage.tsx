@@ -16,9 +16,6 @@ const STATUS_ZH: Record<string, string> = {
   pending: '待處理', processing: '處理中', open: '未結案',
   resolved: '已處理', responded: '已回覆', closed: '已結案',
 };
-const METHOD_ZH: Record<string, string> = {
-  phone: '電話', in_store: '到店', online: '線上', other: '其他',
-};
 
 // ── 小工具 ────────────────────────────────────────────────────────────────
 const StatCard = ({ label, value, color = 'text-gray-800' }: any) => (
@@ -88,7 +85,6 @@ const AnalyticsPage: React.FC = () => {
   };
 
   const fb = summary?.feedbacks;
-  const sr = summary?.service_records;
   const comb = summary?.combined;
 
   return (
@@ -126,21 +122,18 @@ const AnalyticsPage: React.FC = () => {
           {/* 綜合統計卡片 */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="客戶回報總計" value={fb?.total} color="text-[#8b6f4e]" />
-            <StatCard label="客服紀錄總計" value={sr?.total} color="text-purple-600" />
             <StatCard label="未處理案件" value={comb?.total_unresolved} color="text-red-500" />
             <StatCard label="投訴率" value={`${comb?.complaint_rate_pct ?? 0}%`} color={comb?.complaint_rate_pct > 20 ? 'text-red-500' : 'text-green-600'} />
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="緊急待處理回報" value={fb?.urgent_pending} color={fb?.urgent_pending > 0 ? 'text-red-500' : 'text-gray-400'} />
-            <StatCard label="客服平均解決時間" value={sr?.avg_resolution_hours ? `${sr.avg_resolution_hours}h` : '—'} />
             <StatCard label="投訴件數（回報）" value={fb?.by_type?.complaint ?? 0} color="text-orange-500" />
-            <StatCard label="投訴件數（客服）" value={sr?.by_type?.complaint ?? 0} color="text-orange-500" />
           </div>
 
           {/* 每日趨勢折線圖 */}
           {comb?.by_day?.length > 0 && (
-            <Section title="每日案件趨勢（客戶回報 + 客服紀錄合計）">
+            <Section title="每日客戶回報趨勢">
               <ResponsiveContainer width="100%" height={220}>
                 <LineChart data={comb.by_day}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -182,33 +175,6 @@ const AnalyticsPage: React.FC = () => {
               </Section>
             )}
 
-            {/* 客服紀錄 - 類型分布 */}
-            {sr?.by_type && Object.keys(sr.by_type).length > 0 && (
-              <Section title="客服紀錄 — 類型分布">
-                <div className="flex gap-6 items-center">
-                  <ResponsiveContainer width="50%" height={180}>
-                    <PieChart>
-                      <Pie data={mapToChartData(sr.by_type, TYPE_ZH)} dataKey="value" nameKey="name"
-                        cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
-                        labelLine={false} fontSize={11}>
-                        {mapToChartData(sr.by_type, TYPE_ZH).map((_, i) => (
-                          <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="space-y-1.5 text-sm">
-                    {mapToChartData(sr.by_type, TYPE_ZH).map((item, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <span className="w-3 h-3 rounded-sm inline-block" style={{ background: COLORS[i % COLORS.length] }} />
-                        <span>{item.name}：{item.value} 筆</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </Section>
-            )}
 
             {/* 客戶回報 - 狀態分布 */}
             {fb?.by_status && Object.keys(fb.by_status).length > 0 && (
@@ -225,20 +191,6 @@ const AnalyticsPage: React.FC = () => {
               </Section>
             )}
 
-            {/* 客服紀錄 - 處理方式 */}
-            {sr?.by_method && Object.keys(sr.by_method).length > 0 && (
-              <Section title="客服紀錄 — 處理方式">
-                <ResponsiveContainer width="100%" height={180}>
-                  <BarChart data={mapToChartData(sr.by_method, METHOD_ZH)} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="name" width={50} tick={{ fontSize: 11 }} />
-                    <Tooltip />
-                    <Bar dataKey="value" name="筆數" fill="#8B5CF6" radius={[0, 3, 3, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Section>
-            )}
           </div>
 
           {/* 客服人員效率排行（回報建立者） */}
@@ -256,20 +208,6 @@ const AnalyticsPage: React.FC = () => {
             </Section>
           )}
 
-          {/* 客服紀錄建立者排行 */}
-          {sr?.top_creators?.length > 0 && (
-            <Section title="客服紀錄建立者排行（效率追蹤）">
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={sr.top_creators.slice(0, 8)}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                  <Tooltip />
-                  <Bar dataKey="count" name="建立件數" fill="#F59E0B" radius={[3, 3, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Section>
-          )}
 
           {/* AI 分析建議 */}
           <Section title="🤖 AI 客服優化建議">

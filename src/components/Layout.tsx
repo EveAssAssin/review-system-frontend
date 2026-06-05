@@ -28,8 +28,6 @@ export default function Layout() {
       items: [
         { path: '/feedbacks', label: '客戶回報', show: canManageReviews, icon: '💬' },
         { path: '/feedbacks/new', label: '新增回報', show: canManageReviews, icon: '＋' },
-        { path: '/service-records', label: '客服紀錄', show: canManageReviews, icon: '📋' },
-        { path: '/service-records/new', label: '新增客服紀錄', show: canManageReviews, icon: '＋' },
         { path: '/analytics', label: '客服分析', show: canManageReviews, icon: '📊' },
       ],
     },
