@@ -317,6 +317,13 @@ export const interviewsApi = {
       interviewer_role: interviewerRole,
       interviewee_role: intervieweeRole,
     }),
+
+  // 儲存人工編輯/一鍵對調後的區分逐字稿
+  saveDiarized: (recordId: string, url: string, transcriptDiarized: string) =>
+    api.post<{ transcript_diarized: string }>(`/interviews/records/${recordId}/audio/diarize-save`, {
+      url,
+      transcript_diarized: transcriptDiarized,
+    }),
 };
 
 // Analytics API

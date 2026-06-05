@@ -96,6 +96,9 @@ export default function InterviewDetailPage() {
   const [expandedTranscripts, setExpandedTranscripts] = useState<Set<string>>(new Set());
   // 每段錄音是否顯示原始 Whisper（未區分）版本；預設 false 表示顯示區分後的
   const [showRawTranscript, setShowRawTranscript] = useState<Set<string>>(new Set());
+  const [editingUrl, setEditingUrl] = useState<string | null>(null);
+  const [editBuffer, setEditBuffer] = useState('');
+  const [savingDiarize, setSavingDiarize] = useState(false);
 
   const load = async () => {
     if (!id) return;
@@ -297,6 +300,38 @@ export default function InterviewDetailPage() {
     } finally {
       setDiarizingUrl(null);
     }
+  };
+
+  const escapeRe = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const swapRoleLabels = (text: string, a: string, b: string) => {
+    const ea = escapeRe(a), eb = escapeRe(b), tmp = '\u0000';
+    return text
+      .replace(new RegExp(ea + '([：:])', 'g'), tmp + '$1')
+      .replace(new RegExp(eb + '([：:])', 'g'), a + '$1')
+      .replace(new RegExp(tmp + '([：:])', 'g'), b + '$1');
+  };
+  const saveDiarized = async (audio: AudioMeta, text: string) => {
+    if (!id) return;
+    setSavingDiarize(true);
+    try {
+      await interviewsApi.saveDiarized(id, audio.url, text);
+      await load();
+      setEditingUrl(null);
+    } catch (err: any) {
+      alert(err.response?.data?.message || '儲存失敗');
+    } finally {
+      setSavingDiarize(false);
+    }
+  };
+  const handleSwapRoles = (audio: AudioMeta) => {
+    if (!audio.transcript_diarized) return;
+    const a = audio.interviewer_role || '主管';
+    const b = audio.interviewee_role || '員工';
+    saveDiarized(audio, swapRoleLabels(audio.transcript_diarized, a, b));
+  };
+  const startEditDiarized = (audio: AudioMeta) => {
+    setEditBuffer(audio.transcript_diarized || '');
+    setEditingUrl(audio.url);
   };
 
   const toggleRawTranscript = (url: string) => {
@@ -616,16 +651,46 @@ export default function InterviewDetailPage() {
                           ) : (
                             <div className="text-xs text-blue-600 font-semibold">📝 Whisper 原始逐字稿</div>
                           )}
-                          {audio.transcript_diarized && (
-                            <button
-                              onClick={() => toggleRawTranscript(audio.url)}
-                              className="text-xs text-gray-500 hover:underline"
-                            >
-                              {showRawTranscript.has(audio.url) ? '看區分後版本' : '看原始版本'}
-                            </button>
-                          )}
+                          <div className="flex items-center gap-3">
+                            {audio.transcript_diarized && !showRawTranscript.has(audio.url) && editingUrl !== audio.url && (
+                              <>
+                                <button onClick={() => handleSwapRoles(audio)} disabled={savingDiarize}
+                                  className="text-xs hover:underline" style={{ color: '#7c5cab' }}>
+                                  ⇄ 對調 {audio.interviewer_role || '主管'}/{audio.interviewee_role || '員工'}
+                                </button>
+                                <button onClick={() => startEditDiarized(audio)}
+                                  className="text-xs text-gray-500 hover:underline">✏️ 編輯</button>
+                              </>
+                            )}
+                            {audio.transcript_diarized && (
+                              <button
+                                onClick={() => toggleRawTranscript(audio.url)}
+                                className="text-xs text-gray-500 hover:underline"
+                              >
+                                {showRawTranscript.has(audio.url) ? '看區分後版本' : '看原始版本'}
+                              </button>
+                            )}
+                          </div>
                         </div>
-                        {audio.transcript_diarized && !showRawTranscript.has(audio.url)
+                        {editingUrl === audio.url ? (
+                          <div>
+                            <textarea
+                              value={editBuffer}
+                              onChange={e => setEditBuffer(e.target.value)}
+                              rows={12}
+                              className="w-full border rounded p-2 text-sm"
+                              style={{ borderColor: '#cbb8e0' }}
+                            />
+                            <div className="flex gap-2 mt-2">
+                              <button onClick={() => saveDiarized(audio, editBuffer)} disabled={savingDiarize}
+                                className="px-3 py-1 text-xs text-white rounded" style={{ backgroundColor: '#8b6f4e' }}>
+                                {savingDiarize ? '儲存中...' : '儲存'}
+                              </button>
+                              <button onClick={() => setEditingUrl(null)}
+                                className="px-3 py-1 text-xs border rounded text-gray-600">取消</button>
+                            </div>
+                          </div>
+                        ) : audio.transcript_diarized && !showRawTranscript.has(audio.url)
                           ? audio.transcript_diarized
                           : audio.transcript}
                       </div>
