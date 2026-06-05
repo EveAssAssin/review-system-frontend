@@ -185,6 +185,7 @@ export const SOURCE_LABELS: Record<string, string> = {
   facebook: 'Facebook',
   phone: '電話客服',
   app: 'APP 客服',
+  line: 'LINE',
   other: '其他',
 };
 

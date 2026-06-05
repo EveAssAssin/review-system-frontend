@@ -334,6 +334,7 @@ export default function NewReviewPage() {
             <option value="facebook">Facebook</option>
             <option value="phone">電話客服</option>
             <option value="app">APP 客服</option>
+            <option value="line">LINE</option>
             <option value="other">其他</option>
           </select>
         </div>
