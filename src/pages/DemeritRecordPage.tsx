@@ -28,7 +28,7 @@ interface Record {
 }
 
 const DemeritRecordPage: React.FC = () => {
-  const { canManageReviews } = useAuth();
+  const { canManageReviews, employee } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [records, setRecords] = useState<Record[]>([]);
   const [total, setTotal] = useState(0);
@@ -51,12 +51,15 @@ const DemeritRecordPage: React.FC = () => {
   const loadRecords = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await demeritApi.getRecords({ limit: 50 });
+      const params: any = { limit: 50 };
+      // 一般員工只看自己的扣分（後端亦強制）
+      if (!canManageReviews && employee?.app_number) params.target_app_number = employee.app_number;
+      const res = await demeritApi.getRecords(params);
       setRecords(res.data.records || []);
       setTotal(res.data.total || 0);
     } catch { /* ignore */ }
     finally { setLoading(false); }
-  }, []);
+  }, [canManageReviews, employee]);
 
   useEffect(() => {
     loadCategories();
@@ -175,7 +178,7 @@ const DemeritRecordPage: React.FC = () => {
       {/* 最近紀錄 */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
         <div className="px-4 py-3 flex items-center justify-between" style={{ backgroundColor: '#f5f0eb' }}>
-          <span className="font-semibold text-gray-700">最近扣分紀錄</span>
+          <span className="font-semibold text-gray-700">{canManageReviews ? '最近扣分紀錄' : '我的扣分紀錄'}</span>
           <span className="text-xs text-gray-500">共 {total} 筆</span>
         </div>
         {loading ? (
