@@ -384,6 +384,12 @@ export const serviceEvaluationApi = {
   unlockMonth: (yearMonth: string) =>
     api.post('/service-evaluations/unlock-month', {}, { params: { year_month: yearMonth } }),
 
+  syncMarketAudits: (yearMonth?: string) =>
+    api.post('/service-evaluations/sync-market-audits', {}, {
+      params: yearMonth ? { year_month: yearMonth } : undefined,
+      timeout: 60000,
+    }),
+
   // 電訪好評 — 錄音 + 文字稿
   uploadPhoneSurveyAudio: (id: string, file: File) => {
     const formData = new FormData();

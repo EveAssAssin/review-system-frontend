@@ -136,12 +136,58 @@ const MyServiceEvaluationPage: React.FC = () => {
                         valueColor="#dc2626"
                       />
                       <Stat
-                        label="總分"
+                        label="總分(舊公式)"
                         value={`${sc?.total ?? 0}`}
                         sub="0~100"
                         valueColor={scoreColor(sc?.total || 0)}
                         bold
                       />
+                    </div>
+
+                    {/* 新公式 */}
+                    <div className="bg-white border rounded p-3">
+                      <div className="text-xs font-medium mb-2 text-gray-700">
+                        新公式（截圖 40 + 負評處理 30 + 市場部 30 = 100，≥ 90 通過）
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <Stat
+                          label="評論截圖"
+                          value={`${sc?.new_screenshot_score ?? 0} 分`}
+                          sub={`${ev.verified_screenshot_count ?? 0} / ${EVAL.SCREENSHOT_TARGET}`}
+                          valueColor={(sc?.new_screenshot_score ?? 0) > 0 ? '#16a34a' : '#9ca3af'}
+                        />
+                        <Stat
+                          label="負評處理"
+                          value={`${sc?.new_negative_score ?? 0} 分`}
+                          sub={ev.no_negative_or_washed ? '✓ 無負評或全洗完' : '尚未滿足'}
+                          valueColor={(sc?.new_negative_score ?? 0) > 0 ? '#16a34a' : '#9ca3af'}
+                        />
+                        <Stat
+                          label="市場部電訪"
+                          value={`${sc?.new_market_score ?? 0} 分`}
+                          sub={
+                            ev.market_audit_result == null
+                              ? '尚未審'
+                              : ev.market_audit_passed
+                              ? '✓ pass'
+                              : '✗ fail'
+                          }
+                          valueColor={(sc?.new_market_score ?? 0) > 0 ? '#16a34a' : '#9ca3af'}
+                        />
+                        <Stat
+                          label="新公式總分"
+                          value={`${sc?.new_total ?? 0}`}
+                          sub={sc?.new_passed ? '✓ 通過服務評鑑' : '✗ 未通過'}
+                          valueColor={sc?.new_passed ? '#16a34a' : '#dc2626'}
+                          bold
+                        />
+                      </div>
+                      {ev.market_audit_note && (
+                        <div className="text-xs text-gray-600 mt-2">
+                          市場部備註：{ev.market_audit_note}
+                          {ev.market_auditor_name && <span className="text-gray-400 ml-2">— {ev.market_auditor_name}</span>}
+                        </div>
+                      )}
                     </div>
 
                     {ev.note && (

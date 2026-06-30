@@ -285,12 +285,19 @@ export const FEEDBACK_SOURCE_LABELS: Record<string, string> = {
 
 // ─── 服務評鑑 ───────────────────────────────────────────
 export interface ServiceEvaluationScore {
+  // 舊公式
   review_rate: number;
   review_rate_score: number;
   process_score: number;
   phone_score: number;
   deduction: number;
   total: number;
+  // 新公式
+  new_screenshot_score: number;
+  new_negative_score: number;
+  new_market_score: number;
+  new_total: number;
+  new_passed: boolean;
 }
 
 export interface ServiceEvaluation {
@@ -314,6 +321,14 @@ export interface ServiceEvaluation {
   // 新計分模式：員工自上傳 Google Map 評論截圖
   verified_screenshot_count?: number;
   scoring_mode?: 'legacy' | 'screenshot' | null;
+  // 新公式：第二項 + 第三項
+  no_negative_or_washed?: boolean | null;
+  market_audit_result?: string | null;
+  market_audit_passed?: boolean | null;
+  market_audit_at?: string | null;
+  market_auditor_name?: string | null;
+  market_audit_note?: string | null;
+  market_audit_synced_at?: string | null;
   note?: string | null;
   created_by?: string | null;
   created_at: string;

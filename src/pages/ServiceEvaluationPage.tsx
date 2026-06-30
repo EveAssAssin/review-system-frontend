@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ServiceEvaluationOverviewRow } from '../types';
 
 // ── 評分公式（與後端 service-evaluation.service.ts computeScore 一致）──
-const EVAL = { REVIEW_RATE_MAX: 60, PROCESS_MAX: 20, PHONE_MAX: 20, DEDUCT: 5 };
+const EVAL = { REVIEW_RATE_MAX: 60, PROCESS_MAX: 20, PHONE_MAX: 20, DEDUCT: 5, NEW_PASS: 90 };
 
 function computeScore(e: {
   glasses_count: number;
@@ -169,6 +169,19 @@ const ServiceEvaluationPage: React.FC = () => {
     }
   };
 
+  const [syncMarketMsg, setSyncMarketMsg] = useState<string | null>(null);
+  const handleSyncMarket = async () => {
+    if (!confirm(`要同步 ${yearMonth} 整月的市場部電訪審核結果嗎？`)) return;
+    try {
+      const res = await serviceEvaluationApi.syncMarketAudits(yearMonth);
+      const r = res.data;
+      setSyncMarketMsg(`市場部同步：抓 ${r.fetched} 筆、對到員工 ${r.matched}、更新 ${r.updated} 筆評鑑；找不到員工 ${r.missing?.length || 0} 人${r.missing?.length ? '：' + r.missing.join('、') : ''}`);
+      await load();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || '市場部同步失敗');
+    }
+  };
+
   const handleLockToggle = async () => {
     const isLocked = rows.some(r => r.evaluation?.is_locked);
     const action = isLocked ? '解鎖' : '鎖定';
@@ -239,6 +252,13 @@ const ServiceEvaluationPage: React.FC = () => {
             {opening ? '開啟中...' : '＋ 開啟本月評鑑'}
           </button>
           <button
+            onClick={handleSyncMarket}
+            className="px-3 py-1.5 text-sm rounded bg-amber-600 hover:bg-amber-700 text-white"
+            title="同步市場部電訪審核（第三項 30 分）"
+          >
+            🛒 同步市場部
+          </button>
+          <button
             onClick={handleLockToggle}
             disabled={locking}
             className="px-4 py-2 text-sm border rounded disabled:opacity-50"
@@ -255,6 +275,13 @@ const ServiceEvaluationPage: React.FC = () => {
           <button onClick={() => setReviewMsg(null)} className="text-gray-400 hover:text-gray-600 text-xs flex-shrink-0">關閉 ✕</button>
         </div>
       )}
+
+        {syncMarketMsg && (
+          <div className="px-4 py-3 bg-amber-50 border border-amber-200 rounded flex items-start justify-between text-sm text-amber-900">
+            <div className="whitespace-pre-wrap flex-1 mr-3">{syncMarketMsg}</div>
+            <button onClick={() => setSyncMarketMsg(null)} className="text-gray-400 hover:text-gray-600 text-xs flex-shrink-0">關閉 ✕</button>
+          </div>
+        )}
 
       {/* 同步結果 */}
       {syncResult && (
@@ -332,7 +359,8 @@ const ServiceEvaluationPage: React.FC = () => {
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">服務流程</th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">電訪好評</th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">扣分</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">總分</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">總分(舊)</th>
+                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">新公式</th>
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">操作</th>
               </tr>
             </thead>
@@ -405,6 +433,16 @@ const ServiceEvaluationPage: React.FC = () => {
                           </span>
                           {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
                         </td>
+                        <td className="px-3 py-3 text-center" title={`截圖 ${sc?.new_screenshot_score ?? 0} / 負評處理 ${sc?.new_negative_score ?? 0} / 市場部 ${sc?.new_market_score ?? 0}`}>
+                          <div className="flex flex-col items-center">
+                            <span className="text-lg font-bold" style={{ color: (sc?.new_total || 0) >= EVAL.NEW_PASS ? '#16a34a' : '#dc2626' }}>
+                              {sc?.new_total ?? 0}
+                            </span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded mt-0.5 ${sc?.new_passed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                              {sc?.new_passed ? '✓ 通過' : '✗ 未通過'}
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-3 py-3 text-center">
                           <button
                             onClick={() => setEditing(ev)}
@@ -414,7 +452,7 @@ const ServiceEvaluationPage: React.FC = () => {
                         </td>
                       </>
                     ) : (
-                      <td colSpan={7} className="px-3 py-3 text-center">
+                      <td colSpan={8} className="px-3 py-3 text-center">
                         <span className="text-gray-400 text-sm mr-3">尚未評鑑</span>
                         <button
                           onClick={() => handleCreate(row.employee.id)}
