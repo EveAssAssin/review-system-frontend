@@ -47,6 +47,11 @@ const ServiceEvaluationPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<ServiceEvaluation | null>(null);
   const [creatingFor, setCreatingFor] = useState<string | null>(null);
+  const [scoringSettings, setScoringSettings] = useState<ServiceEvalScoringSettings | null>(null);
+  useEffect(() => {
+    settingsApi.getScoringSettings().then(res => setScoringSettings(res.data)).catch(() => {});
+  }, []);
+  const isLegacyMode = (scoringSettings?.scoring_mode || 'legacy') === 'legacy';
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
   const [phoneSurveyFor, setPhoneSurveyFor] = useState<ServiceEvaluation | null>(null);
 
@@ -212,7 +217,7 @@ const ServiceEvaluationPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <ScoringSettingsPanel isSuperAdmin={user?.role === 'super_admin'} />
+      <ScoringSettingsPanel isSuperAdmin={user?.role === 'super_admin'} settings={scoringSettings} onChange={setScoringSettings} />
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h2 className="text-2xl font-bold">服務評鑑</h2>
         <div className="flex items-center gap-2">
@@ -354,13 +359,24 @@ const ServiceEvaluationPage: React.FC = () => {
             <thead className="bg-[#f9f6f2]">
               <tr>
                 <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">員工</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">配鏡數</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">評論率</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">服務流程</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">電訪好評</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">扣分</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">總分(舊)</th>
-                <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">新公式</th>
+                {isLegacyMode ? (
+                  <>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">配鏡數</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">評論率</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">服務流程</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">電訪好評</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">扣分</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">總分</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">評論截圖</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">負評處理</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">市場部電訪</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">總分</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">通過</th>
+                  </>
+                )}
                 <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">操作</th>
               </tr>
             </thead>
@@ -376,73 +392,95 @@ const ServiceEvaluationPage: React.FC = () => {
                     </td>
                     {ev ? (
                       <>
-                        <td className="px-3 py-3 text-center text-sm">{ev.glasses_count}</td>
-                        <td
-                          className="px-3 py-3 text-center text-sm cursor-help"
-                          title={`本月新增 ${ev.website_review_count} 則 / 累計 ${ev.cumulative_review_count ?? 0} 則`}
-                        >
-                          {sc?.review_rate}%
-                          <div className="text-xs text-gray-400">
-                            {ev.website_review_count}/{ev.cumulative_review_count ?? 0}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm">
-                          {ev.is_locked ? (
-                            ev.service_process_score
-                          ) : (
-                            <input
-                              type="number"
-                              min={0}
-                              max={EVAL.PROCESS_MAX}
-                              step={1}
-                              defaultValue={ev.service_process_score}
-                              disabled={savingProcessId === ev.id}
-                              onBlur={(e) => {
-                                const v = Math.max(0, Math.min(EVAL.PROCESS_MAX, Number(e.currentTarget.value) || 0));
-                                if (v !== ev.service_process_score) handleInlineProcessSave(ev.id, v);
-                                else e.currentTarget.value = String(ev.service_process_score);
-                              }}
-                              onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
-                              className="w-16 text-center border rounded px-1 py-0.5 disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
-                              title={`0~${EVAL.PROCESS_MAX} 分，按 Enter 或失焦自動存檔`}
-                            />
-                          )}
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm">
-                          <button
-                            type="button"
-                            onClick={() => setPhoneSurveyFor(ev)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded hover:bg-[#f5f0eb] focus:outline-none"
-                            title="點擊上傳錄音 / 編輯分數"
-                          >
-                            <span className="font-medium">{ev.phone_survey_score}</span>
-                            {ev.phone_survey_audio_url ? (
-                              <span className="text-xs" title="已上傳錄音">🎧</span>
-                            ) : (
-                              <span className="text-xs text-gray-400" title="尚未上傳錄音">📁</span>
-                            )}
-                          </button>
-                        </td>
-                        <td className="px-3 py-3 text-center text-sm text-red-600">
-                          -{sc?.deduction}
-                          <div className="text-xs text-gray-400">低星{ev.google_low_star_count}/負評{ev.negative_review_count}</div>
-                        </td>
-                        <td className="px-3 py-3 text-center">
-                          <span className="text-lg font-bold" style={{ color: scoreColor(sc?.total || 0) }}>
-                            {sc?.total}
-                          </span>
-                          {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
-                        </td>
-                        <td className="px-3 py-3 text-center" title={`截圖 ${sc?.new_screenshot_score ?? 0} / 負評處理 ${sc?.new_negative_score ?? 0} / 市場部 ${sc?.new_market_score ?? 0}`}>
-                          <div className="flex flex-col items-center">
-                            <span className="text-lg font-bold" style={{ color: (sc?.new_total || 0) >= EVAL.NEW_PASS ? '#16a34a' : '#dc2626' }}>
-                              {sc?.new_total ?? 0}
-                            </span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded mt-0.5 ${sc?.new_passed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                              {sc?.new_passed ? '✓ 通過' : '✗ 未通過'}
-                            </span>
-                          </div>
-                        </td>
+                        {isLegacyMode ? (
+                          <>
+                            <td className="px-3 py-3 text-center text-sm">{ev.glasses_count}</td>
+                            <td
+                              className="px-3 py-3 text-center text-sm cursor-help"
+                              title={`本月新增 ${ev.website_review_count} 則 / 累計 ${ev.cumulative_review_count ?? 0} 則`}
+                            >
+                              {sc?.review_rate}%
+                              <div className="text-xs text-gray-400">
+                                {ev.website_review_count}/{ev.cumulative_review_count ?? 0}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm">
+                              {ev.is_locked ? (
+                                ev.service_process_score
+                              ) : (
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={EVAL.PROCESS_MAX}
+                                  step={1}
+                                  defaultValue={ev.service_process_score}
+                                  disabled={savingProcessId === ev.id}
+                                  onBlur={(e) => {
+                                    const v = Math.max(0, Math.min(EVAL.PROCESS_MAX, Number(e.currentTarget.value) || 0));
+                                    if (v !== ev.service_process_score) handleInlineProcessSave(ev.id, v);
+                                    else e.currentTarget.value = String(ev.service_process_score);
+                                  }}
+                                  onKeyDown={(e) => { if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur(); }}
+                                  className="w-16 text-center border rounded px-1 py-0.5 disabled:opacity-50 focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
+                                  title={`0~${EVAL.PROCESS_MAX} 分，按 Enter 或失焦自動存檔`}
+                                />
+                              )}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <button
+                                type="button"
+                                onClick={() => setPhoneSurveyFor(ev)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded hover:bg-[#f5f0eb] focus:outline-none"
+                                title="點擊上傳錄音 / 編輯分數"
+                              >
+                                <span className="font-medium">{ev.phone_survey_score}</span>
+                                {ev.phone_survey_audio_url ? (
+                                  <span className="text-xs" title="已上傳錄音">🎧</span>
+                                ) : (
+                                  <span className="text-xs text-gray-400" title="尚未上傳錄音">📁</span>
+                                )}
+                              </button>
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm text-red-600">
+                              -{sc?.deduction}
+                              <div className="text-xs text-gray-400">低星{ev.google_low_star_count}/負評{ev.negative_review_count}</div>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-lg font-bold" style={{ color: scoreColor(sc?.total || 0) }}>
+                                {sc?.total}
+                              </span>
+                              {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <div className="font-medium">{sc?.new_screenshot_score ?? 0} 分</div>
+                              <div className="text-xs text-gray-400">{ev.verified_screenshot_count ?? 0} / {EVAL.SCREENSHOT_TARGET}</div>
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <div className="font-medium">{sc?.new_negative_score ?? 0} 分</div>
+                              <div className="text-xs text-gray-400">{ev.no_negative_or_washed ? '✓ 無負評/全洗完' : '尚未滿足'}</div>
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm" title={ev.market_audit_note || ''}>
+                              <div className="font-medium">{sc?.new_market_score ?? 0} 分</div>
+                              <div className="text-xs text-gray-400">
+                                {ev.market_audit_result == null ? '尚未審' : ev.market_audit_passed ? '✓ pass' : '✗ fail'}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className="text-lg font-bold" style={{ color: sc?.new_passed ? '#16a34a' : '#dc2626' }}>
+                                {sc?.new_total ?? 0}
+                              </span>
+                              {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              <span className={`text-xs px-2 py-1 rounded ${sc?.new_passed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                                {sc?.new_passed ? '✓ 通過' : '✗ 未通過'}
+                              </span>
+                            </td>
+                          </>
+                        )}
                         <td className="px-3 py-3 text-center">
                           <button
                             onClick={() => setEditing(ev)}
@@ -452,7 +490,7 @@ const ServiceEvaluationPage: React.FC = () => {
                         </td>
                       </>
                     ) : (
-                      <td colSpan={8} className="px-3 py-3 text-center">
+                      <td colSpan={isLegacyMode ? 7 : 6} className="px-3 py-3 text-center">
                         <span className="text-gray-400 text-sm mr-3">尚未評鑑</span>
                         <button
                           onClick={() => handleCreate(row.employee.id)}
@@ -954,16 +992,13 @@ const PhoneSurveyModal: React.FC<PhoneSurveyModalProps> = ({ evaluation, onClose
 
 
 // ── 算分模式設定面板（super_admin 才看得到變更按鈕）─────────
-const ScoringSettingsPanel: React.FC<{ isSuperAdmin: boolean }> = ({ isSuperAdmin }) => {
-  const [settings, setSettings] = useState<ServiceEvalScoringSettings | null>(null);
+const ScoringSettingsPanel: React.FC<{
+  isSuperAdmin: boolean;
+  settings: ServiceEvalScoringSettings | null;
+  onChange: (s: ServiceEvalScoringSettings) => void;
+}> = ({ isSuperAdmin, settings, onChange }) => {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-
-  useEffect(() => {
-    settingsApi.getScoringSettings()
-      .then(res => setSettings(res.data))
-      .catch(() => setErr('讀取設定失敗'));
-  }, []);
 
   const update = async (patch: Partial<ServiceEvalScoringSettings>) => {
     if (!isSuperAdmin) return;
@@ -971,7 +1006,7 @@ const ScoringSettingsPanel: React.FC<{ isSuperAdmin: boolean }> = ({ isSuperAdmi
     setErr(null);
     try {
       const res = await settingsApi.updateScoringSettings(patch);
-      setSettings(res.data);
+      onChange(res.data);
     } catch (ex: any) {
       setErr(ex?.response?.data?.message || '更新失敗');
     } finally {

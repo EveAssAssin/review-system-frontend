@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { serviceEvaluationApi, reviewScreenshotsApi } from '../services/api';
+import { serviceEvaluationApi, reviewScreenshotsApi, settingsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ReviewScreenshot } from '../types';
 
@@ -18,6 +18,10 @@ const MyServiceEvaluationPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [scoringMode, setScoringMode] = useState<'legacy' | 'screenshot'>('legacy');
+  useEffect(() => {
+    settingsApi.getScoringSettings().then(res => setScoringMode(res.data?.scoring_mode || 'legacy')).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -107,24 +111,46 @@ const MyServiceEvaluationPage: React.FC = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-5">
-                    <div className="text-xs text-gray-500">
-                      配鏡 <span className="text-gray-800 font-medium">{ev.glasses_count}</span>
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      評論 <span className="text-gray-800 font-medium">
-                        {ev.website_review_count}/{ev.cumulative_review_count ?? 0}
-                      </span>
-                    </div>
-                    <div className="text-2xl font-bold" style={{ color: scoreColor(sc?.total || 0) }}>
-                      {sc?.total ?? 0}
-                    </div>
+                    {scoringMode === 'legacy' ? (
+                      <>
+                        <div className="text-xs text-gray-500">
+                          配鏡 <span className="text-gray-800 font-medium">{ev.glasses_count}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          評論 <span className="text-gray-800 font-medium">
+                            {ev.website_review_count}/{ev.cumulative_review_count ?? 0}
+                          </span>
+                        </div>
+                        <div className="text-2xl font-bold" style={{ color: scoreColor(sc?.total || 0) }}>
+                          {sc?.total ?? 0}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-xs text-gray-500">
+                          截圖 <span className="text-gray-800 font-medium">{ev.verified_screenshot_count ?? 0}/{EVAL.SCREENSHOT_TARGET}</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          市場部 <span className="text-gray-800 font-medium">
+                            {ev.market_audit_result == null ? '未審' : ev.market_audit_passed ? '✓' : '✗'}
+                          </span>
+                        </div>
+                        <div className="text-2xl font-bold" style={{ color: sc?.new_passed ? '#16a34a' : '#dc2626' }}>
+                          {sc?.new_total ?? 0}
+                        </div>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${sc?.new_passed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                          {sc?.new_passed ? '✓ 通過' : '✗ 未通過'}
+                        </span>
+                      </>
+                    )}
                     <span className="text-gray-400 text-sm">{isExpanded ? '▲' : '▼'}</span>
                   </div>
                 </button>
 
                 {isExpanded && (
                   <div className="border-t px-4 py-4 space-y-4 bg-[#fafafa]">
-                    {/* 分數明細 */}
+                    {/* 分數明細 — 依算分模式只顯示一邊 */}
+                    {scoringMode === 'legacy' ? (
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                       <Stat label="評論率" value={`${sc?.review_rate ?? 0}%`} sub={`${sc?.review_rate_score ?? 0} 分`} />
                       <Stat label="服務流程" value={`${ev.service_process_score} 分`} sub={`/ ${EVAL.PROCESS_MAX}`} />
@@ -143,8 +169,8 @@ const MyServiceEvaluationPage: React.FC = () => {
                         bold
                       />
                     </div>
-
-                    {/* 新公式 */}
+                    ) : (
+                    /* 新公式 */
                     <div className="bg-white border rounded p-3">
                       <div className="text-xs font-medium mb-2 text-gray-700">
                         新公式（截圖 40 + 負評處理 30 + 市場部 30 = 100，≥ 90 通過）
@@ -189,6 +215,7 @@ const MyServiceEvaluationPage: React.FC = () => {
                         </div>
                       )}
                     </div>
+                    )}
 
                     {ev.note && (
                       <div>
