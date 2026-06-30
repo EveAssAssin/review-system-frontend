@@ -311,6 +311,9 @@ export interface ServiceEvaluation {
   phone_survey_transcript?: string | null;
   phone_survey_transcript_status?: 'idle' | 'transcribing' | 'done' | 'failed';
   phone_survey_transcript_error?: string | null;
+  // 新計分模式：員工自上傳 Google Map 評論截圖
+  verified_screenshot_count?: number;
+  scoring_mode?: 'legacy' | 'screenshot' | null;
   note?: string | null;
   created_by?: string | null;
   created_at: string;
@@ -327,4 +330,68 @@ export interface ServiceEvaluation {
 export interface ServiceEvaluationOverviewRow {
   employee: { id: string; name: string; store_name?: string; department?: string; app_number?: string };
   evaluation: ServiceEvaluation | null;
+}
+
+
+// ── 評論截圖（新公式的核心物件）──────────────────────────
+export type ReviewScreenshotStatus =
+  | 'pending'         // AI 處理中
+  | 'awaiting_pick'   // 多則需員工選一則
+  | 'verified'        // 通過
+  | 'rejected'        // 拒絕
+  | 'needs_review';   // 待人工覆核
+
+export interface ExtractedReview {
+  reviewer_name: string;
+  reviewer_review_count?: number | null;
+  reviewer_is_local_guide?: boolean | null;
+  star_count: number;
+  posted_relative_time: string;
+  posted_days_ago: number;
+  has_new_badge?: boolean | null;
+  content: string;
+}
+
+export interface ReviewScreenshot {
+  id: string;
+  employee_id: string;
+  year_month: string;
+  image_url?: string | null;
+  image_name?: string | null;
+  image_uploaded_at?: string | null;
+  image_purged_at?: string | null;
+  ai_raw_extraction?: {
+    store_name?: string | null;
+    store_matches_lohas?: boolean;
+    reviews?: ExtractedReview[];
+    overall_confidence?: number;
+    notes?: string;
+  } | null;
+  ai_confidence?: number | null;
+  ai_model?: string | null;
+  store_name?: string | null;
+  reviewer_name?: string | null;
+  reviewer_review_count?: number | null;
+  reviewer_is_local_guide?: boolean | null;
+  star_count?: number | null;
+  posted_relative_time?: string | null;
+  posted_days_ago?: number | null;
+  has_new_badge?: boolean | null;
+  content?: string | null;
+  content_hash?: string | null;
+  status: ReviewScreenshotStatus;
+  reject_reason?: string | null;
+  warnings?: Array<{ type: string; message: string; [key: string]: any }> | null;
+  duplicate_of?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
+  manual_status?: string | null;
+  manual_reject_reason?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceEvalScoringSettings {
+  scoring_mode: 'legacy' | 'screenshot';
+  level3_dedupe: boolean;
 }

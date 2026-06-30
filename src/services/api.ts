@@ -399,4 +399,31 @@ export const serviceEvaluationApi = {
     api.delete(`/service-evaluations/${id}/phone-survey-audio`),
 };
 
+// ── 評論截圖 + 系統設定 ──────────────────────────────────
+export const reviewScreenshotsApi = {
+  listForEvaluation: (serviceEvalId: string) =>
+    api.get(`/service-evaluations/${serviceEvalId}/review-screenshots`),
+  upload: (serviceEvalId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post(`/service-evaluations/${serviceEvalId}/review-screenshots`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 120000,
+    });
+  },
+  pick: (id: string, index: number) =>
+    api.patch(`/review-screenshots/${id}/pick`, { index }),
+  remove: (id: string) =>
+    api.delete(`/review-screenshots/${id}`),
+  manualOverride: (id: string, status: 'verified' | 'rejected', reason?: string) =>
+    api.patch(`/review-screenshots/${id}/manual-override`, { status, reason }),
+};
+
+export const settingsApi = {
+  getScoringSettings: () =>
+    api.get('/settings/service-eval-scoring'),
+  updateScoringSettings: (patch: { scoring_mode?: 'legacy' | 'screenshot'; level3_dedupe?: boolean }) =>
+    api.patch('/settings/service-eval-scoring', patch),
+};
+
 export default api;

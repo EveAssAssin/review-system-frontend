@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { serviceEvaluationApi } from '../services/api';
+import { serviceEvaluationApi, settingsApi } from '../services/api';
+import type { ServiceEvalScoringSettings } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ServiceEvaluationOverviewRow } from '../types';
 
@@ -198,6 +199,7 @@ const ServiceEvaluationPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <ScoringSettingsPanel isSuperAdmin={user?.role === 'super_admin'} />
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h2 className="text-2xl font-bold">服務評鑑</h2>
         <div className="flex items-center gap-2">
@@ -906,6 +908,86 @@ const PhoneSurveyModal: React.FC<PhoneSurveyModalProps> = ({ evaluation, onClose
               {saving ? '儲存中…' : '存檔'}
             </button>
           )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ── 算分模式設定面板（super_admin 才看得到變更按鈕）─────────
+const ScoringSettingsPanel: React.FC<{ isSuperAdmin: boolean }> = ({ isSuperAdmin }) => {
+  const [settings, setSettings] = useState<ServiceEvalScoringSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    settingsApi.getScoringSettings()
+      .then(res => setSettings(res.data))
+      .catch(() => setErr('讀取設定失敗'));
+  }, []);
+
+  const update = async (patch: Partial<ServiceEvalScoringSettings>) => {
+    if (!isSuperAdmin) return;
+    setSaving(true);
+    setErr(null);
+    try {
+      const res = await settingsApi.updateScoringSettings(patch);
+      setSettings(res.data);
+    } catch (ex: any) {
+      setErr(ex?.response?.data?.message || '更新失敗');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!settings) return null;
+
+  return (
+    <div className="bg-[#faf8f5] border border-[#e8ddd0] rounded-lg p-4">
+      <div className="text-sm font-semibold mb-2" style={{ color: '#3d2b1f' }}>
+        算分模式設定 {!isSuperAdmin && <span className="text-xs text-gray-400 ml-2">（只有 super_admin 能變更）</span>}
+      </div>
+      {err && <div className="text-xs text-red-600 mb-2">{err}</div>}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* 計分模式 */}
+        <div>
+          <div className="text-xs text-gray-600 mb-1">人員評論率計分模式</div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => update({ scoring_mode: 'legacy' })}
+              disabled={!isSuperAdmin || saving || settings.scoring_mode === 'legacy'}
+              className={`flex-1 px-3 py-2 text-sm rounded border ${settings.scoring_mode === 'legacy' ? 'bg-[#8b6f4e] text-white border-[#8b6f4e]' : 'bg-white hover:bg-gray-50'} ${!isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
+              title="(官網新增評價 ÷ 配鏡數) × 100，上限 60 分"
+            >
+              舊公式（評論率，上限 60 分）
+            </button>
+            <button
+              type="button"
+              onClick={() => update({ scoring_mode: 'screenshot' })}
+              disabled={!isSuperAdmin || saving || settings.scoring_mode === 'screenshot'}
+              className={`flex-1 px-3 py-2 text-sm rounded border ${settings.scoring_mode === 'screenshot' ? 'bg-[#8b6f4e] text-white border-[#8b6f4e]' : 'bg-white hover:bg-gray-50'} ${!isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
+              title="員工自上傳 Google Map 評論截圖，達 20 則得 40 分"
+            >
+              新公式（截圖，20 則→40 分）
+            </button>
+          </div>
+        </div>
+
+        {/* Level 3 開關 */}
+        <div>
+          <div className="text-xs text-gray-600 mb-1">內容相似度比對（Level 3）</div>
+          <button
+            type="button"
+            onClick={() => update({ level3_dedupe: !settings.level3_dedupe })}
+            disabled={!isSuperAdmin || saving}
+            className={`w-full px-3 py-2 text-sm rounded border ${settings.level3_dedupe ? 'bg-green-50 border-green-300 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-600'} ${!isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}
+            title="比對截圖內容相似度，> 90% 視為可能重複（軟警告，不阻擋）"
+          >
+            {settings.level3_dedupe ? '✓ 啟用中' : '○ 已關閉'}
+          </button>
         </div>
       </div>
     </div>
