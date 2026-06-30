@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { serviceEvaluationApi, settingsApi } from '../services/api';
-import type { ServiceEvalScoringSettings } from '../types';
+import { serviceEvaluationApi, settingsApi, reviewScreenshotsApi } from '../services/api';
+import type { ServiceEvalScoringSettings, ReviewScreenshot } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ServiceEvaluationOverviewRow } from '../types';
 
@@ -53,6 +53,7 @@ const ServiceEvaluationPage: React.FC = () => {
   }, []);
   const isLegacyMode = (scoringSettings?.scoring_mode || 'legacy') === 'legacy';
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
+  const [inspecting, setInspecting] = useState<{ id: string; employeeName: string; yearMonth: string; isLocked: boolean } | null>(null);
   const [phoneSurveyFor, setPhoneSurveyFor] = useState<ServiceEvaluation | null>(null);
 
   const handleInlineProcessSave = async (id: string, value: number) => {
@@ -482,11 +483,25 @@ const ServiceEvaluationPage: React.FC = () => {
                           </>
                         )}
                         <td className="px-3 py-3 text-center">
-                          <button
-                            onClick={() => setEditing(ev)}
-                            className="text-[#8b6f4e] hover:underline text-sm">
-                            {ev.is_locked ? '檢視' : '編輯'}
-                          </button>
+                          <div className="flex items-center justify-center gap-2 text-sm">
+                            <button
+                              onClick={() => setEditing(ev)}
+                              className="text-[#8b6f4e] hover:underline">
+                              {ev.is_locked ? '檢視' : '編輯'}
+                            </button>
+                            <button
+                              onClick={() => setInspecting({
+                                id: ev.id,
+                                employeeName: row.employee.name,
+                                yearMonth: ev.year_month,
+                                isLocked: !!ev.is_locked,
+                              })}
+                              className="text-gray-500 hover:text-[#8b6f4e] hover:underline"
+                              title={`抽查截圖（已驗證 ${ev.verified_screenshot_count ?? 0}/${EVAL.SCREENSHOT_TARGET}）`}
+                            >
+                              📷 {ev.verified_screenshot_count ?? 0}
+                            </button>
+                          </div>
                         </td>
                       </>
                     ) : (
@@ -522,6 +537,17 @@ const ServiceEvaluationPage: React.FC = () => {
           evaluation={phoneSurveyFor}
           onClose={() => setPhoneSurveyFor(null)}
           onSaved={() => { setPhoneSurveyFor(null); load(); }}
+        />
+      )}
+
+      {inspecting && (
+        <ScreenshotInspectModal
+          serviceEvalId={inspecting.id}
+          employeeName={inspecting.employeeName}
+          yearMonth={inspecting.yearMonth}
+          isLocked={inspecting.isLocked}
+          onClose={() => setInspecting(null)}
+          onChange={load}
         />
       )}
     </div>
@@ -1062,6 +1088,248 @@ const ScoringSettingsPanel: React.FC<{
             {settings.level3_dedupe ? '✓ 啟用中' : '○ 已關閉'}
           </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+
+// ── 公關抽查 Modal ─────────────────────────────────────────
+interface InspectModalProps {
+  serviceEvalId: string;
+  employeeName: string;
+  yearMonth: string;
+  isLocked: boolean;
+  onClose: () => void;
+  onChange?: () => void;
+}
+
+const ScreenshotInspectModal: React.FC<InspectModalProps> = ({
+  serviceEvalId, employeeName, yearMonth, isLocked, onClose, onChange,
+}) => {
+  const [list, setList] = useState<ReviewScreenshot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'verified' | 'rejected' | 'awaiting_pick'>('all');
+
+  const load = async () => {
+    try {
+      const res = await reviewScreenshotsApi.listForEvaluation(serviceEvalId);
+      setList(res.data || []);
+    } finally {
+      setLoading(false);
+    }
+  };
+  useEffect(() => { load(); }, [serviceEvalId]);
+
+  const override = async (id: string, status: 'verified' | 'rejected') => {
+    let reason: string | undefined;
+    if (status === 'rejected') {
+      const r = prompt('強制拒絕原因（會記錄在 manual_reject_reason）？');
+      if (!r) return;
+      reason = r;
+    } else {
+      if (!confirm('強制標為通過？此筆將計入評鑑分數。')) return;
+    }
+    setBusyId(id);
+    try {
+      await reviewScreenshotsApi.manualOverride(id, status, reason);
+      await load();
+      onChange?.();
+    } catch (ex: any) {
+      alert(ex?.response?.data?.message || '操作失敗');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm('刪除這筆截圖？\n後端會把分數重算。')) return;
+    setBusyId(id);
+    try {
+      await reviewScreenshotsApi.remove(id);
+      await load();
+      onChange?.();
+    } catch (ex: any) {
+      alert(ex?.response?.data?.message || '刪除失敗');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const filtered = list.filter(r => filter === 'all' || r.status === filter);
+  const stats = {
+    total: list.length,
+    verified: list.filter(r => r.status === 'verified').length,
+    rejected: list.filter(r => r.status === 'rejected').length,
+    pending: list.filter(r => r.status === 'awaiting_pick' || r.status === 'pending' || r.status === 'needs_review').length,
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[92vh] flex flex-col">
+        <div className="px-5 py-4 border-b flex items-start justify-between">
+          <div>
+            <div className="text-base font-semibold">抽查 — {employeeName}</div>
+            <div className="text-xs text-gray-500">{yearMonth}　{isLocked && <span className="ml-1">🔒 已鎖定</span>}</div>
+            <div className="text-xs text-gray-600 mt-1">
+              共 {stats.total} 筆　通過 <span className="text-green-700 font-medium">{stats.verified}</span>　
+              拒絕 <span className="text-red-700">{stats.rejected}</span>　
+              處理中 <span className="text-amber-700">{stats.pending}</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+        </div>
+
+        <div className="px-5 py-2 border-b bg-gray-50 flex gap-2 text-xs">
+          {(['all', 'verified', 'rejected', 'awaiting_pick'] as const).map(k => (
+            <button
+              key={k}
+              onClick={() => setFilter(k)}
+              className={`px-2 py-1 rounded ${filter === k ? 'bg-[#8b6f4e] text-white' : 'bg-white border hover:bg-gray-100'}`}
+            >
+              {k === 'all' ? `全部 (${stats.total})` : k === 'verified' ? `通過 (${stats.verified})` : k === 'rejected' ? `拒絕 (${stats.rejected})` : `處理中 (${stats.pending})`}
+            </button>
+          ))}
+        </div>
+
+        <div className="px-5 py-4 overflow-y-auto flex-1 space-y-3">
+          {loading ? (
+            <div className="text-center text-gray-400 text-sm">載入中…</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center text-gray-400 text-sm py-10">
+              {filter === 'all' ? '這個月還沒有任何上傳' : '沒有符合此篩選的紀錄'}
+            </div>
+          ) : (
+            filtered.map(r => (
+              <InspectRow
+                key={r.id}
+                row={r}
+                isLocked={isLocked}
+                busy={busyId === r.id}
+                onApprove={() => override(r.id, 'verified')}
+                onReject={() => override(r.id, 'rejected')}
+                onDelete={() => remove(r.id)}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const InspectRow: React.FC<{
+  row: ReviewScreenshot;
+  isLocked: boolean;
+  busy: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+  onDelete: () => void;
+}> = ({ row, isLocked, busy, onApprove, onReject, onDelete }) => {
+  const statusColor =
+    row.status === 'verified' ? 'bg-green-100 text-green-700' :
+    row.status === 'rejected' ? 'bg-red-100 text-red-700' :
+    row.status === 'awaiting_pick' ? 'bg-amber-100 text-amber-700' :
+    'bg-gray-100 text-gray-700';
+
+  return (
+    <div className="border rounded-lg p-3 bg-white">
+      <div className="flex gap-3">
+        {row.image_url ? (
+          <a href={row.image_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+            <img src={row.image_url} alt="" className="w-24 h-24 object-cover rounded border" />
+          </a>
+        ) : (
+          <div className="w-24 h-24 flex-shrink-0 rounded border bg-gray-100 flex items-center justify-center text-xs text-gray-400 text-center">
+            {row.image_purged_at ? '7 天前\n圖已清' : '無圖'}
+          </div>
+        )}
+
+        <div className="flex-1 min-w-0 text-sm">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-xs px-2 py-0.5 rounded ${statusColor}`}>
+              {row.status === 'verified' ? '✓ 通過' :
+               row.status === 'rejected' ? '✗ 拒絕' :
+               row.status === 'awaiting_pick' ? '⚠️ 等員工選' :
+               row.status === 'pending' ? '⏳ 處理中' :
+               row.status === 'needs_review' ? '👁️ 待覆核' : row.status}
+            </span>
+            {row.manual_status && (
+              <span className="text-xs px-2 py-0.5 rounded bg-purple-100 text-purple-700">
+                公關覆核
+              </span>
+            )}
+            {row.reviewer_name && <span className="font-medium">{row.reviewer_name}</span>}
+            {row.star_count != null && (
+              <span className="text-xs">{'★'.repeat(row.star_count)}{'☆'.repeat(5 - row.star_count)}</span>
+            )}
+            {row.posted_relative_time && (
+              <span className="text-xs text-gray-400">{row.posted_relative_time}</span>
+            )}
+            {row.has_new_badge && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">新</span>
+            )}
+            {row.ai_confidence != null && (
+              <span className="text-xs text-gray-400">AI 信心 {Math.round((row.ai_confidence as number) * 100)}%</span>
+            )}
+          </div>
+
+          {row.store_name && (
+            <div className="text-xs text-gray-500 mt-1">店名：{row.store_name}</div>
+          )}
+
+          {row.content && (
+            <div className="text-xs text-gray-700 mt-1 whitespace-pre-wrap line-clamp-3">{row.content}</div>
+          )}
+
+          {row.status === 'rejected' && row.reject_reason && (
+            <div className="text-xs text-red-600 mt-1.5">✗ {row.reject_reason}</div>
+          )}
+
+          {row.warnings && row.warnings.length > 0 && (
+            <div className="text-xs text-amber-700 mt-1.5 space-y-0.5">
+              {row.warnings.map((w, i) => (
+                <div key={i}>⚠️ {w.message}</div>
+              ))}
+            </div>
+          )}
+
+          <div className="text-xs text-gray-400 mt-2">
+            上傳於 {row.created_at ? new Date(row.created_at).toLocaleString('zh-TW') : '-'}
+            {row.reviewed_by && <span className="ml-2">公關覆核：{row.reviewed_by}</span>}
+          </div>
+        </div>
+
+        {!isLocked && (
+          <div className="flex flex-col gap-1 flex-shrink-0">
+            {row.status !== 'verified' && (
+              <button
+                disabled={busy}
+                onClick={onApprove}
+                className="text-xs px-2 py-1 rounded bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+              >
+                ✓ 強制通過
+              </button>
+            )}
+            {row.status !== 'rejected' && (
+              <button
+                disabled={busy}
+                onClick={onReject}
+                className="text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+              >
+                ✗ 強制拒絕
+              </button>
+            )}
+            <button
+              disabled={busy}
+              onClick={onDelete}
+              className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              刪除
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
