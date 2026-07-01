@@ -389,6 +389,8 @@ export const serviceEvaluationApi = {
       params: yearMonth ? { year_month: yearMonth } : undefined,
       timeout: 60000,
     }),
+  getPendingWash: (yearMonth: string) =>
+    api.get('/service-evaluations/pending-wash', { params: { year_month: yearMonth } }),
 
   // 電訪好評 — 錄音 + 文字稿
   uploadPhoneSurveyAudio: (id: string, file: File) => {
@@ -423,6 +425,8 @@ export const reviewScreenshotsApi = {
     api.delete(`/review-screenshots/${id}`),
   manualOverride: (id: string, status: 'verified' | 'rejected', reason?: string) =>
     api.patch(`/review-screenshots/${id}/manual-override`, { status, reason }),
+  getInbox: (yearMonth?: string) =>
+    api.get('/review-screenshots/inbox', { params: yearMonth ? { year_month: yearMonth } : undefined }),
 };
 
 export const settingsApi = {

@@ -54,6 +54,21 @@ const ServiceEvaluationPage: React.FC = () => {
   const isLegacyMode = (scoringSettings?.scoring_mode || 'legacy') === 'legacy';
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState<{ id: string; employeeName: string; yearMonth: string; isLocked: boolean } | null>(null);
+  const [inbox, setInbox] = useState<any[]>([]);
+  const [pendingWash, setPendingWash] = useState<any[]>([]);
+  const [inboxOpen, setInboxOpen] = useState(false);
+  const [washOpen, setWashOpen] = useState(false);
+  const loadInbox = useCallback(async () => {
+    try {
+      const [inR, wR] = await Promise.all([
+        reviewScreenshotsApi.getInbox(yearMonth),
+        serviceEvaluationApi.getPendingWash(yearMonth),
+      ]);
+      setInbox(inR.data || []);
+      setPendingWash(wR.data || []);
+    } catch { /* ignore */ }
+  }, [yearMonth]);
+  useEffect(() => { loadInbox(); }, [loadInbox]);
   const [phoneSurveyFor, setPhoneSurveyFor] = useState<ServiceEvaluation | null>(null);
 
   const handleInlineProcessSave = async (id: string, value: number) => {
@@ -219,6 +234,117 @@ const ServiceEvaluationPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <ScoringSettingsPanel isSuperAdmin={user?.role === 'super_admin'} settings={scoringSettings} onChange={setScoringSettings} />
+
+      {/* 待處理 inbox + 未完成洗評論 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className={`rounded-lg border ${inbox.length ? 'border-amber-300 bg-amber-50' : 'border-gray-200 bg-white'}`}>
+          <button
+            type="button"
+            onClick={() => setInboxOpen(v => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-black/5 rounded-lg"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">📥</span>
+              <span className="text-sm font-semibold">待處理截圖 inbox</span>
+              <span className={`text-xs px-2 py-0.5 rounded ${inbox.length ? 'bg-amber-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                {inbox.length}
+              </span>
+            </div>
+            <span className="text-gray-400 text-sm">{inboxOpen ? '▲' : '▼'}</span>
+          </button>
+          {inboxOpen && (
+            <div className="border-t px-4 py-3 max-h-96 overflow-y-auto space-y-2">
+              {inbox.length === 0 ? (
+                <div className="text-xs text-gray-500 py-2">目前沒有待處理項目 ✓</div>
+              ) : (
+                inbox.map((row: any) => (
+                  <div key={row.id} className="flex items-center gap-2 text-sm bg-white p-2 rounded border">
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">
+                      {row.status === 'awaiting_pick' ? '等員工選' : row.status === 'needs_review' ? '待覆核' : '處理中'}
+                    </span>
+                    <span className="font-medium">{row.employees?.name || '(未知)'}</span>
+                    <span className="text-xs text-gray-400">{row.employees?.store_name || row.employees?.department || ''}</span>
+                    <span className="flex-1 text-xs text-gray-500 truncate">
+                      {row.reviewer_name && <span className="mr-1">{row.reviewer_name}:</span>}
+                      {row.content || (row.ai_raw_extraction?.reviews?.length ? `${row.ai_raw_extraction.reviews.length} 則候選` : '(尚無資料)')}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const empId = row.employee_id;
+                        const evRow = rows.find(r => r.employee?.id === empId && r.evaluation);
+                        if (evRow?.evaluation) {
+                          setInspecting({
+                            id: evRow.evaluation.id,
+                            employeeName: row.employees?.name || '(未知)',
+                            yearMonth: evRow.evaluation.year_month,
+                            isLocked: !!evRow.evaluation.is_locked,
+                          });
+                        }
+                      }}
+                      className="text-xs text-[#8b6f4e] hover:underline"
+                    >
+                      打開
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className={`rounded-lg border ${pendingWash.length ? 'border-red-300 bg-red-50' : 'border-gray-200 bg-white'}`}>
+          <button
+            type="button"
+            onClick={() => setWashOpen(v => !v)}
+            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-black/5 rounded-lg"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🚨</span>
+              <span className="text-sm font-semibold">未完成洗評論</span>
+              <span className={`text-xs px-2 py-0.5 rounded ${pendingWash.length ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-700'}`}>
+                {pendingWash.reduce((sum: number, g: any) => sum + g.pending_count, 0)} 筆 / {pendingWash.length} 人
+              </span>
+            </div>
+            <span className="text-gray-400 text-sm">{washOpen ? '▲' : '▼'}</span>
+          </button>
+          {washOpen && (
+            <div className="border-t px-4 py-3 max-h-96 overflow-y-auto space-y-2">
+              {pendingWash.length === 0 ? (
+                <div className="text-xs text-gray-500 py-2">全部洗完了 ✓</div>
+              ) : (
+                pendingWash.map((g: any) => (
+                  <div key={g.employee_id} className="bg-white p-2 rounded border">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium">{g.employee_name}</span>
+                      <span className="text-xs text-gray-400">{g.store_name || g.department || ''}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-700 ml-auto">
+                        {g.pending_count} 筆未完成
+                      </span>
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1 flex flex-wrap gap-2">
+                      {g.pending.slice(0, 5).map((p: any) => (
+                        <a
+                          key={p.review_id}
+                          href={`/reviews/${p.review_id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-1.5 py-0.5 border rounded hover:bg-gray-50"
+                          title={p.wash_status ? `wash 狀態：${p.wash_status}${p.deadline ? '，deadline ' + new Date(p.deadline).toLocaleDateString('zh-TW') : ''}` : '尚未建立洗評論任務'}
+                        >
+                          #{p.review_number ?? '?'} {p.wash_status || '未建立'}
+                        </a>
+                      ))}
+                      {g.pending.length > 5 && (
+                        <span className="text-gray-400">…還有 {g.pending.length - 5} 筆</span>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      </div>
       <div className="flex justify-between items-center flex-wrap gap-3">
         <h2 className="text-2xl font-bold">服務評鑑</h2>
         <div className="flex items-center gap-2">
