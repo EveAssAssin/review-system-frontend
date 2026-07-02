@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ServiceEvaluationOverviewRow } from '../types';
 
 // ── 評分公式（與後端 service-evaluation.service.ts computeScore 一致）──
-const EVAL = { REVIEW_RATE_MAX: 60, PROCESS_MAX: 20, PHONE_MAX: 20, DEDUCT: 5, NEW_PASS: 90 };
+const EVAL = { REVIEW_RATE_MAX: 60, PROCESS_MAX: 20, PHONE_MAX: 20, DEDUCT: 5, NEW_PASS: 90, SCREENSHOT_TARGET: 20, SCREENSHOT_BONUS: 40 };
 
 function computeScore(e: {
   glasses_count: number;
