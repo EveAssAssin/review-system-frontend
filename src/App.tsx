@@ -28,6 +28,7 @@ import DemeritSummaryPage from './pages/DemeritSummaryPage';
 import ServiceEvaluationPage from './pages/ServiceEvaluationPage';
 import MyServiceEvaluationPage from './pages/MyServiceEvaluationPage';
 import AnomalyReportPage from './pages/AnomalyReportPage';
+import GooglePlacesPage from './pages/GooglePlacesPage';
 import InterviewItemsPage from './pages/InterviewItemsPage';
 import InterviewsPage from './pages/InterviewsPage';
 import NewInterviewPage from './pages/NewInterviewPage';
@@ -192,6 +193,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <AnomalyReportPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/google-places"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <GooglePlacesPage />
               </ProtectedRoute>
             }
           />

@@ -438,4 +438,17 @@ export const settingsApi = {
     api.patch('/settings/service-eval-scoring', patch),
 };
 
+// Google Places 官方評論白名單管理
+export const googlePlacesApi = {
+  listStores: () => api.get('/google-places/stores'),
+  search: (q: string) => api.get('/google-places/search', { params: { q } }),
+  setPlaceId: (storeId: string, placeId: string) =>
+    api.post(`/google-places/stores/${storeId}/place-id`, { place_id: placeId }),
+  clearPlaceId: (storeId: string) =>
+    api.delete(`/google-places/stores/${storeId}/place-id`),
+  syncStore: (storeId: string) =>
+    api.post(`/google-places/stores/${storeId}/sync`, {}),
+  syncAll: () => api.post('/google-places/sync-all', {}),
+};
+
 export default api;

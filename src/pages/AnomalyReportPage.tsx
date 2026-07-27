@@ -12,6 +12,7 @@ interface AnomalyRow {
     exif_high_suspicion_count: number;
     exif_edit_tool_count: number;
     ai_suspicious_high_count: number;
+    not_in_google_count?: number;
     posted_today_pct: number;
     top_surname?: string | null;
     top_surname_count: number;
@@ -150,6 +151,12 @@ const RiskCard: React.FC<{ row: AnomalyRow }> = ({ row }) => {
           {s.ai_suspicious_high_count > 0 && (
             <span className="px-2 py-1 rounded" style={{ backgroundColor: '#fee2e2', color: '#b91c1c' }}>
               🚨 AI 疑似 × {s.ai_suspicious_high_count}
+            </span>
+          )}
+          {(s.not_in_google_count || 0) > 0 && (
+            <span className="px-2 py-1 rounded" style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+              title="Google 官方最新 5 則評論查無此則（可能已被新評論擠出或造假）">
+              🌐 Google 查無 × {s.not_in_google_count}
             </span>
           )}
           {s.posted_today_pct >= 0.8 && row.total_uploads >= 3 && (
