@@ -36,6 +36,7 @@ export default function GooglePlacesPage() {
   const [only6Digits, setOnly6Digits] = useState(true); // 預設只顯示 6 位數代號的正式門市
   const [hideConfigured, setHideConfigured] = useState(false); // 隱藏已設定的
   const [filterText, setFilterText] = useState('');
+  const [showHidden, setShowHidden] = useState(false); // 展開被 filter 隱藏的門市
 
   const load = async () => {
     setLoading(true);
@@ -50,19 +51,34 @@ export default function GooglePlacesPage() {
   };
   useEffect(() => { load(); }, []);
 
-  // 篩選後的清單
-  const filteredStores = useMemo(() => {
+  // 判斷單筆是否被 filter 隱藏（不含關鍵字搜尋，關鍵字搜尋是強制過濾）
+  const isHiddenByFilter = (s: StoreSync): boolean => {
+    if (only6Digits && !/^\d{6}$/.test(s.store_code || '')) return true;
+    if (hideConfigured && s.google_place_id) return true;
+    return false;
+  };
+
+  // 通過關鍵字搜尋的 stores（不論是否被 checkbox 過濾）
+  const kwFilteredStores = useMemo(() => {
     const kw = filterText.trim().toLowerCase();
+    if (!kw) return stores;
     return stores.filter(s => {
-      if (only6Digits && !/^\d{6}$/.test(s.store_code || '')) return false;
-      if (hideConfigured && s.google_place_id) return false;
-      if (kw) {
-        const hay = `${s.name} ${s.store_code || ''} ${s.region || ''}`.toLowerCase();
-        if (!hay.includes(kw)) return false;
-      }
-      return true;
+      const hay = `${s.name} ${s.store_code || ''} ${s.region || ''}`.toLowerCase();
+      return hay.includes(kw);
     });
-  }, [stores, only6Digits, hideConfigured, filterText]);
+  }, [stores, filterText]);
+
+  // 主顯示區（通過所有 filter）
+  const visibleStores = useMemo(
+    () => kwFilteredStores.filter(s => !isHiddenByFilter(s)),
+    [kwFilteredStores, only6Digits, hideConfigured],
+  );
+
+  // 被 checkbox filter 隱藏、但仍通過關鍵字搜尋的（可展開）
+  const hiddenStores = useMemo(
+    () => kwFilteredStores.filter(s => isHiddenByFilter(s)),
+    [kwFilteredStores, only6Digits, hideConfigured],
+  );
 
   const openPicker = (s: StoreSync) => {
     setPickingStore(s);
@@ -134,8 +150,8 @@ export default function GooglePlacesPage() {
 
   const setCount = stores.filter(s => s.google_place_id).length; // 頂部按鈕：全部有 place_id 的
   const totalAllCount = stores.length;                            // 頂部按鈕：全部
-  const totalCount = filteredStores.length;                       // 篩選後的計數（列表用）
-  const hiddenCount = totalAllCount - totalCount;
+  const visibleCount = visibleStores.length;
+  const hiddenCount = hiddenStores.length;
 
   return (
     <div className="max-w-6xl">
@@ -186,7 +202,7 @@ export default function GooglePlacesPage() {
           <span>只看未設定</span>
         </label>
         <div className="text-xs text-gray-500 ml-auto">
-          顯示 {totalCount} 間
+          顯示 {visibleCount} 間
           {hiddenCount > 0 && <span className="text-gray-400"> · 隱藏 {hiddenCount} 間</span>}
         </div>
       </div>
@@ -199,16 +215,40 @@ export default function GooglePlacesPage() {
 
       {loading ? (
         <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400">載入中...</div>
-      ) : filteredStores.length === 0 ? (
+      ) : visibleCount === 0 && hiddenCount === 0 ? (
         <div className="bg-white rounded-lg shadow p-6 text-center text-gray-400">
-          {stores.length === 0 ? '沒有門市資料' : '目前篩選條件下沒有門市，試著解開「只看 6 位數代號」或清除搜尋'}
+          {stores.length === 0 ? '沒有門市資料' : '搜尋關鍵字找不到任何門市，清除搜尋看看'}
         </div>
       ) : (
-        <div className="space-y-2">
-          {filteredStores.map(s => (
-            <StoreRow key={s.id} store={s} onPick={openPicker} onSync={syncOne} onClear={clearPlaceId} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-2">
+            {visibleStores.map(s => (
+              <StoreRow key={s.id} store={s} onPick={openPicker} onSync={syncOne} onClear={clearPlaceId} />
+            ))}
+          </div>
+
+          {/* 隱藏門市：可展開手動處理 */}
+          {hiddenCount > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setShowHidden(v => !v)}
+                className="w-full py-2 text-sm text-gray-600 rounded border border-dashed hover:bg-gray-50"
+              >
+                {showHidden ? '▲ 收合隱藏門市' : `▼ 展開被篩選隱藏的 ${hiddenCount} 間門市（依然可以手動處理）`}
+              </button>
+              {showHidden && (
+                <div className="mt-2 space-y-2 opacity-70">
+                  <div className="text-xs text-gray-500 italic px-2 py-1">
+                    以下門市因為代號非 6 位數或已設定過而被隱藏，如果實際上是正確門市可以直接點「設定 Google」處理
+                  </div>
+                  {hiddenStores.map(s => (
+                    <StoreRow key={s.id} store={s} onPick={openPicker} onSync={syncOne} onClear={clearPlaceId} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       {pickingStore && (
