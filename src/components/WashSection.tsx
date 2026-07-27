@@ -289,6 +289,19 @@ const WashSection: React.FC<WashSectionProps> = ({
         )}
       </div>
 
+      {/* 威懾警語（洗評論進行中且未結案時顯示） */}
+      {!isCompleted && !reviewClosed && !isExpired && (
+        <div className="mb-3 rounded-lg border p-3 text-xs leading-relaxed"
+          style={{ backgroundColor: '#fef8ee', borderColor: '#f0d9a8', color: '#8b6f4e' }}>
+          <div className="font-semibold mb-1">⚠️ 反造假警告</div>
+          洗評論照片同樣啟用
+          <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>圖片指紋</span>
+          <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>AI 生成偵測</span>
+          <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>跨系統去重</span>
+          。同一則評論不能同時用於「洗評論」和「服務評鑑」；上傳合成/AI 生成/非本店真實評論的截圖經查獲，依公司規定記大過至解僱處分。
+        </div>
+      )}
+
       {/* slot 格子 */}
       <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
         {uploads.map(slot => {

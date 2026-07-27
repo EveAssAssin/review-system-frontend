@@ -1399,7 +1399,26 @@ const InspectRow: React.FC<{
             {row.ai_confidence != null && (
               <span className="text-xs text-gray-400">AI 信心 {Math.round((row.ai_confidence as number) * 100)}%</span>
             )}
+            {row.ai_suspicious_score != null && row.ai_suspicious_score >= 0.5 && (
+              <span
+                className="text-xs px-2 py-0.5 rounded font-medium"
+                style={{ backgroundColor: '#fee2e2', color: '#b91c1c' }}
+                title={row.ai_suspicious_reasons?.join(' / ') || 'AI 判定疑似生成/合成'}
+              >
+                🚨 AI 疑似 {Math.round((row.ai_suspicious_score as number) * 100)}%
+              </span>
+            )}
           </div>
+
+          {row.ai_suspicious_score != null && row.ai_suspicious_score >= 0.5 && row.ai_suspicious_reasons && row.ai_suspicious_reasons.length > 0 && (
+            <div className="text-xs mt-1 rounded px-2 py-1"
+              style={{ backgroundColor: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}>
+              <div className="font-semibold">🚨 AI 疑似造假理由：</div>
+              <ul className="list-disc list-inside">
+                {row.ai_suspicious_reasons.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          )}
 
           {row.store_name && (
             <div className="text-xs text-gray-500 mt-1">店名：{row.store_name}</div>

@@ -383,6 +383,19 @@ const ReviewScreenshotSection: React.FC<RSProps> = ({ serviceEvalId, isLocked, v
         <div className="text-xs px-3 py-2 mb-2 rounded bg-red-50 text-red-700 border border-red-200">{err}</div>
       )}
 
+      {/* 威懾警語 */}
+      {!isLocked && (
+        <div className="mb-3 rounded-lg border p-3 text-xs leading-relaxed"
+          style={{ backgroundColor: '#fef8ee', borderColor: '#f0d9a8', color: '#8b6f4e' }}>
+          <div className="font-semibold mb-1">⚠️ 反造假警告</div>
+          系統已啟用多重 AI 偵測：
+          <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>圖片指紋比對</span>
+          <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>AI 生成偵測</span>
+          <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>公關實地抽查</span>
+          。上傳合成、AI 生成或非本店真實評論的截圖經查獲，依照公司規定記大過至解僱處分。
+        </div>
+      )}
+
       {/* 上傳按鈕 */}
       {!isLocked && (
         <div className="mb-3">

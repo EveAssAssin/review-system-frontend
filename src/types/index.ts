@@ -384,6 +384,9 @@ export interface ReviewScreenshot {
   } | null;
   ai_confidence?: number | null;
   ai_model?: string | null;
+  ai_suspicious_score?: number | null;
+  ai_suspicious_reasons?: string[] | null;
+  image_phash?: string | null;
   store_name?: string | null;
   reviewer_name?: string | null;
   reviewer_review_count?: number | null;
