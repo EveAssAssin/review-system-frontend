@@ -449,6 +449,10 @@ export const googlePlacesApi = {
   syncStore: (storeId: string) =>
     api.post(`/google-places/stores/${storeId}/sync`, {}),
   syncAll: () => api.post('/google-places/sync-all', {}),
+  listNegativeAlerts: (status?: 'new' | 'handled' | 'ignored') =>
+    api.get('/google-places/negative-alerts', { params: status ? { status } : undefined }),
+  handleNegativeAlert: (id: string, status: 'handled' | 'ignored', note?: string) =>
+    api.post(`/google-places/negative-alerts/${id}/handle`, { status, note }),
 };
 
 export default api;
