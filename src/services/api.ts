@@ -427,6 +427,8 @@ export const reviewScreenshotsApi = {
     api.patch(`/review-screenshots/${id}/manual-override`, { status, reason }),
   getInbox: (yearMonth?: string) =>
     api.get('/review-screenshots/inbox', { params: yearMonth ? { year_month: yearMonth } : undefined }),
+  anomalyReport: (yearMonth?: string) =>
+    api.get('/review-screenshots/anomaly-report', { params: yearMonth ? { year_month: yearMonth } : undefined }),
 };
 
 export const settingsApi = {

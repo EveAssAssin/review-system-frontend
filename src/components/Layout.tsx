@@ -51,6 +51,7 @@ export default function Layout() {
       label: '服務評鑑',
       items: [
         { path: '/service-evaluations', label: '服務評鑑', show: canManageReviews, icon: '🏅' },
+        { path: '/anomaly-report', label: '反造假異常報表', show: canManageReviews, icon: '🕵️' },
       ],
     },
     {

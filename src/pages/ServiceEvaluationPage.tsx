@@ -1408,6 +1408,27 @@ const InspectRow: React.FC<{
                 🚨 AI 疑似 {Math.round((row.ai_suspicious_score as number) * 100)}%
               </span>
             )}
+            {row.exif_suspicion?.category === 'high_suspicion' && (
+              <span className="text-xs px-2 py-0.5 rounded font-medium"
+                style={{ backgroundColor: '#7c1d1d', color: '#fff' }}
+                title={row.exif_suspicion.reasons?.join(' / ')}>
+                🧬 EXIF: AI 工具
+              </span>
+            )}
+            {row.exif_suspicion?.category === 'suspicious' && (
+              <span className="text-xs px-2 py-0.5 rounded font-medium"
+                style={{ backgroundColor: '#fef3c7', color: '#92400e' }}
+                title={row.exif_suspicion.reasons?.join(' / ')}>
+                🧬 EXIF: 編輯過
+              </span>
+            )}
+            {row.exif_suspicion?.category === 'clean' && (
+              <span className="text-xs px-2 py-0.5 rounded"
+                style={{ backgroundColor: '#d1fae5', color: '#065f46' }}
+                title={row.exif_suspicion.reasons?.join(' / ')}>
+                🧬 EXIF: 手機截圖
+              </span>
+            )}
           </div>
 
           {row.ai_suspicious_score != null && row.ai_suspicious_score >= 0.5 && row.ai_suspicious_reasons && row.ai_suspicious_reasons.length > 0 && (

@@ -27,6 +27,7 @@ import DemeritRecordPage from './pages/DemeritRecordPage';
 import DemeritSummaryPage from './pages/DemeritSummaryPage';
 import ServiceEvaluationPage from './pages/ServiceEvaluationPage';
 import MyServiceEvaluationPage from './pages/MyServiceEvaluationPage';
+import AnomalyReportPage from './pages/AnomalyReportPage';
 import InterviewItemsPage from './pages/InterviewItemsPage';
 import InterviewsPage from './pages/InterviewsPage';
 import NewInterviewPage from './pages/NewInterviewPage';
@@ -183,6 +184,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <ServiceEvaluationPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/anomaly-report"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <AnomalyReportPage />
               </ProtectedRoute>
             }
           />

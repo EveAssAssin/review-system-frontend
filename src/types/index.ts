@@ -387,6 +387,13 @@ export interface ReviewScreenshot {
   ai_suspicious_score?: number | null;
   ai_suspicious_reasons?: string[] | null;
   image_phash?: string | null;
+  image_exif?: Record<string, any> | null;
+  exif_suspicion?: {
+    software?: string | null;
+    category?: 'clean' | 'neutral' | 'suspicious' | 'high_suspicion';
+    is_suspicious?: boolean;
+    reasons?: string[];
+  } | null;
   store_name?: string | null;
   reviewer_name?: string | null;
   reviewer_review_count?: number | null;
