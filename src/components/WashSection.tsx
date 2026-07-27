@@ -298,7 +298,7 @@ const WashSection: React.FC<WashSectionProps> = ({
           <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>圖片指紋</span>
           <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>AI 生成偵測</span>
           <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>跨系統去重</span>
-          。同一則評論不能同時用於「洗評論」和「服務評鑑」；上傳合成/AI 生成/非本店真實評論的截圖經查獲，依公司規定記大過至解僱處分。
+          。同一則評論不能同時用於「洗評論」和「服務評鑑」；上傳合成、AI 生成或非本店真實評論的截圖，經查獲當月服務評鑑將直接視為不通過！
         </div>
       )}
 

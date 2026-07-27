@@ -392,7 +392,7 @@ const ReviewScreenshotSection: React.FC<RSProps> = ({ serviceEvalId, isLocked, v
           <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>圖片指紋比對</span>
           <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>AI 生成偵測</span>
           <span className="mx-1 px-1.5 py-0.5 rounded" style={{ backgroundColor: '#fff', border: '1px solid #f0d9a8' }}>公關實地抽查</span>
-          。上傳合成、AI 生成或非本店真實評論的截圖經查獲，依照公司規定記大過至解僱處分。
+          。上傳合成、AI 生成或非本店真實評論的截圖，經查獲當月服務評鑑將直接視為不通過！
         </div>
       )}
 
