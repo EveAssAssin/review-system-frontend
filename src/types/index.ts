@@ -394,6 +394,22 @@ export interface ReviewScreenshot {
     is_suspicious?: boolean;
     reasons?: string[];
   } | null;
+  collision_context?: {
+    source: 'screenshot' | 'wash';
+    id: string;
+    distance: number;
+    date?: string | null;
+    image_url?: string | null;
+    employee_id?: string | null;
+    employee_name?: string | null;
+    store_name?: string | null;
+    reviewer_name?: string | null;
+    content_preview?: string | null;
+    this_exif_timestamp?: string | null;
+    matched_exif_timestamp?: string | null;
+    time_diff_seconds?: number | null;
+    auto_bypassed?: boolean;
+  } | null;
   store_name?: string | null;
   reviewer_name?: string | null;
   reviewer_review_count?: number | null;

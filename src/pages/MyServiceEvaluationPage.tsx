@@ -495,6 +495,11 @@ const ScreenshotRow: React.FC<{
               ))}
             </div>
           )}
+
+          {/* pHash 撞到的對照卡片（被拒或自動放行都會有） */}
+          {row.collision_context && (
+            <CollisionCard cc={row.collision_context} status={row.status} />
+          )}
         </div>
         <div className="flex flex-col gap-1">
           {row.status === 'awaiting_pick' && !isLocked && (
@@ -514,6 +519,89 @@ const ScreenshotRow: React.FC<{
             >
               刪除
             </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/**
+ * pHash 撞到時的對照卡片（給員工看跟哪張圖撞到）
+ * status='rejected' → 紅底：真的被判為重傳
+ * status='verified'/其他 → 琥珀底：EXIF 時間差 60 秒以上自動放行
+ */
+const CollisionCard: React.FC<{
+  cc: NonNullable<ReviewScreenshot['collision_context']>;
+  status: string;
+}> = ({ cc, status }) => {
+  const isRejected = status === 'rejected';
+  const bg = isRejected ? '#fef2f2' : '#fef8ee';
+  const border = isRejected ? '#fecaca' : '#f0d9a8';
+  const label = isRejected ? '❌ 系統判定為重傳，已拒絕' : `✅ 自動放行（EXIF 時間差 ${cc.time_diff_seconds ?? '?'} 秒）`;
+  const labelColor = isRejected ? '#b91c1c' : '#065f46';
+
+  return (
+    <div className="mt-2 rounded border p-2" style={{ backgroundColor: bg, borderColor: border }}>
+      <div className="text-xs font-semibold mb-1.5" style={{ color: labelColor }}>{label}</div>
+      <div className="flex items-start gap-3">
+        {cc.image_url && (
+          <a href={cc.image_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+            <img src={cc.image_url} alt="" className="w-14 h-14 object-cover rounded border" />
+          </a>
+        )}
+        <div className="flex-1 min-w-0 text-xs">
+          <div className="font-medium text-gray-700 mb-0.5">
+            🎯 撞到這張圖（pHash 差 {cc.distance}/64）
+          </div>
+          <table className="text-xs w-full">
+            <tbody>
+              <tr>
+                <td className="text-gray-400 pr-2 whitespace-nowrap">來源：</td>
+                <td className="text-gray-700">
+                  {cc.source === 'screenshot' ? '服務評鑑' : '洗評論'} · {cc.date ? new Date(cc.date).toLocaleDateString('zh-TW') : '-'}
+                </td>
+              </tr>
+              {(cc.employee_name || cc.store_name) && (
+                <tr>
+                  <td className="text-gray-400 pr-2 whitespace-nowrap">上傳者：</td>
+                  <td className="text-gray-700">
+                    {cc.employee_name || '-'}{cc.store_name ? ` · ${cc.store_name}` : ''}
+                  </td>
+                </tr>
+              )}
+              {cc.reviewer_name && (
+                <tr>
+                  <td className="text-gray-400 pr-2 whitespace-nowrap">評論者：</td>
+                  <td className="text-gray-700">{cc.reviewer_name}</td>
+                </tr>
+              )}
+              {(cc.this_exif_timestamp || cc.matched_exif_timestamp) && (
+                <tr>
+                  <td className="text-gray-400 pr-2 whitespace-nowrap align-top">EXIF 拍攝時間：</td>
+                  <td className="text-gray-700">
+                    <div>你這張：{cc.this_exif_timestamp ? new Date(cc.this_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
+                    <div>對方那張：{cc.matched_exif_timestamp ? new Date(cc.matched_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
+                    {cc.time_diff_seconds != null && (
+                      <div className={cc.time_diff_seconds >= 60 ? 'text-green-700' : 'text-red-600'}>
+                        差 {cc.time_diff_seconds} 秒 {cc.time_diff_seconds >= 60 ? '（超過 60 秒判定為不同截圖）' : '（未達 60 秒判定為同一張）'}
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              )}
+              {cc.content_preview && (
+                <tr>
+                  <td className="text-gray-400 pr-2 whitespace-nowrap align-top">對方內容：</td>
+                  <td className="text-gray-500 italic line-clamp-2">{cc.content_preview}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+          {isRejected && (
+            <div className="mt-2 text-xs text-red-600">
+              💡 若確認非重傳（例如與同事都看到同一則評論各自截圖），請聯絡公關部人工覆核。
+            </div>
           )}
         </div>
       </div>
