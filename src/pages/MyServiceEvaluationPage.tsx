@@ -527,23 +527,21 @@ const ScreenshotRow: React.FC<{
 };
 
 /**
- * pHash 撞到時的對照卡片（給員工看跟哪張圖撞到）
- * status='rejected' → 紅底：真的被判為重傳
- * status='verified'/其他 → 琥珀底：EXIF 時間差 60 秒以上自動放行
+ * pHash 撞到時的對照卡片 — 讓員工看清楚這則評論已被誰搶先
+ * 商業規則：一則評論全系統只算一次，先到先得
  */
 const CollisionCard: React.FC<{
   cc: NonNullable<ReviewScreenshot['collision_context']>;
   status: string;
 }> = ({ cc, status }) => {
-  const isRejected = status === 'rejected';
-  const bg = isRejected ? '#fef2f2' : '#fef8ee';
-  const border = isRejected ? '#fecaca' : '#f0d9a8';
-  const label = isRejected ? '❌ 系統判定為重傳，已拒絕' : `✅ 自動放行（EXIF 時間差 ${cc.time_diff_seconds ?? '?'} 秒）`;
-  const labelColor = isRejected ? '#b91c1c' : '#065f46';
+  // 只在被拒絕時才顯示（有 collision_context 也代表被拒了）
+  if (status !== 'rejected') return null;
 
   return (
-    <div className="mt-2 rounded border p-2" style={{ backgroundColor: bg, borderColor: border }}>
-      <div className="text-xs font-semibold mb-1.5" style={{ color: labelColor }}>{label}</div>
+    <div className="mt-2 rounded border p-2" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
+      <div className="text-xs font-semibold mb-1.5" style={{ color: '#b91c1c' }}>
+        ❌ 此則評論已被搶先使用（系統規則：一則評論全系統只算一次）
+      </div>
       <div className="flex items-start gap-3">
         {cc.image_url && (
           <a href={cc.image_url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
@@ -564,9 +562,9 @@ const CollisionCard: React.FC<{
               </tr>
               {(cc.employee_name || cc.store_name) && (
                 <tr>
-                  <td className="text-gray-400 pr-2 whitespace-nowrap">上傳者：</td>
-                  <td className="text-gray-700">
-                    {cc.employee_name || '-'}{cc.store_name ? ` · ${cc.store_name}` : ''}
+                  <td className="text-gray-400 pr-2 whitespace-nowrap">已由：</td>
+                  <td className="text-gray-700 font-medium">
+                    {cc.employee_name || '-'}{cc.store_name ? ` · ${cc.store_name}` : ''} 上傳
                   </td>
                 </tr>
               )}
@@ -579,13 +577,11 @@ const CollisionCard: React.FC<{
               {(cc.this_exif_timestamp || cc.matched_exif_timestamp) && (
                 <tr>
                   <td className="text-gray-400 pr-2 whitespace-nowrap align-top">EXIF 拍攝時間：</td>
-                  <td className="text-gray-700">
+                  <td className="text-gray-500">
                     <div>你這張：{cc.this_exif_timestamp ? new Date(cc.this_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
                     <div>對方那張：{cc.matched_exif_timestamp ? new Date(cc.matched_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
                     {cc.time_diff_seconds != null && (
-                      <div className={cc.time_diff_seconds >= 60 ? 'text-green-700' : 'text-red-600'}>
-                        差 {cc.time_diff_seconds} 秒 {cc.time_diff_seconds >= 60 ? '（超過 60 秒判定為不同截圖）' : '（未達 60 秒判定為同一張）'}
-                      </div>
+                      <div className="text-gray-500">差 {cc.time_diff_seconds} 秒</div>
                     )}
                   </td>
                 </tr>
@@ -598,11 +594,9 @@ const CollisionCard: React.FC<{
               )}
             </tbody>
           </table>
-          {isRejected && (
-            <div className="mt-2 text-xs text-red-600">
-              💡 若確認非重傳（例如與同事都看到同一則評論各自截圖），請聯絡公關部人工覆核。
-            </div>
-          )}
+          <div className="mt-2 text-xs text-red-600">
+            💡 請上傳其他新的評論截圖。如認為判斷有誤（例如是你先拍的但同事搶先上傳），請聯絡公關部人工覆核。
+          </div>
         </div>
       </div>
     </div>
