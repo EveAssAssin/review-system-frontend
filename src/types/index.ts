@@ -410,6 +410,12 @@ export interface ReviewScreenshot {
     time_diff_seconds?: number | null;
     auto_bypassed?: boolean;
   } | null;
+  appeal_status?: 'pending' | 'approved' | 'denied' | null;
+  appeal_reason?: string | null;
+  appeal_submitted_at?: string | null;
+  appeal_handled_by?: string | null;
+  appeal_handled_at?: string | null;
+  appeal_handled_note?: string | null;
   store_name?: string | null;
   reviewer_name?: string | null;
   reviewer_review_count?: number | null;

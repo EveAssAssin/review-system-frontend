@@ -429,6 +429,14 @@ export const reviewScreenshotsApi = {
     api.get('/review-screenshots/inbox', { params: yearMonth ? { year_month: yearMonth } : undefined }),
   anomalyReport: (yearMonth?: string) =>
     api.get('/review-screenshots/anomaly-report', { params: yearMonth ? { year_month: yearMonth } : undefined }),
+  submitAppeal: (id: string, reason: string) =>
+    api.post(`/review-screenshots/${id}/appeal`, { reason }),
+  listAppeals: (status?: 'pending' | 'approved' | 'denied') =>
+    api.get('/review-screenshots/appeals', { params: status ? { status } : undefined }),
+  getAppealDetail: (id: string) =>
+    api.get(`/review-screenshots/${id}/appeal-detail`),
+  handleAppeal: (id: string, decision: 'approved' | 'denied', note?: string) =>
+    api.post(`/review-screenshots/${id}/appeal/handle`, { decision, note }),
 };
 
 export const settingsApi = {

@@ -30,6 +30,7 @@ import MyServiceEvaluationPage from './pages/MyServiceEvaluationPage';
 import AnomalyReportPage from './pages/AnomalyReportPage';
 import GooglePlacesPage from './pages/GooglePlacesPage';
 import GoogleAlertsPage from './pages/GoogleAlertsPage';
+import ScreenshotAppealsPage from './pages/ScreenshotAppealsPage';
 import InterviewItemsPage from './pages/InterviewItemsPage';
 import InterviewsPage from './pages/InterviewsPage';
 import NewInterviewPage from './pages/NewInterviewPage';
@@ -210,6 +211,14 @@ function AppRoutes() {
             element={
               <ProtectedRoute requirePrAdmin>
                 <GoogleAlertsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/screenshot-appeals"
+            element={
+              <ProtectedRoute requirePrAdmin>
+                <ScreenshotAppealsPage />
               </ProtectedRoute>
             }
           />

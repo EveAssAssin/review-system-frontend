@@ -496,9 +496,9 @@ const ScreenshotRow: React.FC<{
             </div>
           )}
 
-          {/* pHash 撞到的對照卡片（被拒或自動放行都會有） */}
+          {/* pHash 撞到的對照卡片 */}
           {row.collision_context && (
-            <CollisionCard cc={row.collision_context} status={row.status} />
+            <CollisionCard row={row} />
           )}
         </div>
         <div className="flex flex-col gap-1">
@@ -529,13 +529,33 @@ const ScreenshotRow: React.FC<{
 /**
  * pHash 撞到時的對照卡片 — 讓員工看清楚這則評論已被誰搶先
  * 商業規則：一則評論全系統只算一次，先到先得
+ * 支援申訴：員工可以點「我要申訴」由公關人工覆核
  */
-const CollisionCard: React.FC<{
-  cc: NonNullable<ReviewScreenshot['collision_context']>;
-  status: string;
-}> = ({ cc, status }) => {
+const CollisionCard: React.FC<{ row: ReviewScreenshot }> = ({ row }) => {
+  const cc = row.collision_context!;
+  const status = row.status;
+  const [showAppealModal, setShowAppealModal] = useState(false);
+  const [appealReason, setAppealReason] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
   // 只在被拒絕時才顯示（有 collision_context 也代表被拒了）
   if (status !== 'rejected') return null;
+
+  const submitAppeal = async () => {
+    if (!appealReason.trim()) return;
+    setSubmitting(true);
+    try {
+      await reviewScreenshotsApi.submitAppeal(row.id, appealReason.trim());
+      window.alert('申訴已送出，公關部審核後會有通知。');
+      setShowAppealModal(false);
+      setAppealReason('');
+      window.location.reload();
+    } catch (e: any) {
+      window.alert(e?.response?.data?.message || '送出失敗');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="mt-2 rounded border p-2" style={{ backgroundColor: '#fef2f2', borderColor: '#fecaca' }}>
@@ -594,11 +614,85 @@ const CollisionCard: React.FC<{
               )}
             </tbody>
           </table>
-          <div className="mt-2 text-xs text-red-600">
-            💡 請上傳其他新的評論截圖。如認為判斷有誤（例如是你先拍的但同事搶先上傳），請聯絡公關部人工覆核。
-          </div>
+          {/* 申訴狀態 / 按鈕 */}
+          {row.appeal_status === 'pending' ? (
+            <div className="mt-2 rounded bg-blue-50 border border-blue-200 px-2 py-1.5 text-xs text-blue-700">
+              🙋 申訴中，等待公關部審核
+              {row.appeal_submitted_at && <span className="ml-2 text-blue-500">於 {new Date(row.appeal_submitted_at).toLocaleString('zh-TW')}</span>}
+              {row.appeal_reason && <div className="mt-1 text-gray-600 italic">你的理由：{row.appeal_reason}</div>}
+            </div>
+          ) : row.appeal_status === 'approved' ? (
+            <div className="mt-2 rounded bg-green-50 border border-green-200 px-2 py-1.5 text-xs text-green-700">
+              ✅ 申訴通過，公關已強制放行
+              {row.appeal_handled_by && <span className="ml-2 text-green-600">by {row.appeal_handled_by}</span>}
+              {row.appeal_handled_note && <div className="mt-1 text-gray-600">公關備註：{row.appeal_handled_note}</div>}
+            </div>
+          ) : row.appeal_status === 'denied' ? (
+            <div className="mt-2 rounded bg-gray-50 border border-gray-200 px-2 py-1.5 text-xs text-gray-700">
+              ❌ 申訴被駁回，維持原判定
+              {row.appeal_handled_by && <span className="ml-2 text-gray-500">by {row.appeal_handled_by}</span>}
+              {row.appeal_handled_note && <div className="mt-1 italic">公關備註：{row.appeal_handled_note}</div>}
+              <button
+                type="button"
+                onClick={() => setShowAppealModal(true)}
+                className="mt-1 text-xs text-red-600 hover:underline"
+              >🙋 再次申訴</button>
+            </div>
+          ) : (
+            <div className="mt-2 flex items-center gap-2">
+              <div className="text-xs text-red-600 flex-1">
+                💡 請上傳其他新的評論截圖。若你確認是這則你先拍的，可以申訴讓公關人工覆核。
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAppealModal(true)}
+                className="text-xs px-3 py-1 rounded text-white flex-shrink-0"
+                style={{ backgroundColor: '#5b7fad' }}
+              >🙋 我要申訴</button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* 申訴 Modal */}
+      {showAppealModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="px-5 py-4 border-b flex items-center justify-between">
+              <div className="font-semibold">🙋 申訴：這則評論是我先拍的</div>
+              <button onClick={() => setShowAppealModal(false)} className="text-gray-400 hover:text-gray-700 text-lg">✕</button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <div className="text-sm text-gray-600">
+                請說明為什麼你認為這則截圖應該通過。公關部會人工覆核，比對兩張截圖的 EXIF 時間、內容、上傳時間等。
+              </div>
+              <textarea
+                value={appealReason}
+                onChange={e => setAppealReason(e.target.value)}
+                rows={5}
+                placeholder="例：我當天早上 10:00 就在櫃檯看到這位客人留評，馬上截圖了。10:15 才傳到系統，但沒想到已被同事李美惠搶先傳過。這則確實是我先服務的客人。"
+                className="w-full px-3 py-2 border rounded text-sm"
+                maxLength={1000}
+              />
+              <div className="text-xs text-gray-400 text-right">{appealReason.length}/1000</div>
+            </div>
+            <div className="px-5 py-3 border-t flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowAppealModal(false)}
+                className="px-4 py-1.5 text-sm border rounded"
+              >取消</button>
+              <button
+                type="button"
+                onClick={submitAppeal}
+                disabled={!appealReason.trim() || submitting}
+                className="px-4 py-1.5 text-sm text-white rounded disabled:opacity-50"
+                style={{ backgroundColor: '#5b7fad' }}
+              >{submitting ? '送出中...' : '送出申訴'}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
