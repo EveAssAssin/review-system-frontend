@@ -28,6 +28,23 @@ export default function GoogleAlertsPage() {
   const [list, setList] = useState<NegativeAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  const runTestPush = async () => {
+    if (testing) return;
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const r = await googlePlacesApi.testNotify();
+      setTestResult((r.data.ok ? '✅ ' : '⚠️ ') + (r.data.message || ''));
+    } catch (e: any) {
+      setTestResult('❌ 呼叫失敗：' + (e?.response?.data?.message || e?.message || String(e)));
+    } finally {
+      setTesting(false);
+      setTimeout(() => setTestResult(null), 15000);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -62,6 +79,14 @@ export default function GoogleAlertsPage() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-gray-900">🚨 Google 負評告警</h1>
         <div className="flex items-center gap-2">
+          <button
+            onClick={runTestPush}
+            disabled={testing}
+            className="px-3 py-1.5 text-sm rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            title="送一則假告警給所有公關部，測試 LINE 推播通路"
+          >
+            {testing ? '推播中…' : '📣 測試推播'}
+          </button>
           {(['new', 'handled', 'ignored', 'all'] as const).map(f => (
             <button
               key={f}
@@ -76,6 +101,14 @@ export default function GoogleAlertsPage() {
           ))}
         </div>
       </div>
+
+      {testResult && (
+        <div className={`mb-3 rounded border text-sm px-3 py-2 ${
+          testResult.startsWith('✅') ? 'bg-green-50 border-green-200 text-green-700'
+          : testResult.startsWith('⚠️') ? 'bg-amber-50 border-amber-200 text-amber-800'
+          : 'bg-red-50 border-red-200 text-red-700'
+        }`}>{testResult}</div>
+      )}
 
       <div className="bg-white rounded-lg shadow p-4 mb-4 text-xs text-gray-600 leading-relaxed">
         <div className="font-semibold text-gray-700 mb-1">📖 說明</div>

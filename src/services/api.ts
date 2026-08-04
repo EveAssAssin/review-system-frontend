@@ -461,6 +461,7 @@ export const googlePlacesApi = {
     api.get('/google-places/negative-alerts', { params: status ? { status } : undefined }),
   handleNegativeAlert: (id: string, status: 'handled' | 'ignored', note?: string) =>
     api.post(`/google-places/negative-alerts/${id}/handle`, { status, note }),
+  testNotify: () => api.post('/google-places/test-notify', {}),
 };
 
 export default api;
