@@ -143,6 +143,8 @@ export default function InterviewDetailPage() {
   const handleSave = async () => {
     if (!id || !record) return;
     setSaving(true);
+    // 記錄目前 scroll 位置，存檔後 rerender 完再滾回原位（避免每次存檔都跳到最頂）
+    const savedScrollY = window.scrollY;
     try {
       const payload = record.items_with_responses.map(it => ({
         item_id: it.id,
@@ -157,6 +159,12 @@ export default function InterviewDetailPage() {
         setSearchParams(searchParams, { replace: true });
       }
       await load();
+      // 等 React 完成 rerender 後把 scroll 位置寫回；rAF 兩次確保 DOM & layout 都穩定
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+        });
+      });
     } catch (err: any) {
       alert(err.response?.data?.message || '儲存失敗');
     } finally {
