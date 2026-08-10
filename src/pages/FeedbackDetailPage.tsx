@@ -616,7 +616,7 @@ const FeedbackDetailPage: React.FC = () => {
               設定後於期限前依「提前開始」起，每 15 分鐘 LINE 提醒負責人員；完成或結案即自動停止
             </span>
           </label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">期限日期</label>
               <input

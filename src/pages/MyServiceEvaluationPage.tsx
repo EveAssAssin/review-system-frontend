@@ -572,48 +572,47 @@ const CollisionCard: React.FC<{ row: ReviewScreenshot }> = ({ row }) => {
           <div className="font-medium text-gray-700 mb-0.5">
             🎯 撞到這張圖（pHash 差 {cc.distance}/64）
           </div>
-          <table className="text-xs w-full">
-            <tbody>
-              <tr>
-                <td className="text-gray-400 pr-2 whitespace-nowrap">來源：</td>
-                <td className="text-gray-700">
-                  {cc.source === 'screenshot' ? '服務評鑑' : '洗評論'} · {cc.date ? new Date(cc.date).toLocaleDateString('zh-TW') : '-'}
-                </td>
-              </tr>
-              {(cc.employee_name || cc.store_name) && (
-                <tr>
-                  <td className="text-gray-400 pr-2 whitespace-nowrap">已由：</td>
-                  <td className="text-gray-700 font-medium">
-                    {cc.employee_name || '-'}{cc.store_name ? ` · ${cc.store_name}` : ''} 上傳
-                  </td>
-                </tr>
-              )}
-              {cc.reviewer_name && (
-                <tr>
-                  <td className="text-gray-400 pr-2 whitespace-nowrap">評論者：</td>
-                  <td className="text-gray-700">{cc.reviewer_name}</td>
-                </tr>
-              )}
-              {(cc.this_exif_timestamp || cc.matched_exif_timestamp) && (
-                <tr>
-                  <td className="text-gray-400 pr-2 whitespace-nowrap align-top">EXIF 拍攝時間：</td>
-                  <td className="text-gray-500">
-                    <div>你這張：{cc.this_exif_timestamp ? new Date(cc.this_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
-                    <div>對方那張：{cc.matched_exif_timestamp ? new Date(cc.matched_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
-                    {cc.time_diff_seconds != null && (
-                      <div className="text-gray-500">差 {cc.time_diff_seconds} 秒</div>
-                    )}
-                  </td>
-                </tr>
-              )}
-              {cc.content_preview && (
-                <tr>
-                  <td className="text-gray-400 pr-2 whitespace-nowrap align-top">對方內容：</td>
-                  <td className="text-gray-500 italic line-clamp-2">{cc.content_preview}</td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          {/* 手機：label / value 上下堆疊；桌機 sm+：兩欄水平對齊 */}
+          <dl className="text-xs mt-1 space-y-1.5 sm:space-y-1">
+            <div className="sm:flex sm:gap-2">
+              <dt className="text-gray-400 sm:w-24 sm:flex-shrink-0">來源</dt>
+              <dd className="text-gray-700">
+                {cc.source === 'screenshot' ? '服務評鑑' : '洗評論'} · {cc.date ? new Date(cc.date).toLocaleDateString('zh-TW') : '-'}
+              </dd>
+            </div>
+            {(cc.employee_name || cc.store_name) && (
+              <div className="sm:flex sm:gap-2">
+                <dt className="text-gray-400 sm:w-24 sm:flex-shrink-0">已由</dt>
+                <dd className="text-gray-700 font-medium">
+                  {cc.employee_name || '-'}{cc.store_name ? ` · ${cc.store_name}` : ''} 上傳
+                </dd>
+              </div>
+            )}
+            {cc.reviewer_name && (
+              <div className="sm:flex sm:gap-2">
+                <dt className="text-gray-400 sm:w-24 sm:flex-shrink-0">評論者</dt>
+                <dd className="text-gray-700">{cc.reviewer_name}</dd>
+              </div>
+            )}
+            {(cc.this_exif_timestamp || cc.matched_exif_timestamp) && (
+              <div className="sm:flex sm:gap-2">
+                <dt className="text-gray-400 sm:w-24 sm:flex-shrink-0">EXIF 拍攝時間</dt>
+                <dd className="text-gray-500 space-y-0.5">
+                  <div>你這張：{cc.this_exif_timestamp ? new Date(cc.this_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
+                  <div>對方那張：{cc.matched_exif_timestamp ? new Date(cc.matched_exif_timestamp).toLocaleString('zh-TW') : '無'}</div>
+                  {cc.time_diff_seconds != null && (
+                    <div className="text-gray-500">差 {cc.time_diff_seconds} 秒</div>
+                  )}
+                </dd>
+              </div>
+            )}
+            {cc.content_preview && (
+              <div className="sm:flex sm:gap-2">
+                <dt className="text-gray-400 sm:w-24 sm:flex-shrink-0">對方內容</dt>
+                <dd className="text-gray-500 italic line-clamp-3">{cc.content_preview}</dd>
+              </div>
+            )}
+          </dl>
           {/* 申訴狀態 / 按鈕 */}
           {row.appeal_status === 'pending' ? (
             <div className="mt-2 rounded bg-blue-50 border border-blue-200 px-2 py-1.5 text-xs text-blue-700">

@@ -186,7 +186,7 @@ const AppealDetailModal: React.FC<{
           </div>
 
           {/* 兩張截圖並排 */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ScreenshotColumn title="🙋 申訴這張（員工的）" data={cur} isCurrent={true} />
             <ScreenshotColumn title="⚡ 撞到那張（先傳的）" data={col} isCurrent={false} />
           </div>
@@ -195,28 +195,26 @@ const AppealDetailModal: React.FC<{
           {cur.collision_context && (
             <div className="rounded-lg bg-gray-50 border p-3 text-sm">
               <div className="font-semibold text-gray-700 mb-2">⏰ EXIF 拍攝時間對照</div>
-              <table className="w-full text-sm">
-                <tbody>
-                  <tr>
-                    <td className="text-gray-500 pr-2">申訴這張：</td>
-                    <td>{cur.collision_context.this_exif_timestamp ? new Date(cur.collision_context.this_exif_timestamp).toLocaleString('zh-TW') : '（無 EXIF 時間戳）'}</td>
-                  </tr>
-                  <tr>
-                    <td className="text-gray-500 pr-2">撞到那張：</td>
-                    <td>{cur.collision_context.matched_exif_timestamp ? new Date(cur.collision_context.matched_exif_timestamp).toLocaleString('zh-TW') : '（無 EXIF 時間戳）'}</td>
-                  </tr>
-                  {cur.collision_context.time_diff_seconds != null && (
-                    <tr>
-                      <td className="text-gray-500 pr-2">時間差：</td>
-                      <td className="font-semibold">{cur.collision_context.time_diff_seconds} 秒</td>
-                    </tr>
-                  )}
-                  <tr>
-                    <td className="text-gray-500 pr-2">pHash 差異：</td>
-                    <td>{cur.collision_context.distance}/64</td>
-                  </tr>
-                </tbody>
-              </table>
+              <dl className="text-sm space-y-1.5 sm:space-y-1">
+                <div className="sm:flex sm:gap-2">
+                  <dt className="text-gray-500 sm:w-24 sm:flex-shrink-0">申訴這張</dt>
+                  <dd>{cur.collision_context.this_exif_timestamp ? new Date(cur.collision_context.this_exif_timestamp).toLocaleString('zh-TW') : '（無 EXIF 時間戳）'}</dd>
+                </div>
+                <div className="sm:flex sm:gap-2">
+                  <dt className="text-gray-500 sm:w-24 sm:flex-shrink-0">撞到那張</dt>
+                  <dd>{cur.collision_context.matched_exif_timestamp ? new Date(cur.collision_context.matched_exif_timestamp).toLocaleString('zh-TW') : '（無 EXIF 時間戳）'}</dd>
+                </div>
+                {cur.collision_context.time_diff_seconds != null && (
+                  <div className="sm:flex sm:gap-2">
+                    <dt className="text-gray-500 sm:w-24 sm:flex-shrink-0">時間差</dt>
+                    <dd className="font-semibold">{cur.collision_context.time_diff_seconds} 秒</dd>
+                  </div>
+                )}
+                <div className="sm:flex sm:gap-2">
+                  <dt className="text-gray-500 sm:w-24 sm:flex-shrink-0">pHash 差異</dt>
+                  <dd>{cur.collision_context.distance}/64</dd>
+                </div>
+              </dl>
               <div className="mt-2 text-xs text-gray-500">
                 💡 EXIF 時間可以佐證誰真的先拍。但要注意：有些截圖 App 或傳訊工具會剝掉 EXIF。
               </div>
@@ -290,57 +288,55 @@ const ScreenshotColumn: React.FC<{ title: string; data: any; isCurrent: boolean 
           {data.image_purged_at ? '圖已過期清除' : '無圖'}
         </div>
       )}
-      <table className="w-full text-xs mt-2">
-        <tbody>
-          {emp && (
-            <tr>
-              <td className="text-gray-500 pr-2 whitespace-nowrap">上傳者：</td>
-              <td className="font-medium">{emp.name} · {emp.store_name || emp.department}</td>
-            </tr>
-          )}
-          {data.reviewer_name && (
-            <tr>
-              <td className="text-gray-500 pr-2 whitespace-nowrap">評論者：</td>
-              <td>{data.reviewer_name}</td>
-            </tr>
-          )}
-          {data.star_count != null && (
-            <tr>
-              <td className="text-gray-500 pr-2 whitespace-nowrap">星數：</td>
-              <td>{'★'.repeat(data.star_count)}{'☆'.repeat(5 - data.star_count)}</td>
-            </tr>
-          )}
-          {data.posted_relative_time && (
-            <tr>
-              <td className="text-gray-500 pr-2 whitespace-nowrap">發布時間：</td>
-              <td>{data.posted_relative_time}</td>
-            </tr>
-          )}
-          <tr>
-            <td className="text-gray-500 pr-2 whitespace-nowrap">上傳時間：</td>
-            <td>{data.created_at ? new Date(data.created_at).toLocaleString('zh-TW') : (data.uploaded_at ? new Date(data.uploaded_at).toLocaleString('zh-TW') : '-')}</td>
-          </tr>
-          {data.image_exif?.Software && (
-            <tr>
-              <td className="text-gray-500 pr-2 whitespace-nowrap">手機：</td>
-              <td>{data.image_exif.Software}</td>
-            </tr>
-          )}
-          {data.status && (
-            <tr>
-              <td className="text-gray-500 pr-2 whitespace-nowrap">目前狀態：</td>
-              <td>
-                <span className="text-xs px-1.5 py-0.5 rounded"
-                  style={data.status === 'verified' ? { backgroundColor: '#d1fae5', color: '#065f46' }
-                    : data.status === 'rejected' ? { backgroundColor: '#fecaca', color: '#991b1b' }
-                    : { backgroundColor: '#f3f4f6', color: '#4b5563' }}>
-                  {data.status}
-                </span>
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      <dl className="text-xs mt-2 space-y-1.5 sm:space-y-1">
+        {emp && (
+          <div className="sm:flex sm:gap-2">
+            <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">上傳者</dt>
+            <dd className="font-medium break-words">{emp.name} · {emp.store_name || emp.department}</dd>
+          </div>
+        )}
+        {data.reviewer_name && (
+          <div className="sm:flex sm:gap-2">
+            <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">評論者</dt>
+            <dd>{data.reviewer_name}</dd>
+          </div>
+        )}
+        {data.star_count != null && (
+          <div className="sm:flex sm:gap-2">
+            <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">星數</dt>
+            <dd>{'★'.repeat(data.star_count)}{'☆'.repeat(5 - data.star_count)}</dd>
+          </div>
+        )}
+        {data.posted_relative_time && (
+          <div className="sm:flex sm:gap-2">
+            <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">發布時間</dt>
+            <dd>{data.posted_relative_time}</dd>
+          </div>
+        )}
+        <div className="sm:flex sm:gap-2">
+          <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">上傳時間</dt>
+          <dd>{data.created_at ? new Date(data.created_at).toLocaleString('zh-TW') : (data.uploaded_at ? new Date(data.uploaded_at).toLocaleString('zh-TW') : '-')}</dd>
+        </div>
+        {data.image_exif?.Software && (
+          <div className="sm:flex sm:gap-2">
+            <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">手機</dt>
+            <dd>{data.image_exif.Software}</dd>
+          </div>
+        )}
+        {data.status && (
+          <div className="sm:flex sm:gap-2">
+            <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">目前狀態</dt>
+            <dd>
+              <span className="text-xs px-1.5 py-0.5 rounded"
+                style={data.status === 'verified' ? { backgroundColor: '#d1fae5', color: '#065f46' }
+                  : data.status === 'rejected' ? { backgroundColor: '#fecaca', color: '#991b1b' }
+                  : { backgroundColor: '#f3f4f6', color: '#4b5563' }}>
+                {data.status}
+              </span>
+            </dd>
+          </div>
+        )}
+      </dl>
       {data.content && (
         <div className="mt-2 text-xs text-gray-600 bg-white p-2 rounded border">
           <div className="text-gray-400 text-xs mb-0.5">評論內容：</div>

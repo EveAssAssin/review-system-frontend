@@ -155,7 +155,7 @@ export default function GooglePlacesPage() {
 
   return (
     <div className="max-w-6xl">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">🌐 Google 官方評論對照設定</h1>
         <button
           onClick={syncAll}
