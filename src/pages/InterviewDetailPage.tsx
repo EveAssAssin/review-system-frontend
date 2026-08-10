@@ -135,6 +135,18 @@ export default function InterviewDetailPage() {
 
   useEffect(() => { load(); }, [id]);
 
+  /** 就地存檔用：重新載入資料但保留 scroll 位置，
+   *  避免每次存檔 / 上傳 / 轉稿 都跳回頁面頂端 */
+  const reloadKeepScroll = async () => {
+    const y = window.scrollY;
+    await load();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: y, behavior: 'instant' as ScrollBehavior });
+      });
+    });
+  };
+
   // 對話新訊息自動捲到底
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -143,8 +155,6 @@ export default function InterviewDetailPage() {
   const handleSave = async () => {
     if (!id || !record) return;
     setSaving(true);
-    // 記錄目前 scroll 位置，存檔後 rerender 完再滾回原位（避免每次存檔都跳到最頂）
-    const savedScrollY = window.scrollY;
     try {
       const payload = record.items_with_responses.map(it => ({
         item_id: it.id,
@@ -158,13 +168,7 @@ export default function InterviewDetailPage() {
         searchParams.delete('edit');
         setSearchParams(searchParams, { replace: true });
       }
-      await load();
-      // 等 React 完成 rerender 後把 scroll 位置寫回；rAF 兩次確保 DOM & layout 都穩定
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
-        });
-      });
+      await reloadKeepScroll();
     } catch (err: any) {
       alert(err.response?.data?.message || '儲存失敗');
     } finally {
@@ -177,7 +181,7 @@ export default function InterviewDetailPage() {
     setAiBusy(true);
     try {
       const res = await interviewsApi.aiAnalyzeRecord(id);
-      await load();
+      await reloadKeepScroll();
       if (record) setRecord(prev => prev ? { ...prev, ai_summary: res.data.ai_summary } : prev);
     } catch (err: any) {
       alert(err.response?.data?.message || 'AI 分析失敗');
@@ -192,7 +196,7 @@ export default function InterviewDetailPage() {
     setAnalysisBusy(true);
     try {
       await interviewsApi.runEmployeeAnalysis(id);
-      await load();
+      await reloadKeepScroll();
     } catch (err: any) {
       alert(err.response?.data?.message || 'AI 人員分析失敗');
     } finally {
@@ -254,7 +258,7 @@ export default function InterviewDetailPage() {
     setAudioUploading(true);
     try {
       await uploadsApi.uploadForInterview(id, fileArr);
-      await load();
+      await reloadKeepScroll();
     } catch (err: any) {
       alert(err.response?.data?.message || '上傳失敗');
     } finally {
@@ -267,7 +271,7 @@ export default function InterviewDetailPage() {
     if (!id || !confirm('確定刪除此錄音檔？')) return;
     try {
       await uploadsApi.deleteInterviewAudio(id, audioUrl);
-      await load();
+      await reloadKeepScroll();
     } catch (err: any) {
       alert(err.response?.data?.message || '刪除失敗');
     }
@@ -279,7 +283,7 @@ export default function InterviewDetailPage() {
     setTranscribingUrl(audio.url);
     try {
       await interviewsApi.transcribeAudio(id, audio.url);
-      await load();
+      await reloadKeepScroll();
       // 自動展開新轉好的逐字稿
       setExpandedTranscripts(prev => new Set([...prev, audio.url]));
     } catch (err: any) {
@@ -307,7 +311,7 @@ export default function InterviewDetailPage() {
     setDiarizingUrl(audio.url);
     try {
       await interviewsApi.diarizeAudio(id, audio.url);
-      await load();
+      await reloadKeepScroll();
       setExpandedTranscripts(prev => new Set([...prev, audio.url]));
     } catch (err: any) {
       alert(err.response?.data?.message || '區分講者失敗');
@@ -329,7 +333,7 @@ export default function InterviewDetailPage() {
     setSavingDiarize(true);
     try {
       await interviewsApi.saveDiarized(id, audio.url, text);
-      await load();
+      await reloadKeepScroll();
       setEditingUrl(null);
     } catch (err: any) {
       alert(err.response?.data?.message || '儲存失敗');
