@@ -32,6 +32,16 @@ export default function ScreenshotAppealsPage() {
   const [openDetail, setOpenDetail] = useState<AppealDetail | null>(null);
   const [handlingNote, setHandlingNote] = useState('');
   const [handling, setHandling] = useState(false);
+  const [unappealedCount, setUnappealedCount] = useState<number | null>(null);
+
+  const refreshUnappealedCount = async () => {
+    try {
+      const res = await reviewScreenshotsApi.countRejectedNotAppealed();
+      setUnappealedCount(res.data?.count ?? 0);
+    } catch {
+      // 靜默失敗（權限或網路），badge 不顯示
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -51,6 +61,7 @@ export default function ScreenshotAppealsPage() {
     }
   };
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [filter]);
+  useEffect(() => { refreshUnappealedCount(); }, []);
 
   const openDetailFor = async (row: AppealRow) => {
     try {
@@ -84,6 +95,7 @@ export default function ScreenshotAppealsPage() {
         : (isUnappealed ? '✅ 已標為確認拒絕' : '❌ 已拒絕申訴，維持原判定'));
       setOpenDetail(null);
       await load();
+      await refreshUnappealedCount();
     } catch (e: any) {
       window.alert(e?.response?.data?.message || '處理失敗');
     } finally {
@@ -107,7 +119,7 @@ export default function ScreenshotAppealsPage() {
               title={f === 'unappealed' ? 'AI 判定監督：所有被擋但員工從未申訴的截圖，PR 主動巡查有無誤判' : undefined}
             >
               {f === 'pending' ? `🆕 待審核${filter === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}`
-                : f === 'unappealed' ? '🔍 未申訴被擋'
+                : f === 'unappealed' ? `🔍 未申訴被擋${unappealedCount != null && unappealedCount > 0 ? ` (${unappealedCount})` : ''}`
                 : f === 'approved' ? '✅ 已批准'
                 : f === 'denied' ? '❌ 已拒絕' : '全部'}
             </button>

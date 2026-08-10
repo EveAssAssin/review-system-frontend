@@ -439,6 +439,8 @@ export const reviewScreenshotsApi = {
     api.post(`/review-screenshots/${id}/appeal/handle`, { decision, note }),
   listRejectedNotAppealed: (params?: { kind?: string; since?: string; until?: string; limit?: number }) =>
     api.get('/review-screenshots/rejected-not-appealed', { params }),
+  countRejectedNotAppealed: () =>
+    api.get('/review-screenshots/rejected-not-appealed/count'),
 };
 
 export const settingsApi = {
