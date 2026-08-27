@@ -329,6 +329,11 @@ export interface ServiceEvaluation {
   market_auditor_name?: string | null;
   market_audit_note?: string | null;
   market_audit_synced_at?: string | null;
+  // 2026-09 起市場部電訪改用門市達成率（見 backend syncMarketOcConversion）
+  market_achievement_rate?: number | null;
+  market_target_count?: number | null;
+  market_converted_count?: number | null;
+  market_source_formula?: 'oc_conversion' | 'legacy_audit' | null;
   note?: string | null;
   created_by?: string | null;
   created_at: string;

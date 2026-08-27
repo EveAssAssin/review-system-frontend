@@ -192,7 +192,9 @@ const MyServiceEvaluationPage: React.FC = () => {
                           label="市場部電訪"
                           value={`${sc?.new_market_score ?? 0} 分`}
                           sub={
-                            ev.market_audit_result == null
+                            ev.market_source_formula === 'oc_conversion' && ev.market_achievement_rate != null
+                              ? `本店達成率 ${Number(ev.market_achievement_rate).toFixed(1)}%`
+                              : ev.market_audit_result == null
                               ? '尚未審'
                               : ev.market_audit_passed
                               ? '✓ pass'
@@ -208,6 +210,30 @@ const MyServiceEvaluationPage: React.FC = () => {
                           bold
                         />
                       </div>
+                      {ev.market_source_formula === 'oc_conversion' && ev.market_achievement_rate != null && (
+                        <div className={`mt-3 rounded border px-3 py-2 text-xs flex items-center gap-2 flex-wrap ${
+                          Number(ev.market_achievement_rate) >= 100
+                            ? 'bg-green-50 border-green-200 text-green-800'
+                            : 'bg-gray-50 border-gray-200 text-gray-700'
+                        }`}>
+                          <span className="font-semibold">
+                            {Number(ev.market_achievement_rate) >= 100 ? '🎯 本店已達 100%' : '📊 本店達成率'}
+                          </span>
+                          <span className="font-mono text-sm">{Number(ev.market_achievement_rate).toFixed(1)}%</span>
+                          {ev.market_target_count != null && (
+                            <span className="text-gray-500">
+                              （轉換 {ev.market_converted_count ?? 0} / 目標 {ev.market_target_count}）
+                            </span>
+                          )}
+                          <span className={`ml-auto text-xs px-2 py-0.5 rounded ${
+                            Number(ev.market_achievement_rate) >= 100
+                              ? 'bg-green-600 text-white'
+                              : 'bg-gray-300 text-gray-700'
+                          }`}>
+                            {Number(ev.market_achievement_rate) >= 100 ? '✓ 全員獲得 30 分' : '未達 100%（0 分）'}
+                          </span>
+                        </div>
+                      )}
                       {ev.market_audit_note && (
                         <div className="text-xs text-gray-600 mt-2">
                           市場部備註：{ev.market_audit_note}
