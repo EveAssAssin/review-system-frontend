@@ -690,13 +690,14 @@ interface EditModalProps {
 }
 
 const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, onSaved, onOpenPhoneSurvey }) => {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<any>({
     glasses_count: evaluation.glasses_count,
     website_review_count: evaluation.website_review_count,
     negative_review_count: evaluation.negative_review_count,
     google_low_star_count: evaluation.google_low_star_count,
     service_process_score: evaluation.service_process_score,
     phone_survey_score: evaluation.phone_survey_score,
+    market_audit_passed: evaluation.market_audit_passed,  // 手動 override 用
     note: evaluation.note || '',
   });
   const [saving, setSaving] = useState(false);
@@ -707,7 +708,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
 
   const numField = (key: keyof typeof form, value: string) => {
     const n = value === '' ? 0 : parseInt(value, 10);
-    setForm(f => ({ ...f, [key]: isNaN(n) ? 0 : Math.max(0, n) }));
+    setForm((f: any) => ({ ...f, [key]: isNaN(n) ? 0 : Math.max(0, n) }));
   };
 
   const handleSave = async () => {
@@ -735,7 +736,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
     try {
       const res = await serviceEvaluationApi.recalc(evaluation.id);
       const d = res.data as ServiceEvaluation;
-      setForm(f => ({
+      setForm((f: any) => ({
         ...f,
         website_review_count: d.website_review_count,
         negative_review_count: d.negative_review_count,
@@ -885,11 +886,39 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </div>
             </div>
 
+            {/* 市場部電訪（新公式 30 分） */}
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                🔵 市場部電訪 <span className="text-xs text-gray-400">（新公式：pass = 30 分）</span>
+              </label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {[
+                  { v: true, label: '✓ 通過', cls: form.market_audit_passed === true ? 'bg-green-600 text-white' : 'bg-white border text-green-700 border-green-300' },
+                  { v: false, label: '✗ 未通過', cls: form.market_audit_passed === false ? 'bg-red-600 text-white' : 'bg-white border text-red-700 border-red-300' },
+                  { v: null, label: '尚未審', cls: form.market_audit_passed == null ? 'bg-gray-600 text-white' : 'bg-white border text-gray-600 border-gray-300' },
+                ].map(opt => (
+                  <button
+                    key={String(opt.v)}
+                    type="button"
+                    disabled={locked}
+                    onClick={() => setForm((f: any) => ({ ...f, market_audit_passed: opt.v }))}
+                    className={`px-3 py-1.5 rounded text-sm ${opt.cls}`}
+                  >{opt.label}</button>
+                ))}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                💡 若市場部 API 沒同步或需手動 override，PR 可直接改此欄位
+                {evaluation.market_audit_note && (
+                  <div className="mt-1 italic text-gray-400">原備註：{evaluation.market_audit_note}</div>
+                )}
+              </div>
+            </div>
+
             {/* 備註 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
               <textarea rows={2} disabled={locked} value={form.note}
-                onChange={e => setForm(f => ({ ...f, note: e.target.value }))}
+                onChange={e => setForm((f: any) => ({ ...f, note: e.target.value }))}
                 className="w-full px-3 py-2 border rounded text-sm" placeholder="選填..." />
             </div>
           </div>
