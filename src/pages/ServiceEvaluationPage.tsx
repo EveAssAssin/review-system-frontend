@@ -655,6 +655,7 @@ const ServiceEvaluationPage: React.FC = () => {
           evaluation={editing}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); load(); }}
+          onOpenPhoneSurvey={() => { setPhoneSurveyFor(editing); setEditing(null); }}
         />
       )}
 
@@ -685,9 +686,10 @@ interface EditModalProps {
   evaluation: ServiceEvaluation;
   onClose: () => void;
   onSaved: () => void;
+  onOpenPhoneSurvey?: () => void;
 }
 
-const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, onSaved }) => {
+const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, onSaved, onOpenPhoneSurvey }) => {
   const [form, setForm] = useState({
     glasses_count: evaluation.glasses_count,
     website_review_count: evaluation.website_review_count,
@@ -714,7 +716,15 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
       await serviceEvaluationApi.update(evaluation.id, form);
       onSaved();
     } catch (err: any) {
-      alert(err?.response?.data?.message || '儲存失敗');
+      const msg = err?.response?.data?.message || '儲存失敗';
+      // 電訪好評未上傳錄音的錯誤 → 提示直接按下方「上傳錄音檔」
+      if (msg.includes('錄音檔') && onOpenPhoneSurvey) {
+        if (confirm(msg + '\n\n要現在上傳錄音檔嗎？')) {
+          onOpenPhoneSurvey();
+        }
+      } else {
+        alert(msg);
+      }
     } finally {
       setSaving(false);
     }
@@ -837,15 +847,42 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
                 className="w-full px-3 py-2 border rounded" />
             </div>
 
-            {/* 電訪好評數 */}
+            {/* 電訪好評數 + 錄音檔上傳 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                電訪好評數 <span className="text-xs text-gray-400">（公關部填，0~20）</span>
+                電訪好評數 <span className="text-xs text-gray-400">（公關部填，0~20；&gt;0 必須先上傳錄音檔）</span>
               </label>
               <input type="number" min={0} max={20} value={form.phone_survey_score}
                 onChange={e => numField('phone_survey_score', e.target.value)}
                 disabled={locked}
                 className="w-full px-3 py-2 border rounded" />
+              {/* 錄音檔狀態 + 上傳按鈕 */}
+              <div className="mt-2 flex items-center gap-2 text-xs">
+                {evaluation.phone_survey_audio_url ? (
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="px-2 py-1 rounded bg-green-50 text-green-700 border border-green-200">
+                      🎧 已上傳錄音
+                      {evaluation.phone_survey_audio_name && (
+                        <span className="ml-1 text-green-600">（{evaluation.phone_survey_audio_name}）</span>
+                      )}
+                    </span>
+                    <a href={evaluation.phone_survey_audio_url} target="_blank" rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline">試聽</a>
+                  </div>
+                ) : (
+                  <div className={`flex-1 px-2 py-1 rounded border ${form.phone_survey_score > 0 ? 'bg-yellow-50 text-yellow-800 border-yellow-300' : 'bg-gray-50 text-gray-500 border-gray-200'}`}>
+                    {form.phone_survey_score > 0
+                      ? '⚠️ 尚未上傳錄音檔，將無法儲存分數'
+                      : '📁 尚未上傳錄音檔'}
+                  </div>
+                )}
+                {!locked && onOpenPhoneSurvey && (
+                  <button type="button" onClick={onOpenPhoneSurvey}
+                    className="px-3 py-1 rounded bg-[#8b6f4e] hover:bg-[#7a6040] text-white text-xs whitespace-nowrap">
+                    {evaluation.phone_survey_audio_url ? '🔄 換錄音檔' : '📤 上傳錄音檔'}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* 備註 */}
