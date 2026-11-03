@@ -95,6 +95,7 @@ export default function ReviewDetailPage() {
   const [replyTemplates, setReplyTemplates] = useState<any[]>([]);
   const [improvementNote, setImprovementNote] = useState('');
   const [improvementFiles, setImprovementFiles] = useState<File[]>([]);
+  const [showImprovementForm, setShowImprovementForm] = useState(false);
   const handleSubmitImprovement = async () => {
     if (!improvementNote.trim() && improvementFiles.length === 0) { alert('改善書請至少填寫文字或附一張圖'); return; }
     setSubmitting(true);
@@ -472,6 +473,9 @@ export default function ReviewDetailPage() {
             {canRespond && !showEmployeeResponseForm && (
               <button onClick={() => setShowEmployeeResponseForm(true)} className="px-4 py-2 text-white rounded hover:opacity-80 text-sm" style={{ backgroundColor: '#5b7fad' }}>👤 我要回覆</button>
             )}
+            {review.review_type === 'negative' && review.status !== 'closed' && (
+              <button onClick={() => setShowImprovementForm(v => !v)} className="px-4 py-2 text-white rounded hover:opacity-80 text-sm" style={{ backgroundColor: '#b45309' }}>📝 負評改善書</button>
+            )}
           </div>
         )}
 
@@ -502,7 +506,7 @@ export default function ReviewDetailPage() {
         )}
 
         {/* 改善書（負評專用；店長/代理處理人填） */}
-        {review.review_type === 'negative' && (
+        {review.review_type === 'negative' && (review.improvement_at || showImprovementForm) && (
           <div className="border-t pt-4 mt-4 space-y-3">
             <div className="text-sm font-semibold" style={{ color: '#b45309' }}>📝 改善書{review.improvement_at ? '（已提交）' : ''}</div>
             {review.improvement_at && (
@@ -518,17 +522,25 @@ export default function ReviewDetailPage() {
                 <div className="text-xs text-gray-500">{review.improvement_by || ''}　{new Date(review.improvement_at).toLocaleString('zh-TW')}</div>
               </div>
             )}
-            <textarea value={improvementNote} onChange={e => setImprovementNote(e.target.value)} rows={4}
-              className="w-full px-3 py-2 border rounded text-sm"
-              placeholder={review.improvement_at ? '補充改善書內容...' : '店長／代理處理人填寫本則負評的改善書（可附圖）...'} />
-            <div>
-              <input type="file" accept="image/*" multiple onChange={e => setImprovementFiles(Array.from(e.target.files || []))} className="text-sm" />
-              {improvementFiles.length > 0 && <span className="text-xs text-gray-500 ml-2">已選 {improvementFiles.length} 張圖</span>}
-            </div>
-            <button onClick={handleSubmitImprovement} disabled={submitting}
-              className="px-4 py-2 text-white rounded text-sm disabled:opacity-50" style={{ backgroundColor: '#b45309' }}>
-              {submitting ? '送出中...' : (review.improvement_at ? '補充改善書' : '送出改善書')}
-            </button>
+            {showImprovementForm && (
+              <>
+                <textarea value={improvementNote} onChange={e => setImprovementNote(e.target.value)} rows={4}
+                  className="w-full px-3 py-2 border rounded text-sm"
+                  placeholder={review.improvement_at ? '補充改善書內容...' : '店長／代理處理人填寫本則負評的改善書（可附圖）...'} />
+                <div>
+                  <input type="file" accept="image/*" multiple onChange={e => setImprovementFiles(Array.from(e.target.files || []))} className="text-sm" />
+                  {improvementFiles.length > 0 && <span className="text-xs text-gray-500 ml-2">已選 {improvementFiles.length} 張圖</span>}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={async () => { await handleSubmitImprovement(); setShowImprovementForm(false); }} disabled={submitting}
+                    className="px-4 py-2 text-white rounded text-sm disabled:opacity-50" style={{ backgroundColor: '#b45309' }}>
+                    {submitting ? '送出中...' : (review.improvement_at ? '補充改善書' : '送出改善書')}
+                  </button>
+                  <button onClick={() => { setShowImprovementForm(false); setImprovementNote(''); setImprovementFiles([]); }}
+                    className="px-4 py-2 border rounded text-sm text-gray-600">取消</button>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
