@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { reviewsApi, employeesApi, categoriesApi, uploadsApi } from '../services/api';
+import { reviewsApi, employeesApi, categoriesApi, uploadsApi, settingsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import FileUpload from '../components/FileUpload';
 
@@ -81,9 +81,18 @@ export default function NewReviewPage() {
     if (!pf) return;
     setForm(f => ({ ...f, content: pf.content || f.content, source: pf.source || f.source, review_type: pf.review_type || f.review_type }));
     if (pf.store_id) {
-      employeesApi.search({ store_id: pf.store_id, limit: 100, is_active: true }).then(res => {
-        const list: Employee[] = (res.data && res.data.data) || [];
-        const mgr = list.find(e => (e.jobtitle || '').includes('店長')) || list.find(e => (e.jobtitle || '').includes('主管')) || null;
+      Promise.all([
+        employeesApi.search({ store_id: pf.store_id, limit: 100, is_active: true }),
+        settingsApi.storeProxyHandlers().catch(() => ({ data: {} })),
+      ]).then(([empRes, mapRes]) => {
+        const list: Employee[] = (empRes.data && empRes.data.data) || [];
+        const handlerMap: Record<string, string> = (mapRes && mapRes.data) || {};
+        // 優先：人事名單指定的店長/代理人（依門市名）
+        const handlerName = pf.store_name ? handlerMap[pf.store_name] : '';
+        let mgr: Employee | null = null;
+        if (handlerName) mgr = list.find(e => e.name === handlerName) || null;
+        // 退而求其次：職稱含店長/代理/主管
+        if (!mgr) mgr = list.find(e => (e.jobtitle || '').includes('店長')) || list.find(e => (e.jobtitle || '').includes('代理')) || list.find(e => (e.jobtitle || '').includes('主管')) || null;
         if (mgr) {
           setSelectedEmployee(mgr);
           setIsProxy(true);
