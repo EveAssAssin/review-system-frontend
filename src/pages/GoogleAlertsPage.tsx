@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { googlePlacesApi } from '../services/api';
 
 interface NegativeAlert {
@@ -143,6 +144,8 @@ export default function GoogleAlertsPage() {
 }
 
 const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, action: 'handled' | 'ignored') => void }> = ({ alert, onAction }) => {
+  const navigate = useNavigate();
+  const goNewReview = () => navigate('/new-review', { state: { prefill: { content: alert.content || '', store_id: alert.store_id || null, store_name: alert.stores?.name || '', source: 'google_map', review_type: 'negative' } } });
   const stars = '⭐'.repeat(alert.rating) + '☆'.repeat(5 - alert.rating);
   const isNew = alert.status === 'new';
   const bgColor = alert.rating === 1 ? '#fecaca' : '#fef3c7';
@@ -220,8 +223,15 @@ const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, a
             </div>
           )}
 
+          <div className="mt-3 flex gap-2">
+            <button
+              onClick={goNewReview}
+              className="px-3 py-1 text-xs text-white rounded"
+              style={{ backgroundColor: '#7c3aed' }}
+            >➕ 新增評價（自動帶入負評內容＋店長）</button>
+          </div>
           {isNew && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-2 flex gap-2">
               <button
                 onClick={() => onAction(alert, 'handled')}
                 className="px-3 py-1 text-xs text-white rounded"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { reviewsApi, employeesApi, categoriesApi, uploadsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import FileUpload from '../components/FileUpload';
@@ -10,6 +10,7 @@ interface Employee {
   app_number: string;
   store_name?: string;
   department?: string;
+  jobtitle?: string;
 }
 
 interface Category {
@@ -29,6 +30,7 @@ interface Response {
 
 export default function NewReviewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -72,6 +74,27 @@ export default function NewReviewPage() {
       console.error('載入分類失敗:', err);
     });
   }, []);
+
+  // 由 Google 負評告警帶入：填入內容、來源、負評，並自動挑該門市店長當代理處理人/評價對象
+  useEffect(() => {
+    const pf = (location.state as any)?.prefill;
+    if (!pf) return;
+    setForm(f => ({ ...f, content: pf.content || f.content, source: pf.source || f.source, review_type: pf.review_type || f.review_type }));
+    if (pf.store_id) {
+      employeesApi.search({ store_id: pf.store_id, limit: 100, is_active: true }).then(res => {
+        const list: Employee[] = (res.data && res.data.data) || [];
+        const mgr = list.find(e => (e.jobtitle || '').includes('店長')) || list.find(e => (e.jobtitle || '').includes('主管')) || null;
+        if (mgr) {
+          setSelectedEmployee(mgr);
+          setIsProxy(true);
+          setSelectedActualEmployee(mgr);
+        } else if (pf.store_name) {
+          setSearchQuery(pf.store_name);
+        }
+      }).catch(() => { if (pf.store_name) setSearchQuery(pf.store_name); });
+    }
+    // eslint-disable-next-line
+  }, [location.state]);
 
   // 搜尋員工（處理人）
   const searchEmployees = async (query: string) => {
