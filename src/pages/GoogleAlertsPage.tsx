@@ -184,7 +184,10 @@ const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, a
           )}
 
           <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
-            <span>偵測於 {new Date(alert.detected_at).toLocaleString('zh-TW')}</span>
+            {alert.publish_time
+              ? <span className="text-gray-600 font-medium">評論時間 {new Date(alert.publish_time).toLocaleString('zh-TW')}{alert.relative_publish_time ? `（Google：${alert.relative_publish_time}）` : ''}</span>
+              : <span className="text-gray-600 font-medium">評論時間 {alert.relative_publish_time || '—'}</span>}
+            <span>· 偵測於 {new Date(alert.detected_at).toLocaleString('zh-TW')}</span>
             {alert.notified_at && <span>· 已通知 LINE</span>}
             {alert.stores?.google_place_id && (
               <a
