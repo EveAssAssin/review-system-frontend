@@ -95,6 +95,13 @@ export const reviewsApi = {
   deleteReplyTemplate: (id: string) => api.delete(`/reviews/reply-templates/${id}`),
   close: (id: string, closeNote?: string, closeReason?: 'normal' | 'wash_failed' | 'wash_completed') =>
     api.post(`/reviews/${id}/close`, { close_note: closeNote, close_reason: closeReason }),
+  submitImprovement: (id: string, note: string, files: File[], improvementBy: string) => {
+    const fd = new FormData();
+    if (note) fd.append('note', note);
+    if (improvementBy) fd.append('improvement_by', improvementBy);
+    (files || []).forEach((f) => fd.append('images', f));
+    return api.post(`/reviews/${id}/improvement`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
   delete: (id: string) => api.delete(`/reviews/${id}`),
 };
 

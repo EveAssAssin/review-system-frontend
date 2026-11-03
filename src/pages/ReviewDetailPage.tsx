@@ -28,6 +28,10 @@ interface Review {
   reviewer_name?: string;
   reviewer_responded_at?: string;
   close_note?: string;
+  improvement_note?: string;
+  improvement_images?: string[];
+  improvement_by?: string;
+  improvement_at?: string;
   immediate_response?: string;
   closed_at?: string;
   created_at: string;
@@ -89,6 +93,18 @@ export default function ReviewDetailPage() {
   const [aiCustomTone, setAiCustomTone] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
   const [replyTemplates, setReplyTemplates] = useState<any[]>([]);
+  const [improvementNote, setImprovementNote] = useState('');
+  const [improvementFiles, setImprovementFiles] = useState<File[]>([]);
+  const handleSubmitImprovement = async () => {
+    if (!improvementNote.trim() && improvementFiles.length === 0) { alert('改善書請至少填寫文字或附一張圖'); return; }
+    setSubmitting(true);
+    try {
+      await reviewsApi.submitImprovement(id!, improvementNote.trim(), improvementFiles, user?.name || employee?.name || '');
+      setImprovementNote(''); setImprovementFiles([]);
+      await loadReview();
+    } catch (e: any) { alert(e?.response?.data?.message || '送出失敗'); }
+    finally { setSubmitting(false); }
+  };
   useEffect(() => { reviewsApi.listReplyTemplates().then(r => setReplyTemplates(r.data || [])).catch(() => {}); }, []);
 
   useEffect(() => {
@@ -482,6 +498,37 @@ export default function ReviewDetailPage() {
                 取消
               </button>
             </div>
+          </div>
+        )}
+
+        {/* 改善書（負評專用；店長/代理處理人填） */}
+        {review.review_type === 'negative' && (
+          <div className="border-t pt-4 mt-4 space-y-3">
+            <div className="text-sm font-semibold" style={{ color: '#b45309' }}>📝 改善書{review.improvement_at ? '（已提交）' : ''}</div>
+            {review.improvement_at && (
+              <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm space-y-2">
+                {review.improvement_note && <div className="whitespace-pre-wrap text-gray-800">{review.improvement_note}</div>}
+                {Array.isArray(review.improvement_images) && review.improvement_images.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {review.improvement_images.map((u, i) => (
+                      <a key={i} href={u} target="_blank" rel="noreferrer"><img src={u} className="w-20 h-20 object-cover rounded border" /></a>
+                    ))}
+                  </div>
+                )}
+                <div className="text-xs text-gray-500">{review.improvement_by || ''}　{new Date(review.improvement_at).toLocaleString('zh-TW')}</div>
+              </div>
+            )}
+            <textarea value={improvementNote} onChange={e => setImprovementNote(e.target.value)} rows={4}
+              className="w-full px-3 py-2 border rounded text-sm"
+              placeholder={review.improvement_at ? '補充改善書內容...' : '店長／代理處理人填寫本則負評的改善書（可附圖）...'} />
+            <div>
+              <input type="file" accept="image/*" multiple onChange={e => setImprovementFiles(Array.from(e.target.files || []))} className="text-sm" />
+              {improvementFiles.length > 0 && <span className="text-xs text-gray-500 ml-2">已選 {improvementFiles.length} 張圖</span>}
+            </div>
+            <button onClick={handleSubmitImprovement} disabled={submitting}
+              className="px-4 py-2 text-white rounded text-sm disabled:opacity-50" style={{ backgroundColor: '#b45309' }}>
+              {submitting ? '送出中...' : (review.improvement_at ? '補充改善書' : '送出改善書')}
+            </button>
           </div>
         )}
       </div>
