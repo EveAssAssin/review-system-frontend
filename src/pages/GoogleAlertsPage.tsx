@@ -145,7 +145,7 @@ export default function GoogleAlertsPage() {
 
 const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, action: 'handled' | 'ignored') => void }> = ({ alert, onAction }) => {
   const navigate = useNavigate();
-  const goNewReview = () => navigate('/new-review', { state: { prefill: { content: alert.content || '', store_id: alert.store_id || null, store_name: alert.stores?.name || '', source: 'google_map', review_type: 'negative' } } });
+  const goNewReview = () => navigate('/reviews/new', { state: { prefill: { content: alert.content || '', store_id: alert.store_id || null, store_name: alert.stores?.name || '', source: 'google_map', review_type: 'negative' } } });
   const stars = '⭐'.repeat(alert.rating) + '☆'.repeat(5 - alert.rating);
   const isNew = alert.status === 'new';
   const bgColor = alert.rating === 1 ? '#fecaca' : '#fef3c7';
