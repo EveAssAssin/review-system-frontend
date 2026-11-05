@@ -38,6 +38,7 @@ export default function NewReviewPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [filesToUpload, setFilesToUpload] = useState<File[]>([]);
+  const [prefillFiles, setPrefillFiles] = useState<File[]>([]);
 
   // 代理處理相關
   const [isProxy, setIsProxy] = useState(false);
@@ -88,7 +89,7 @@ export default function NewReviewPage() {
         const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
         while (n--) u8[n] = bstr.charCodeAt(n);
         const file = new File([u8], pf.screenshot_name || 'google_review.png', { type: mime });
-        setFilesToUpload(prev => (prev && prev.length ? prev : [file]));
+        setPrefillFiles([file]);
       } catch (e) { console.warn('截圖轉檔失敗', e); }
     }
     if (pf.store_id) {
@@ -493,6 +494,7 @@ export default function NewReviewPage() {
           <label className="block text-sm font-medium text-gray-700 mb-2">附件（圖片/影片）</label>
           <FileUpload
             onFilesSelected={setFilesToUpload}
+            initialFiles={prefillFiles}
             maxFiles={5}
             maxSizeMB={50}
           />

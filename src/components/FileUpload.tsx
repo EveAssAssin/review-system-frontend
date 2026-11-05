@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 interface FileUploadProps {
   onFilesSelected: (files: File[]) => void;
@@ -12,6 +12,7 @@ interface FileUploadProps {
     file_type: 'image' | 'video';
   }>;
   onDeleteExisting?: (id: string) => void;
+  initialFiles?: File[];
 }
 
 export default function FileUpload({
@@ -21,11 +22,23 @@ export default function FileUpload({
   accept = 'image/*,video/*',
   existingFiles = [],
   onDeleteExisting,
+  initialFiles,
 }: FileUploadProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // 由外部帶入的初始檔案(例:Google負評自動截圖)→掛載時顯示並回報
+  useEffect(() => {
+    if (initialFiles && initialFiles.length > 0) {
+      const ps = initialFiles.map(f => URL.createObjectURL(f));
+      setSelectedFiles(initialFiles);
+      setPreviews(ps);
+      onFilesSelected(initialFiles);
+    }
+    // eslint-disable-next-line
+  }, [initialFiles]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
