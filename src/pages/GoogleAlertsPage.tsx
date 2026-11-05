@@ -145,7 +145,62 @@ export default function GoogleAlertsPage() {
 
 const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, action: 'handled' | 'ignored') => void }> = ({ alert, onAction }) => {
   const navigate = useNavigate();
-  const goNewReview = () => navigate('/reviews/new', { state: { prefill: { content: alert.content || '', store_id: alert.store_id || null, store_name: alert.stores?.name || '', source: 'google_map', review_type: 'negative' } } });
+  // 把這則 Google 負評畫成一張截圖(canvas)，新增評價時自動帶入當證據
+  const renderReviewScreenshot = (): string | null => {
+    try {
+      const W = 720; const pad = 24;
+      const name = alert.reviewer_name || '匿名';
+      const ratingN = Number(alert.rating) || 0;
+      const stars = '\u2b50'.repeat(ratingN) + '\u2606'.repeat(Math.max(0, 5 - ratingN));
+      const storeName = alert.stores?.name || '';
+      const timeStr = alert.publish_time
+        ? ('\u8a55\u8ad6\u6642\u9593 ' + new Date(alert.publish_time).toLocaleString('zh-TW') + (alert.relative_publish_time ? ('\uff08Google\uff1a' + alert.relative_publish_time + '\uff09') : ''))
+        : ('\u8a55\u8ad6\u6642\u9593 ' + (alert.relative_publish_time || ''));
+      const content = alert.content || '';
+      // 先量測內容需要幾行
+      const probe = document.createElement('canvas').getContext('2d');
+      if (!probe) return null;
+      probe.font = '16px sans-serif';
+      const maxW = W - pad * 2;
+      const wrap = (text: string): string[] => {
+        const lines: string[] = [];
+        for (const raw of String(text).split('\n')) {
+          let line = '';
+          for (const ch of raw) {
+            if (probe.measureText(line + ch).width > maxW) { lines.push(line); line = ch; }
+            else line += ch;
+          }
+          lines.push(line);
+        }
+        return lines;
+      };
+      const contentLines = wrap(content);
+      const H = pad + 28 /*name+stars*/ + 24 /*store*/ + 12 + contentLines.length * 24 + 16 + 20 /*time*/ + pad;
+      const canvas = document.createElement('canvas');
+      canvas.width = W; canvas.height = H;
+      const ctx = canvas.getContext('2d'); if (!ctx) return null;
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#dc2626'; ctx.fillRect(0, 0, 5, H); // 左側紅條
+      let y = pad + 8;
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillStyle = '#111827'; ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(name, pad, y + 10);
+      ctx.font = '18px sans-serif'; ctx.fillStyle = '#dc2626';
+      ctx.fillText(stars + '  ' + ratingN + ' \u661f', pad + probe.measureText(name).width + 16, y + 10);
+      if (storeName) { ctx.font = '13px sans-serif'; ctx.fillStyle = '#92400e'; ctx.fillText(storeName, W - pad - probe.measureText(storeName).width - 4, y + 10); }
+      y += 34;
+      ctx.fillStyle = '#374151'; ctx.font = '16px sans-serif';
+      for (const ln of contentLines) { ctx.fillText(ln, pad, y + 16); y += 24; }
+      y += 16;
+      ctx.fillStyle = '#6b7280'; ctx.font = '13px sans-serif';
+      ctx.fillText(timeStr + '  \uff08Google Map\uff09', pad, y + 10);
+      return canvas.toDataURL('image/png');
+    } catch { return null; }
+  };
+  const goNewReview = () => {
+    const shot = renderReviewScreenshot();
+    navigate('/reviews/new', { state: { prefill: { content: alert.content || '', store_id: alert.store_id || null, store_name: alert.stores?.name || '', source: 'google_map', review_type: 'negative', screenshot: shot, screenshot_name: 'google_' + (alert.id || 'review') + '.png' } } });
+  };
   const stars = '⭐'.repeat(alert.rating) + '☆'.repeat(5 - alert.rating);
   const isNew = alert.status === 'new';
   const bgColor = alert.rating === 1 ? '#fecaca' : '#fef3c7';

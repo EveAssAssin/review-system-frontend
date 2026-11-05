@@ -80,6 +80,17 @@ export default function NewReviewPage() {
     const pf = (location.state as any)?.prefill;
     if (!pf) return;
     setForm(f => ({ ...f, content: pf.content || f.content, source: pf.source || f.source, review_type: pf.review_type || f.review_type }));
+    // 由 Google 負評告警帶入的評論截圖(dataURL)→轉成檔案自動加入上傳
+    if (pf.screenshot && typeof pf.screenshot === 'string' && pf.screenshot.startsWith('data:')) {
+      try {
+        const arr = pf.screenshot.split(',');
+        const mime = (arr[0].match(/:(.*?);/) || [,'image/png'])[1];
+        const bstr = atob(arr[1]); let n = bstr.length; const u8 = new Uint8Array(n);
+        while (n--) u8[n] = bstr.charCodeAt(n);
+        const file = new File([u8], pf.screenshot_name || 'google_review.png', { type: mime });
+        setFilesToUpload(prev => (prev && prev.length ? prev : [file]));
+      } catch (e) { console.warn('截圖轉檔失敗', e); }
+    }
     if (pf.store_id) {
       Promise.all([
         employeesApi.search({ store_id: pf.store_id, limit: 100, is_active: true }),
