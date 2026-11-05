@@ -178,7 +178,7 @@ const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, a
       canvas.width = W; canvas.height = H;
       const ctx = canvas.getContext('2d'); if (!ctx) return null;
       // 深色底
-      ctx.fillStyle = '#1f1f1f'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, W, H); ctx.strokeStyle='#e0e0e0'; ctx.strokeRect(0.5,0.5,W-1,H-1);
       // 頭像圈
       const colors = ['#8ab4f8','#f28b82','#fdd663','#81c995','#c58af9','#78d9ec'];
       const col = colors[(name.charCodeAt(0) || 0) % colors.length];
@@ -188,15 +188,15 @@ const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, a
       ctx.fillText((name || '?').charAt(0), avatarX + avatarR, cy + 1);
       ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
       // 名字
-      ctx.fillStyle = '#e8eaed'; ctx.font = 'bold 16px "Noto Sans TC","Microsoft JhengHei",sans-serif';
+      ctx.fillStyle = '#202124'; ctx.font = 'bold 16px "Noto Sans TC","Microsoft JhengHei",sans-serif';
       ctx.fillText(name, textX, padTop + 16);
       // 星星(金色)+相對時間
       let sx = textX; const sy = padTop + 42;
       ctx.font = '16px sans-serif';
-      for (let i = 0; i < 5; i++) { ctx.fillStyle = i < ratingN ? '#fbbc04' : '#5f6368'; ctx.fillText('\u2605', sx, sy); sx += 18; }
-      if (relTime) { ctx.fillStyle = '#9aa0a6'; ctx.font = '13px "Noto Sans TC",sans-serif'; ctx.fillText('\u00b7 ' + relTime + '\uff08Google\uff09', sx + 6, sy); }
+      for (let i = 0; i < 5; i++) { ctx.fillStyle = i < ratingN ? '#fbbc04' : '#dadce0'; ctx.fillText('\u2605', sx, sy); sx += 18; }
+      if (relTime) { ctx.fillStyle = '#5f6368'; ctx.font = '13px "Noto Sans TC",sans-serif'; ctx.fillText('\u00b7 ' + relTime + '\uff08Google\uff09', sx + 6, sy); }
       // 內容
-      ctx.fillStyle = '#e8eaed'; ctx.font = contentFont;
+      ctx.fillStyle = '#3c4043'; ctx.font = contentFont;
       let y = padTop + headerH + 24;
       for (const ln of lines) { ctx.fillText(ln, textX, y); y += 26; }
       return canvas.toDataURL('image/png');
