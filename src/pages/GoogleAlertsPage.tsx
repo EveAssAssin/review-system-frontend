@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { googlePlacesApi } from '../services/api';
+import { starStr } from '../utils/stars';
 
 interface NegativeAlert {
   id: string;
@@ -206,7 +207,7 @@ const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, a
     const shot = renderReviewScreenshot();
     navigate('/reviews/new', { state: { prefill: { content: alert.content || '', store_id: alert.store_id || null, store_name: alert.stores?.name || '', source: 'google_map', review_type: 'negative', screenshot: shot, screenshot_name: 'google_' + (alert.id || 'review') + '.png' } } });
   };
-  const stars = '⭐'.repeat(alert.rating) + '☆'.repeat(5 - alert.rating);
+  const stars = starStr(alert.rating, '⭐');
   const isNew = alert.status === 'new';
   const bgColor = alert.rating === 1 ? '#fecaca' : '#fef3c7';
   const borderColor = alert.rating === 1 ? '#dc2626' : '#f59e0b';

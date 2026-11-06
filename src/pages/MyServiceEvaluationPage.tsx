@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { serviceEvaluationApi, reviewScreenshotsApi, settingsApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ReviewScreenshot } from '../types';
+import { starStr } from '../utils/stars';
 
 // 與後端 / ServiceEvaluationPage 一致
 const EVAL = { REVIEW_RATE_MAX: 60, PROCESS_MAX: 20, PHONE_MAX: 20, DEDUCT: 5, SCREENSHOT_TARGET: 20, SCREENSHOT_BONUS: 40 };
@@ -502,7 +503,7 @@ const ScreenshotRow: React.FC<{
               <span className="text-sm font-medium">{row.reviewer_name}</span>
             )}
             {row.star_count != null && (
-              <span className="text-xs">{'★'.repeat(row.star_count)}{'☆'.repeat(5 - row.star_count)}</span>
+              <span className="text-xs">{starStr(row.star_count)}</span>
             )}
             {row.posted_relative_time && (
               <span className="text-xs text-gray-400">{row.posted_relative_time}</span>
@@ -753,7 +754,7 @@ const PickReviewModal: React.FC<{
                 <div className="flex-1">
                   <div className="text-sm font-medium">
                     {r.reviewer_name}
-                    <span className="text-xs ml-2">{'★'.repeat(r.star_count)}{'☆'.repeat(5 - r.star_count)}</span>
+                    <span className="text-xs ml-2">{starStr(r.star_count)}</span>
                     <span className="text-xs text-gray-400 ml-2">{r.posted_relative_time}（{r.posted_days_ago} 天前）</span>
                   </div>
                   <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{r.content}</div>

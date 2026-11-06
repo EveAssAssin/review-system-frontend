@@ -3,6 +3,7 @@ import { serviceEvaluationApi, settingsApi, reviewScreenshotsApi } from '../serv
 import type { ServiceEvalScoringSettings, ReviewScreenshot } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ServiceEvaluationOverviewRow } from '../types';
+import { starStr } from '../utils/stars';
 
 // ── 評分公式（與後端 service-evaluation.service.ts computeScore 一致）──
 const EVAL = { REVIEW_RATE_MAX: 60, PROCESS_MAX: 20, PHONE_MAX: 20, DEDUCT: 5, NEW_PASS: 90, SCREENSHOT_TARGET: 20, SCREENSHOT_BONUS: 40 };
@@ -1454,7 +1455,7 @@ const InspectRow: React.FC<{
             )}
             {row.reviewer_name && <span className="font-medium">{row.reviewer_name}</span>}
             {row.star_count != null && (
-              <span className="text-xs">{'★'.repeat(row.star_count)}{'☆'.repeat(5 - row.star_count)}</span>
+              <span className="text-xs">{starStr(row.star_count)}</span>
             )}
             {row.posted_relative_time && (
               <span className="text-xs text-gray-400">{row.posted_relative_time}</span>

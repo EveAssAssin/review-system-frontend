@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { reviewScreenshotsApi } from '../services/api';
+import { starStr } from '../utils/stars';
 
 interface AppealRow {
   id: string;
@@ -363,7 +364,7 @@ const ScreenshotColumn: React.FC<{ title: string; data: any; isCurrent: boolean 
         {data.star_count != null && (
           <div className="sm:flex sm:gap-2">
             <dt className="text-gray-500 sm:w-20 sm:flex-shrink-0">星數</dt>
-            <dd>{'★'.repeat(data.star_count)}{'☆'.repeat(5 - data.star_count)}</dd>
+            <dd>{starStr(data.star_count)}</dd>
           </div>
         )}
         {data.posted_relative_time && (
