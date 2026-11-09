@@ -53,7 +53,9 @@ export default function GoogleAlertsPage() {
     setErr(null);
     try {
       const res = await googlePlacesApi.listNegativeAlerts(filter === 'all' ? undefined : filter);
-      setList(res.data || []);
+      // 只顯示 2026-11-01（台北）之後偵測到的告警；之前的由前任公關處理（Louis 2026-11-09）
+      const SINCE = new Date('2026-11-01T00:00:00+08:00').getTime();
+      setList((res.data || []).filter((a: NegativeAlert) => new Date(a.detected_at).getTime() >= SINCE));
     } catch (e: any) {
       setErr(e?.response?.data?.message || '載入失敗');
     } finally {
