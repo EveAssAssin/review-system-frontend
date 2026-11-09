@@ -21,6 +21,7 @@ interface NegativeAlert {
   handled_at?: string | null;
   handled_note?: string | null;
   notified_at?: string | null;
+  review_id?: string | null;
   detected_at: string;
   stores?: { id: string; name: string; google_place_id?: string };
 }
@@ -287,11 +288,19 @@ const AlertCard: React.FC<{ alert: NegativeAlert; onAction: (a: NegativeAlert, a
           )}
 
           <div className="mt-3 flex gap-2">
-            <button
-              onClick={goNewReview}
-              className="px-3 py-1 text-xs text-white rounded"
-              style={{ backgroundColor: '#7c3aed' }}
-            >➕ 新增評價（自動帶入負評內容＋店長）</button>
+            {alert.review_id ? (
+              <a
+                href={`/reviews/${alert.review_id}`}
+                className="px-3 py-1 text-xs text-white rounded"
+                style={{ backgroundColor: '#16a34a' }}
+              >✅ 已自動新增評價（查看）</a>
+            ) : (
+              <button
+                onClick={goNewReview}
+                className="px-3 py-1 text-xs text-white rounded"
+                style={{ backgroundColor: '#7c3aed' }}
+              >➕ 新增評價（自動帶入負評內容＋店長）</button>
+            )}
           </div>
           {isNew && (
             <div className="mt-2 flex gap-2">
