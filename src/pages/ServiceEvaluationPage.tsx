@@ -53,6 +53,9 @@ const ServiceEvaluationPage: React.FC = () => {
     settingsApi.getScoringSettings().then(res => setScoringSettings(res.data)).catch(() => {});
   }, []);
   const isLegacyMode = (scoringSettings?.scoring_mode || 'legacy') === 'legacy';
+  // 2026-11 起：店務目標制（每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數）— Louis
+  const isGoalMode = yearMonth >= '2026-11';
+  const goalThreshold = (ev: any) => 20 + 20 * Math.max(0, Number(ev?.negative_review_count) || 0);
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState<{ id: string; employeeName: string; yearMonth: string; isLocked: boolean } | null>(null);
   const [inbox, setInbox] = useState<any[]>([]);
@@ -461,12 +464,20 @@ const ServiceEvaluationPage: React.FC = () => {
       </div>
 
       {/* 公式說明 */}
+      {isGoalMode ? (
+      <div className="bg-[#faf9f6] border rounded-lg p-3 text-xs text-gray-700" style={{ borderColor: '#ede8e2' }}>
+        <span className="font-semibold">評鑑規則（2026 年 11 月起，同店務目標）：</span>
+        每位正職完成 <b>20 則 Google 五星好評截圖</b>；本人每 1 則負評再補 20 則（1 則→40、2 則→60…）。
+        每則負評由店長／代理人填 1 份負評改善書。全店正職都達門檻且改善書交齊才算門市達成（門市結果以店務目標看板為準）。
+      </div>
+      ) : (
       <div className="bg-[#faf9f6] border rounded-lg p-3 text-xs text-gray-600" style={{ borderColor: '#ede8e2' }}>
         <span className="font-semibold">評分公式：</span>
         人員評論率（官網評價數 ÷ 配鏡數 × 100，1%=1分，上限 60）
         ＋ 服務流程分數（上限 20）＋ 電訪好評數（上限 20）
         － google 2星以下 ×5 － 評價負評 ×5　＝　總分（0~100）
       </div>
+      )}
 
       {monthLocked && (
         <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
@@ -487,7 +498,14 @@ const ServiceEvaluationPage: React.FC = () => {
             <thead className="bg-[#f9f6f2]">
               <tr>
                 <th className="px-3 py-3 text-left text-sm font-medium text-gray-600">員工</th>
-                {isLegacyMode ? (
+                {isGoalMode ? (
+                  <>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">五星好評截圖</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">本人負評</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">門檻</th>
+                    <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">個人結果</th>
+                  </>
+                ) : isLegacyMode ? (
                   <>
                     <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">配鏡數</th>
                     <th className="px-3 py-3 text-center text-sm font-medium text-gray-600">評論率</th>
@@ -520,7 +538,29 @@ const ServiceEvaluationPage: React.FC = () => {
                     </td>
                     {ev ? (
                       <>
-                        {isLegacyMode ? (
+                        {isGoalMode ? (
+                          <>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <div className="font-medium">{ev.verified_screenshot_count ?? 0}</div>
+                              <div className="text-xs text-gray-400">則（已驗證）</div>
+                            </td>
+                            <td className={`px-3 py-3 text-center text-sm ${(Number(ev.negative_review_count) || 0) > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
+                              {ev.negative_review_count ?? 0}
+                            </td>
+                            <td className="px-3 py-3 text-center text-sm">
+                              <div className="font-medium">{goalThreshold(ev)}</div>
+                              <div className="text-xs text-gray-400">20＋{(Number(ev.negative_review_count) || 0)}×20</div>
+                            </td>
+                            <td className="px-3 py-3 text-center">
+                              {(ev.verified_screenshot_count ?? 0) >= goalThreshold(ev) ? (
+                                <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">✓ 達標</span>
+                              ) : (
+                                <span className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">✗ 差 {goalThreshold(ev) - (ev.verified_screenshot_count ?? 0)} 則</span>
+                              )}
+                              {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
+                            </td>
+                          </>
+                        ) : isLegacyMode ? (
                           <>
                             <td className="px-3 py-3 text-center text-sm">{ev.glasses_count}</td>
                             <td
@@ -632,7 +672,7 @@ const ServiceEvaluationPage: React.FC = () => {
                         </td>
                       </>
                     ) : (
-                      <td colSpan={isLegacyMode ? 7 : 6} className="px-3 py-3 text-center">
+                      <td colSpan={isGoalMode ? 5 : isLegacyMode ? 7 : 6} className="px-3 py-3 text-center">
                         <span className="text-gray-400 text-sm mr-3">尚未評鑑</span>
                         <button
                           onClick={() => handleCreate(row.employee.id)}
