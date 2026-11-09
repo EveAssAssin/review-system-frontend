@@ -95,6 +95,8 @@ export const reviewsApi = {
   deleteReplyTemplate: (id: string) => api.delete(`/reviews/reply-templates/${id}`),
   close: (id: string, closeNote?: string, closeReason?: 'normal' | 'wash_failed' | 'wash_completed') =>
     api.post(`/reviews/${id}/close`, { close_note: closeNote, close_reason: closeReason }),
+  transfer: (id: string, body: { to_employee_id: string; by_employee_id?: string; by_name?: string; is_pr?: boolean }) =>
+    api.post(`/reviews/${id}/transfer`, body),
   submitImprovement: (id: string, note: string, files: File[], improvementBy: string) => {
     const fd = new FormData();
     if (note) fd.append('note', note);

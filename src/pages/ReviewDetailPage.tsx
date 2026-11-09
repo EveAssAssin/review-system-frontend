@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { reviewsApi, uploadsApi } from '../services/api';
+import { reviewsApi, uploadsApi, employeesApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { formatReviewNo } from '../types';
 import FileUpload from '../components/FileUpload';
@@ -12,6 +12,7 @@ interface Review {
   employee_id: string;
   is_proxy: boolean;
   actual_employee_id?: string;
+  transferred_from?: string | null;
   category_id?: string;
   source: string;
   review_type: string;
@@ -76,6 +77,11 @@ export default function ReviewDetailPage() {
   const navigate = useNavigate();
   const { user, canManageReviews, employee } = useAuth();
   const [review, setReview] = useState<Review | null>(null);
+  // 轉給同仁
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [storeStaff, setStoreStaff] = useState<{ id: string; name: string; jobtitle?: string }[]>([]);
+  const [transferTo, setTransferTo] = useState('');
+  const [transferring, setTransferring] = useState(false);
   const [responses, setResponses] = useState<Response[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -278,7 +284,35 @@ export default function ReviewDetailPage() {
 
   const reviewAttachments = attachments.filter(a => a.upload_context === 'review');
   // 是否為本人評價（employee_id 或 actual_employee_id 匹配）
-  const isMyReview = employee && (review.employee_id === employee.id || review.actual_employee_id === employee.id);
+  const isMyReview = employee && (review.employee_id === employee.id || review.actual_employee_id === employee.id || review.transferred_from === employee.id);
+  // 轉給同仁：收到這則負評的店長/代理人（或轉出前的原處理人）、公關
+  const canTransfer = review.review_type === 'negative' && review.status !== 'closed'
+    && (!!canManageReviews || (!!employee && (review.employee_id === employee.id || review.transferred_from === employee.id)));
+  const openTransfer = async () => {
+    setShowTransfer(v => !v);
+    if (storeStaff.length) return;
+    try {
+      const baseId = review.transferred_from || review.employee_id;
+      const er = await employeesApi.getById(baseId);
+      const storeId = (er.data && (er.data.store_id || (er.data.data && er.data.data.store_id))) || (employee as any)?.store_id;
+      const lr = await employeesApi.search({ store_id: storeId, limit: 100 });
+      const list = (lr.data && (lr.data.data || lr.data)) || [];
+      setStoreStaff((Array.isArray(list) ? list : []).filter((e: any) => e.id !== review.employee_id));
+    } catch { setStoreStaff([]); }
+  };
+  const doTransfer = async () => {
+    if (!transferTo) { alert('請選擇同仁'); return; }
+    const who = storeStaff.find(x => x.id === transferTo)?.name || '';
+    if (!confirm(`確定把這則負評轉給 ${who}？\n負評會改算 ${who}，洗評論 20 則由 ${who} 完成；負評改善書仍由店長／代理人填寫。`)) return;
+    setTransferring(true);
+    try {
+      await reviewsApi.transfer(review.id, { to_employee_id: transferTo, by_employee_id: employee?.id, by_name: user?.name || employee?.name, is_pr: !!canManageReviews });
+      setShowTransfer(false); setTransferTo('');
+      await loadReview();
+      alert(`已轉給 ${who}`);
+    } catch (e: any) { alert(e?.response?.data?.message || '轉交失敗'); }
+    finally { setTransferring(false); }
+  };
   const canRespond = isMyReview && review.status !== 'closed' && review.requires_response && review.response_token;
 
   return (
@@ -476,6 +510,24 @@ export default function ReviewDetailPage() {
             {review.review_type === 'negative' && review.status !== 'closed' && (
               <button onClick={() => setShowImprovementForm(v => !v)} className="px-4 py-2 text-white rounded hover:opacity-80 text-sm" style={{ backgroundColor: '#b45309' }}>📝 負評改善書</button>
             )}
+            {canTransfer && (
+              <button onClick={openTransfer} className="px-4 py-2 text-white rounded hover:opacity-80 text-sm" style={{ backgroundColor: '#0f766e' }}>🔁 轉給同仁</button>
+            )}
+          </div>
+        )}
+
+        {/* 轉給同仁 */}
+        {showTransfer && canTransfer && (
+          <div className="border-t pt-4 space-y-2">
+            <div className="text-sm font-semibold" style={{ color: '#0f766e' }}>🔁 轉給同仁（已確認是哪位同仁的負評）</div>
+            <div className="text-xs text-gray-500">轉出後：負評改算該同仁（店務目標④門檻 +20 則）、洗評論 20 則由該同仁完成；負評改善書仍由店長／代理人填寫。</div>
+            <div className="flex flex-wrap gap-2 items-center">
+              <select value={transferTo} onChange={e => setTransferTo(e.target.value)} className="border rounded px-2 py-1.5 text-sm">
+                <option value="">-- 選擇同仁 --</option>
+                {storeStaff.map(s2 => <option key={s2.id} value={s2.id}>{s2.name}{s2.jobtitle ? `（${s2.jobtitle}）` : ''}</option>)}
+              </select>
+              <button onClick={doTransfer} disabled={transferring || !transferTo} className="px-3 py-1.5 text-sm text-white rounded disabled:opacity-50" style={{ backgroundColor: '#0f766e' }}>{transferring ? '轉交中…' : '確定轉交'}</button>
+            </div>
           </div>
         )}
 
