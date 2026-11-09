@@ -71,6 +71,13 @@ const MyServiceEvaluationPage: React.FC = () => {
         </div>
       </div>
 
+      {isGoalMonth(evals[0]?.year_month) ? (
+      <div className="rounded-lg p-3 text-xs text-gray-700 bg-[#faf8f5] border border-[#e8ddd0]">
+        <div className="font-medium mb-1">服務評鑑規則（2026 年 11 月起）</div>
+        每位正職都要完成 <b>20 則 Google 五星好評截圖</b>；本人每被記 1 則負評，就要再補 20 則（1 則負評→40 則、2 則→60 則，以此類推）。
+        每則負評由店長／代理人填 1 份負評改善書。全店正職都達門檻且改善書交齊，門市才算達成。
+      </div>
+      ) : (
       <div className="rounded-lg p-3 text-xs text-gray-600 bg-[#faf8f5] border border-[#e8ddd0]">
         <div className="font-medium mb-1">評分公式</div>
         人員評論率（官網評價數 ÷ 配鏡數 × 100，1%=1 分，上限 {EVAL.REVIEW_RATE_MAX}）
@@ -80,6 +87,7 @@ const MyServiceEvaluationPage: React.FC = () => {
         － 評價負評 ×{EVAL.DEDUCT}
         ＝ 總分（0~100）
       </div>
+      )}
 
       {evals.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
@@ -112,7 +120,19 @@ const MyServiceEvaluationPage: React.FC = () => {
                     )}
                   </div>
                   <div className="flex items-center gap-5">
-                    {scoringMode === 'legacy' ? (
+                    {isGoalMonth(ev.year_month) ? (
+                      <>
+                        <div className="text-xs text-gray-500">
+                          五星好評 <span className="text-gray-800 font-medium">{ev.verified_screenshot_count ?? 0}/{goalThreshold(ev)}</span>
+                        </div>
+                        {(Number(ev.negative_review_count) || 0) > 0 && (
+                          <div className="text-xs text-red-600">負評 {ev.negative_review_count} 則</div>
+                        )}
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${(ev.verified_screenshot_count ?? 0) >= goalThreshold(ev) ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                          {(ev.verified_screenshot_count ?? 0) >= goalThreshold(ev) ? '✓ 個人達標' : '✗ 未達標'}
+                        </span>
+                      </>
+                    ) : scoringMode === 'legacy' ? (
                       <>
                         <div className="text-xs text-gray-500">
                           配鏡 <span className="text-gray-800 font-medium">{ev.glasses_count}</span>
@@ -150,8 +170,23 @@ const MyServiceEvaluationPage: React.FC = () => {
 
                 {isExpanded && (
                   <div className="border-t px-4 py-4 space-y-4 bg-[#fafafa]">
-                    {/* 分數明細 — 依算分模式只顯示一邊 */}
-                    {scoringMode === 'legacy' ? (
+                    {/* 分數明細 — 2026-11 起目標制；之前依算分模式 */}
+                    {isGoalMonth(ev.year_month) ? (
+                    <div className="bg-white border rounded p-3 text-sm space-y-1">
+                      <div className="text-xs font-medium text-gray-700 mb-1">本月目標（店務目標：門市服務評鑑）</div>
+                      <div>五星好評截圖：<b>{ev.verified_screenshot_count ?? 0}</b> / 門檻 <b>{goalThreshold(ev)}</b> 則
+                        {(Number(ev.negative_review_count) || 0) > 0
+                          ? <span className="text-xs text-red-600 ml-2">（基本 20＋負評 {ev.negative_review_count} 則 × 20）</span>
+                          : <span className="text-xs text-gray-500 ml-2">（本月無負評，基本 20 則）</span>}
+                      </div>
+                      <div className={(ev.verified_screenshot_count ?? 0) >= goalThreshold(ev) ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold'}>
+                        {(ev.verified_screenshot_count ?? 0) >= goalThreshold(ev)
+                          ? '✓ 個人已達門檻'
+                          : `還差 ${goalThreshold(ev) - (ev.verified_screenshot_count ?? 0)} 則`}
+                      </div>
+                      <div className="text-xs text-gray-500">門市是否達成看全店正職是否都達門檻、改善書是否交齊，請看店務目標看板。</div>
+                    </div>
+                    ) : scoringMode === 'legacy' ? (
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                       <Stat label="評論率" value={`${sc?.review_rate ?? 0}%`} sub={`${sc?.review_rate_score ?? 0} 分`} />
                       <Stat label="服務流程" value={`${ev.service_process_score} 分`} sub={`/ ${EVAL.PROCESS_MAX}`} />
@@ -251,8 +286,8 @@ const MyServiceEvaluationPage: React.FC = () => {
                       </div>
                     )}
 
-                    {/* 電訪好評錄音 + 文字稿（唯讀） */}
-                    {ev.phone_survey_audio_url ? (
+                    {/* 電訪好評錄音 + 文字稿（唯讀）— 2026-11 起不列入，不顯示 */}
+                    {isGoalMonth(ev.year_month) ? null : ev.phone_survey_audio_url ? (
                       <div>
                         <div className="text-sm font-medium mb-2">電訪好評錄音</div>
                         <audio src={ev.phone_survey_audio_url} controls className="w-full" />
@@ -281,6 +316,7 @@ const MyServiceEvaluationPage: React.FC = () => {
                       serviceEvalId={ev.id}
                       isLocked={!!ev.is_locked}
                       verifiedCount={ev.verified_screenshot_count ?? 0}
+                      target={isGoalMonth(ev.year_month) ? goalThreshold(ev) : undefined}
                     />
 
                     <div className="text-xs text-gray-400">
@@ -297,14 +333,21 @@ const MyServiceEvaluationPage: React.FC = () => {
   );
 };
 
+// ── 2026-11 起：店務目標制（Louis）——每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數 ──
+const GOAL_FROM = '2026-11';
+const isGoalMonth = (ym?: string) => !!ym && ym >= GOAL_FROM;
+const goalThreshold = (ev: any) => 20 + 20 * Math.max(0, Number(ev?.negative_review_count) || 0);
+
 // ── 評論截圖 section（新公式核心）─────────────────────────
 interface RSProps {
   serviceEvalId: string;
   isLocked: boolean;
   verifiedCount: number;
+  target?: number; // 目標制門檻（2026-11 起）；沒給＝舊公式 20 則得分
 }
 
-const ReviewScreenshotSection: React.FC<RSProps> = ({ serviceEvalId, isLocked, verifiedCount: initial }) => {
+const ReviewScreenshotSection: React.FC<RSProps> = ({ serviceEvalId, isLocked, verifiedCount: initial, target }) => {
+  const TGT = target ?? EVAL.SCREENSHOT_TARGET;
   const [list, setList] = useState<ReviewScreenshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -377,14 +420,14 @@ const ReviewScreenshotSection: React.FC<RSProps> = ({ serviceEvalId, isLocked, v
     }
   };
 
-  const pct = Math.min(100, Math.round((verifiedCount / EVAL.SCREENSHOT_TARGET) * 100));
+  const pct = Math.min(100, Math.round((verifiedCount / TGT) * 100));
 
   return (
     <div>
       <div className="text-sm font-medium mb-2 flex items-center gap-2">
         評論截圖
         <span className="text-xs text-gray-500">
-          （滿 {EVAL.SCREENSHOT_TARGET} 則得 {EVAL.SCREENSHOT_BONUS} 分；只能上傳 3 天內、不能重複）
+          {target != null ? `（本月門檻 ${TGT} 則；只能上傳 3 天內、不能重複）` : `（滿 ${EVAL.SCREENSHOT_TARGET} 則得 ${EVAL.SCREENSHOT_BONUS} 分；只能上傳 3 天內、不能重複）`}
         </span>
       </div>
 
@@ -395,13 +438,13 @@ const ReviewScreenshotSection: React.FC<RSProps> = ({ serviceEvalId, isLocked, v
             className="h-3 rounded-full transition-all"
             style={{
               width: `${pct}%`,
-              backgroundColor: verifiedCount >= EVAL.SCREENSHOT_TARGET ? '#16a34a' : '#8b6f4e',
+              backgroundColor: verifiedCount >= TGT ? '#16a34a' : '#8b6f4e',
             }}
           />
         </div>
         <div className="text-sm font-medium w-20 text-right">
-          <span style={{ color: verifiedCount >= EVAL.SCREENSHOT_TARGET ? '#16a34a' : '#3d2b1f' }}>
-            {verifiedCount} / {EVAL.SCREENSHOT_TARGET}
+          <span style={{ color: verifiedCount >= TGT ? '#16a34a' : '#3d2b1f' }}>
+            {verifiedCount} / {TGT}
           </span>
         </div>
       </div>
