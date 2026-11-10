@@ -457,10 +457,21 @@ const ServiceEvaluationPage: React.FC = () => {
           <div className="text-2xl font-bold text-green-600">{evaluatedCount}</div>
           <div className="text-gray-500 text-sm">已評鑑</div>
         </div>
+        {isGoalMode ? (() => {
+          const evs = rows.map(r => r.evaluation).filter(Boolean) as any[];
+          const passN = evs.filter(ev => (ev.verified_screenshot_count ?? 0) >= goalThreshold(ev)).length;
+          return (
+            <div className="bg-white p-4 rounded-lg shadow text-center">
+              <div className="text-2xl font-bold" style={{ color: passN === evs.length && evs.length > 0 ? '#16a34a' : '#dc2626' }}>{passN} / {evs.length}</div>
+              <div className="text-gray-500 text-sm">個人達標人數（好評達門檻）</div>
+            </div>
+          );
+        })() : (
         <div className="bg-white p-4 rounded-lg shadow text-center">
           <div className="text-2xl font-bold" style={{ color: scoreColor(avgScore) }}>{avgScore}</div>
           <div className="text-gray-500 text-sm">平均分數</div>
         </div>
+        )}
       </div>
 
       {/* 公式說明 */}
