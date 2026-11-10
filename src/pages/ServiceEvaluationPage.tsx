@@ -41,6 +41,18 @@ const currentYearMonth = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
+// 門市固定順序（Louis 指定，所有表格一律照這個排）；同店再依姓名
+const STORE_ORDER = ['板橋', '永和', '林口', '中壢', '新竹', '竹北', '六家', '東山', '潭子', '大里', '中科', '中清', '大墩', '鼎山', '南京', '文山', '熱河', '高美', '新左營', '楠梓'];
+const storeRank = (name?: string | null) => {
+  const n = String(name || '');
+  const i = STORE_ORDER.findIndex(k => n.startsWith(k));
+  return i === -1 ? 999 : i;
+};
+const sortByStoreOrder = (rows: any[]) => [...rows].sort((a, b) =>
+  storeRank(a.employee?.store_name) - storeRank(b.employee?.store_name)
+  || String(a.employee?.store_name || a.employee?.department || '').localeCompare(String(b.employee?.store_name || b.employee?.department || ''), 'zh-Hant')
+  || String(a.employee?.name || '').localeCompare(String(b.employee?.name || ''), 'zh-Hant'));
+
 const ServiceEvaluationPage: React.FC = () => {
   const { user } = useAuth();
   const [yearMonth, setYearMonth] = useState(currentYearMonth());
@@ -104,7 +116,7 @@ const ServiceEvaluationPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await serviceEvaluationApi.overview(yearMonth);
-      setRows(res.data);
+      setRows(sortByStoreOrder(res.data || []));
     } catch (err) {
       console.error('載入服務評鑑失敗:', err);
       setRows([]);
