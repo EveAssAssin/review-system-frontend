@@ -454,6 +454,7 @@ export const reviewScreenshotsApi = {
 
 export const settingsApi = {
   storeProxyHandlers: () => api.get('/public/service-evaluations/store-proxy-handlers'),
+  roleHints: (ym: string) => api.get('/public/service-evaluations/role-hints', { params: { ym } }),
   getScoringSettings: () =>
     api.get('/settings/service-eval-scoring'),
   updateScoringSettings: (patch: { scoring_mode?: 'legacy' | 'screenshot'; level3_dedupe?: boolean }) =>

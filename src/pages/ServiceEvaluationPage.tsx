@@ -48,9 +48,22 @@ const storeRank = (name?: string | null) => {
   const i = STORE_ORDER.findIndex(k => n.startsWith(k));
   return i === -1 ? 999 : i;
 };
-const sortByStoreOrder = (rows: any[]) => [...rows].sort((a, b) =>
+// 同店角色順序：店長／代理人 → 副店長 → 正職 → 其他 → 新人（Louis 2026-11-10）
+//   店長代理＝人事名單對照(store_proxy_handler)；正職／新人＝市場系統該月名單；副店長看職稱
+type RoleHints = { proxy?: Record<string, string>; fulltime?: string[]; newbies?: string[] };
+const roleRank = (emp: any, h: RoleHints) => {
+  const name = String(emp?.name || ''); const jt = String(emp?.jobtitle || '');
+  if (h.proxy && emp?.store_name && h.proxy[emp.store_name] === name) return 0;
+  if ((jt.includes('店長') && !jt.includes('副店長')) || jt.includes('代理')) return 0.5;
+  if (jt.includes('副店長')) return 1;
+  if ((h.newbies || []).includes(name) || jt.includes('新人')) return 4;
+  if ((h.fulltime || []).includes(name)) return 2;
+  return 3;
+};
+const sortByStoreOrder = (rows: any[], h: RoleHints = {}) => [...rows].sort((a, b) =>
   storeRank(a.employee?.store_name) - storeRank(b.employee?.store_name)
   || String(a.employee?.store_name || a.employee?.department || '').localeCompare(String(b.employee?.store_name || b.employee?.department || ''), 'zh-Hant')
+  || roleRank(a.employee, h) - roleRank(b.employee, h)
   || String(a.employee?.name || '').localeCompare(String(b.employee?.name || ''), 'zh-Hant'));
 
 const ServiceEvaluationPage: React.FC = () => {
@@ -116,7 +129,9 @@ const ServiceEvaluationPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await serviceEvaluationApi.overview(yearMonth);
-      setRows(sortByStoreOrder(res.data || []));
+      let hints: RoleHints = {};
+      try { const h = await settingsApi.roleHints(yearMonth); hints = (h && h.data) || {}; } catch { /* 取不到就只依門市排 */ }
+      setRows(sortByStoreOrder(res.data || [], hints));
     } catch (err) {
       console.error('載入服務評鑑失敗:', err);
       setRows([]);
