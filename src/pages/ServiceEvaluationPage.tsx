@@ -237,7 +237,7 @@ const ServiceEvaluationPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <ScoringSettingsPanel isSuperAdmin={user?.role === 'super_admin'} settings={scoringSettings} onChange={setScoringSettings} />
+      {!isGoalMode && <ScoringSettingsPanel isSuperAdmin={user?.role === 'super_admin'} settings={scoringSettings} onChange={setScoringSettings} />}
 
       {/* 待處理 inbox + 未完成洗評論 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -359,6 +359,7 @@ const ServiceEvaluationPage: React.FC = () => {
             onChange={e => setYearMonth(e.target.value)}
             className="px-3 py-2 border rounded"
           />
+          {!isGoalMode && (
           <button
             onClick={handleSyncGlasses}
             disabled={syncing}
@@ -366,6 +367,8 @@ const ServiceEvaluationPage: React.FC = () => {
             style={{ backgroundColor: '#5b7fad' }}>
             {syncing ? '同步中...（約 30~60 秒）' : '🔄 同步配鏡數'}
           </button>
+          )}
+          {!isGoalMode && (
           <button
             onClick={handleSyncWebsiteReviews}
             disabled={reviewSyncing}
@@ -373,6 +376,8 @@ const ServiceEvaluationPage: React.FC = () => {
             style={{ backgroundColor: '#5b7fad' }}>
             {reviewSyncing ? '同步中...' : '🔄 同步官網評價量'}
           </button>
+          )}
+          {!isGoalMode && (
           <button
             onClick={handleTakeSnapshot}
             disabled={snapshotting}
@@ -380,6 +385,7 @@ const ServiceEvaluationPage: React.FC = () => {
             title="系統每月 1 號自動快照，這裡是手動補拍/初始化用">
             {snapshotting ? '快照中...' : '📸 立即快照'}
           </button>
+          )}
           <button
             onClick={handleOpenMonth}
             disabled={opening}
@@ -387,6 +393,7 @@ const ServiceEvaluationPage: React.FC = () => {
             style={{ backgroundColor: '#8b6f4e' }}>
             {opening ? '開啟中...' : '＋ 開啟本月評鑑'}
           </button>
+          {!isGoalMode && (
           <button
             onClick={handleSyncMarket}
             className="px-3 py-1.5 text-sm rounded bg-amber-600 hover:bg-amber-700 text-white"
@@ -394,6 +401,7 @@ const ServiceEvaluationPage: React.FC = () => {
           >
             🛒 同步市場部
           </button>
+          )}
           <button
             onClick={handleLockToggle}
             disabled={locking}
@@ -492,7 +500,7 @@ const ServiceEvaluationPage: React.FC = () => {
 
       {monthLocked && (
         <div className="rounded-lg p-3 text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
-          🔒 {yearMonth} 評鑑已鎖定（月結算定案），分數已保存。需修改請按上方「🔓 解鎖本月」。
+          🔒 {yearMonth} 評鑑已鎖定（月結算定案），{isGoalMode ? '好評截圖數已定案' : '分數已保存'}。需修改請按上方「🔓 解鎖本月」。
         </div>
       )}
 
@@ -742,6 +750,8 @@ interface EditModalProps {
 }
 
 const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, onSaved, onOpenPhoneSurvey }) => {
+  // 2026-11 起門檻制：不顯示舊分數欄位
+  const isGoalEvYM = (ym?: string) => String(ym || '') >= '2026-11';
   const [form, setForm] = useState<any>({
     glasses_count: evaluation.glasses_count,
     website_review_count: evaluation.website_review_count,
@@ -829,6 +839,14 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
           </div>
 
+          {isGoalEvYM(evaluation.year_month) ? (
+          <div className="rounded-lg p-4 mb-4 text-sm" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
+            <div className="text-xs text-gray-500 mb-1">本月目標（2026 年 11 月起門檻制）</div>
+            <div>五星好評截圖：<b>{evaluation.verified_screenshot_count ?? 0}</b> / 門檻 <b>{20 + 20 * (Number(evaluation.negative_review_count) || 0)}</b> 則（20＋本人負評 {evaluation.negative_review_count ?? 0} 則×20）</div>
+            <div className="text-xs text-gray-500 mt-1">好評數由員工上傳截圖自動驗證、負評數由評價紀錄自動計算，不需手動填分數。</div>
+          </div>
+          ) : (
+          <>
           {/* 總分預覽 */}
           <div className="rounded-lg p-4 mb-4 text-center" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
             <div className="text-xs text-gray-500 mb-1">即時總分</div>
@@ -838,6 +856,8 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
             </div>
           </div>
 
+          </>
+          )}
           {locked && (
             <div className="rounded-lg p-3 mb-4 text-sm" style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c' }}>
               🔒 此評鑑已於月結算時鎖定，所有欄位唯讀。需修改請先在列表上方「🔓 解鎖本月」。
@@ -845,6 +865,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
           )}
 
           <div className="space-y-3">
+            {!isGoalEvYM(evaluation.year_month) && (<>
             {/* 配鏡數 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -966,6 +987,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
               </div>
             </div>
 
+            </>)}
             {/* 備註 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">備註</label>
