@@ -26,6 +26,10 @@ interface AppealDetail {
   collided: any;
 }
 
+// 只顯示 2026-11 起的申訴／被擋截圖；之前的由前任公關處理（Louis 2026-11-10）
+const SHOW_FROM_YM = '2026-11';
+const inScope = (r: any) => !r?.year_month || String(r.year_month) >= SHOW_FROM_YM;
+
 export default function ScreenshotAppealsPage() {
   const [filter, setFilter] = useState<'pending' | 'approved' | 'denied' | 'all' | 'unappealed'>('pending');
   const [list, setList] = useState<AppealRow[]>([]);
@@ -37,8 +41,8 @@ export default function ScreenshotAppealsPage() {
 
   const refreshUnappealedCount = async () => {
     try {
-      const res = await reviewScreenshotsApi.countRejectedNotAppealed();
-      setUnappealedCount(res.data?.count ?? 0);
+      const res = await reviewScreenshotsApi.listRejectedNotAppealed({ limit: 500 });
+      setUnappealedCount(((res.data || []) as any[]).filter(inScope).length);
     } catch {
       // 靜默失敗（權限或網路），badge 不顯示
     }
@@ -54,7 +58,7 @@ export default function ScreenshotAppealsPage() {
       } else {
         res = await reviewScreenshotsApi.listAppeals(filter === 'all' ? undefined : filter);
       }
-      setList(res.data || []);
+      setList(((res.data || []) as any[]).filter(inScope));
     } catch (e: any) {
       window.alert(e?.response?.data?.message || '載入失敗');
     } finally {
