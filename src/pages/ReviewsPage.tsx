@@ -51,7 +51,9 @@ const ReviewsPage: React.FC = () => {
       if (filters.source) params.source = filters.source;
 
       const res = await reviewsApi.search(params);
-      setReviews(res.data.data);
+      // 只顯示 2026-11-01（台北）之後建立的評價；之前的由前任公關處理並已結案（Louis 2026-11-10）
+      const SINCE = new Date('2026-11-01T00:00:00+08:00').getTime();
+      setReviews((res.data.data || []).filter((r: any) => new Date(r.created_at).getTime() >= SINCE));
     } catch (error) {
       console.error('Failed to fetch reviews:', error);
     } finally {
