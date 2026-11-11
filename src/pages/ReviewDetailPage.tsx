@@ -99,6 +99,8 @@ export default function ReviewDetailPage() {
   const [aiCustomTone, setAiCustomTone] = useState('');
   const [aiGenerating, setAiGenerating] = useState(false);
   const [replyTemplates, setReplyTemplates] = useState<any[]>([]);
+  // 回覆模式：internal＝回覆同仁（評價系統內部對話）；google＝產生要貼到 Google 回覆客人的文字（系統不會送出）
+  const [replyMode, setReplyMode] = useState<'internal' | 'google'>('internal');
   const [improvementNote, setImprovementNote] = useState('');
   const [improvementFiles, setImprovementFiles] = useState<File[]>([]);
   const [showImprovementForm, setShowImprovementForm] = useState(false);
@@ -412,7 +414,7 @@ export default function ReviewDetailPage() {
           </div>
           <div className="rounded-lg p-3 space-y-3" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
             {responses.length === 0 ? (
-              <div className="text-center text-gray-400 text-sm py-4">尚無對話紀錄，{canManageReviews ? '可使用下方「公關部回覆」開始溝通' : (canRespond ? '請點擊下方「我要回覆」開始溝通' : '等待公關部開始溝通')}</div>
+              <div className="text-center text-gray-400 text-sm py-4">尚無對話紀錄，{canManageReviews ? '可使用下方「回覆同仁（內部）」開始溝通' : (canRespond ? '請點擊下方「我要回覆」開始溝通' : '等待公關部開始溝通')}</div>
             ) : (
               responses.map((resp) => {
                 const isEmployee = resp.responder_type === 'employee';
@@ -499,7 +501,10 @@ export default function ReviewDetailPage() {
             {/* 公關部管理員才看得到 */}
             {canManageReviews && (
               <>
-                <button onClick={() => setShowResponseForm(true)} className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:opacity-80 text-sm">🏢 公關部回覆</button>
+                <button onClick={() => { setReplyMode('internal'); setShowResponseForm(true); }} className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:opacity-80 text-sm" title="跟負責的同仁對話（客人看不到）">💬 回覆同仁（內部）</button>
+                {review.source === 'google_map' && (
+                  <button onClick={() => { setReplyMode('google'); setResponseContent(''); setShowResponseForm(true); }} className="px-4 py-2 text-white rounded hover:opacity-80 text-sm" style={{ backgroundColor: '#7c5cab' }} title="產生回覆客人的文字，複製後到 Google 商家後台貼上">🌐 Google 回覆草稿</button>
+                )}
                 <button onClick={() => setShowCloseForm(true)} className="px-4 py-2 bg-green-600 text-white rounded hover:opacity-80 text-sm">✓ 結案</button>
               </>
             )}
@@ -601,9 +606,15 @@ export default function ReviewDetailPage() {
       {showResponseForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">公關部回覆</h2>
+            <h2 className="text-xl font-bold mb-1">{replyMode === 'google' ? '🌐 Google 回覆草稿' : '💬 回覆同仁（內部對話）'}</h2>
+            <div className="text-xs text-gray-500 mb-4">
+              {replyMode === 'google'
+                ? '產生要回覆給客人的文字。系統不會自動發到 Google，請按「複製」後到 Google 商家後台貼上回覆。'
+                : '這裡是跟負責同仁的內部對話，會以你的名字送出並通知同仁，客人看不到。'}
+            </div>
 
-            {/* AI 生成回覆範本 */}
+            {/* AI 生成回覆範本（只用在 Google 回覆客人） */}
+            {replyMode === 'google' && (
             <div className="border rounded p-3 mb-3" style={{ borderColor: '#d6c9ea', backgroundColor: '#faf8fd' }}>
               <div className="text-sm font-semibold mb-2" style={{ color: '#7c5cab' }}>✨ AI 生成回覆範本</div>
               <div className="flex flex-wrap gap-2 mb-2">
@@ -625,6 +636,7 @@ export default function ReviewDetailPage() {
               </button>
               <span className="text-xs text-gray-400 ml-2">會讀取此評價內容生成草稿</span>
             </div>
+            )}
 
             <textarea value={responseContent} onChange={(e) => setResponseContent(e.target.value)} rows={4} className="w-full px-3 py-2 border rounded mb-2" placeholder="請輸入回覆內容..." />
 
@@ -643,13 +655,23 @@ export default function ReviewDetailPage() {
                 <input type="file" accept=".txt,text/plain" className="hidden" onChange={handleUploadTemplateFile} />
               </label>
             </div>
+            {replyMode === 'internal' && (
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">附件</label>
               <FileUpload onFilesSelected={setFilesToUpload} maxFiles={5} maxSizeMB={50} />
             </div>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => { setShowResponseForm(false); setFilesToUpload([]); }} className="px-4 py-2 border rounded">取消</button>
-              <button onClick={handleReviewerResponse} disabled={submitting} className="px-4 py-2 bg-[#8b6f4e] text-white rounded disabled:opacity-50">{submitting ? '送出中...' : '送出'}</button>
+            )}
+            <div className="flex justify-end gap-2 flex-wrap">
+              <button onClick={() => { setShowResponseForm(false); setFilesToUpload([]); }} className="px-4 py-2 border rounded">{replyMode === 'google' ? '關閉' : '取消'}</button>
+              {replyMode === 'google' ? (
+                <>
+                  <button onClick={async () => { if (!responseContent.trim()) { alert('內容是空的'); return; } try { await navigator.clipboard.writeText(responseContent); alert('已複製，請到 Google 商家後台貼上回覆'); } catch { alert('複製失敗，請手動選取文字複製'); } }}
+                    className="px-4 py-2 text-white rounded" style={{ backgroundColor: '#7c5cab' }}>📋 複製</button>
+                  <a href="https://business.google.com/reviews" target="_blank" rel="noopener noreferrer" className="px-4 py-2 border rounded text-sm" style={{ color: '#7c5cab', borderColor: '#d6c9ea' }}>前往 Google 商家後台 ↗</a>
+                </>
+              ) : (
+                <button onClick={handleReviewerResponse} disabled={submitting} className="px-4 py-2 bg-[#8b6f4e] text-white rounded disabled:opacity-50">{submitting ? '送出中...' : '送出給同仁'}</button>
+              )}
             </div>
           </div>
         </div>
