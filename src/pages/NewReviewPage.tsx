@@ -165,7 +165,7 @@ export default function NewReviewPage() {
 
     setSubmittingResponse(true);
     try {
-      await reviewsApi.addReviewerResponse(createdReviewId, responseContent, user?.name || '公關部');
+      await reviewsApi.addReviewerResponse(createdReviewId, responseContent, '公關部');
       if (responseFiles.length > 0) {
         await uploadsApi.uploadForResponse(createdReviewId, responseFiles, 'reviewer');
       }
@@ -202,7 +202,7 @@ export default function NewReviewPage() {
         immediate_response: form.immediate_response || undefined,
         initial_pr_message: form.initial_pr_message?.trim() || undefined,
         initial_pr_message_sender: form.initial_pr_message?.trim()
-          ? (user?.name || '公關部')
+          ? '公關部'
           : undefined,
         requires_response: form.requires_response,
         response_deadline_hours: form.response_deadline_hours,
@@ -591,7 +591,7 @@ export default function NewReviewPage() {
                 onClick={() => setShowResponseForm(true)}
                 className="px-4 py-2 bg-[#8b6f4e] text-white rounded hover:opacity-80 text-sm"
               >
-                🏢 公關部回覆
+                💬 回覆同仁（內部）
               </button>
               <button
                 type="button"

@@ -186,7 +186,7 @@ export default function ReviewDetailPage() {
 
     setSubmitting(true);
     try {
-      await reviewsApi.addReviewerResponse(id!, responseContent, user?.name || '公關部');
+      await reviewsApi.addReviewerResponse(id!, responseContent, '公關部');
       
       if (filesToUpload.length > 0) {
         await uploadsApi.uploadForResponse(id!, filesToUpload, 'reviewer');
@@ -610,7 +610,7 @@ export default function ReviewDetailPage() {
             <div className="text-xs text-gray-500 mb-4">
               {replyMode === 'google'
                 ? '產生要回覆給客人的文字。系統不會自動發到 Google，請按「複製」後到 Google 商家後台貼上回覆。'
-                : '這裡是跟負責同仁的內部對話，會以你的名字送出並通知同仁，客人看不到。'}
+                : '這裡是跟負責同仁的內部對話，會以「公關部」名義送出並通知同仁，客人看不到。'}
             </div>
 
             {/* AI 生成回覆範本（只用在 Google 回覆客人） */}
