@@ -563,7 +563,7 @@ export default function NewReviewPage() {
             </div>
             <div className="rounded-lg p-3 space-y-3" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
               {responses.length === 0 ? (
-                <div className="text-center text-gray-400 text-sm py-4">尚無對話紀錄，可使用下方「公關部回覆」開始溝通</div>
+                <div className="text-center text-gray-400 text-sm py-4">尚無對話紀錄，可使用下方「回覆同仁（內部）」開始溝通</div>
               ) : (
                 responses.map((resp) => {
                   const isEmployee = resp.responder_type === 'employee';
@@ -623,7 +623,7 @@ export default function NewReviewPage() {
       {showResponseForm && createdReviewId && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-lg">
-            <h2 className="text-xl font-bold mb-4">公關部回覆</h2>
+            <h2 className="text-xl font-bold mb-4">💬 回覆同仁（內部對話，客人看不到）</h2>
             <textarea
               value={responseContent}
               onChange={(e) => setResponseContent(e.target.value)}
