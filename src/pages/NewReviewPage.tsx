@@ -117,15 +117,35 @@ export default function NewReviewPage() {
     // eslint-disable-next-line
   }, [location.state]);
 
+  // 門市 → 店長／代理人 對照（打門市名稱就跳出店長代理人，Louis 2026-11-12）
+  const [proxyMap, setProxyMap] = useState<Record<string, string>>({});
+  useEffect(() => {
+    settingsApi.storeProxyHandlers().then((r: any) => setProxyMap((r && r.data) || {})).catch(() => {});
+  }, []);
+
   // 搜尋員工（處理人）
   const searchEmployees = async (query: string) => {
-    if (query.length < 2) {
+    const q = query.trim();
+    if (q.length < 2) {
       setEmployees([]);
       return;
     }
     try {
-      const res = await employeesApi.search({ q: query, limit: 10 });
-      setEmployees(res.data.data);
+      // 打的是門市名稱（例：南京、南京店）→ 先列該店店長／代理人
+      const qStore = q.replace(/店$/, '');
+      const storeHits = Object.entries(proxyMap).filter(([store]) => store.replace(/店$/, '').includes(qStore));
+      const handlerRows: any[] = [];
+      for (const [store, name] of storeHits.slice(0, 3)) {
+        try {
+          const hr = await employeesApi.search({ q: name, limit: 5 });
+          const list: any[] = (hr.data && hr.data.data) || [];
+          const emp = list.find((e) => e.name === name && (e.store_name || '') === store) || list.find((e) => e.name === name);
+          if (emp) handlerRows.push({ ...emp, __storeHandlerOf: store });
+        } catch { /* 略過 */ }
+      }
+      const res = await employeesApi.search({ q, limit: 10 });
+      const normal: any[] = (res.data.data || []).filter((e: any) => !handlerRows.some((h) => h.id === e.id));
+      setEmployees([...handlerRows, ...normal]);
     } catch (err) {
       console.error('搜尋員工失敗:', err);
     }
@@ -253,7 +273,7 @@ export default function NewReviewPage() {
           </label>
           <input
             type="text"
-            placeholder="搜尋姓名 / ERP / APP 編號..."
+            placeholder="搜尋姓名 / ERP / APP 編號，或打門市名稱（例：南京）帶出店長／代理人"
             value={searchQuery}
             onChange={(e) => {
               setSearchQuery(e.target.value);
@@ -263,17 +283,22 @@ export default function NewReviewPage() {
           />
           {employees.length > 0 && (
             <div className="mt-1 border rounded max-h-40 overflow-y-auto">
-              {employees.map((emp) => (
+              {employees.map((emp: any) => (
                 <div
-                  key={emp.id}
+                  key={emp.id + (emp.__storeHandlerOf || '')}
                   onClick={() => {
                     setSelectedEmployee(emp);
                     setSearchQuery(emp.name);
                     setEmployees([]);
+                    // 選門市店長／代理人 → 自動勾代理處理，實際當事人先帶店長（之後可改或轉給同仁）
+                    if (emp.__storeHandlerOf) { setIsProxy(true); setSelectedActualEmployee(emp); }
                   }}
                   className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  style={emp.__storeHandlerOf ? { backgroundColor: '#f5f0eb' } : undefined}
                 >
-                  {emp.name} - {emp.store_name || emp.department} ({emp.app_number})
+                  {emp.__storeHandlerOf
+                    ? <>🏪 <strong>{emp.__storeHandlerOf}</strong> 店長／代理人：<strong>{emp.name}</strong> <span className="text-xs text-gray-500">（選了會自動勾「代理處理」）</span></>
+                    : <>{emp.name} - {emp.store_name || emp.department} ({emp.app_number})</>}
                 </div>
               ))}
             </div>

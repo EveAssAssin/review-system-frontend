@@ -41,7 +41,15 @@ export default function FileUpload({
   }, [initialFiles]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+    addFiles(Array.from(e.target.files || []));
+  };
+
+  // 共用：加入檔案（點選上傳／貼上截圖／拖曳）
+  const addFiles = (rawFiles: File[]) => {
+    // 貼上的截圖常沒有檔名 → 補一個
+    const files = rawFiles.map((f, i) => (f.name && f.name !== 'image.png') ? f
+      : new File([f], `貼上截圖_${Date.now()}_${i + 1}.${(f.type.split('/')[1] || 'png')}`, { type: f.type || 'image/png' }));
+    if (!files.length) return;
     setError('');
 
     // 檢查數量
@@ -91,10 +99,17 @@ export default function FileUpload({
 
   return (
     <div className="space-y-3">
-      {/* 上傳按鈕 */}
+      {/* 上傳按鈕：點擊選檔／Ctrl+V 貼上截圖／拖曳檔案 */}
       <div
-        onClick={() => inputRef.current?.click()}
-        className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition"
+        tabIndex={0}
+        onClick={(e) => { (e.currentTarget as HTMLDivElement).focus(); }}
+        onPaste={(e) => {
+          const files = Array.from(e.clipboardData?.files || []);
+          if (files.length) { e.preventDefault(); addFiles(files); }
+        }}
+        onDragOver={(e) => { e.preventDefault(); }}
+        onDrop={(e) => { e.preventDefault(); addFiles(Array.from(e.dataTransfer?.files || [])); }}
+        className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 hover:bg-blue-50 focus:border-blue-500 focus:bg-blue-50 focus:outline-none transition"
       >
         <input
           ref={inputRef}
@@ -105,7 +120,8 @@ export default function FileUpload({
           className="hidden"
         />
         <div className="text-gray-500">
-          <span className="text-blue-600">點擊上傳</span> 或拖曳檔案到這裡
+          <button type="button" onClick={(e) => { e.stopPropagation(); inputRef.current?.click(); }} className="text-blue-600 underline">選擇檔案</button>
+          、拖曳檔案到這裡，或<b>點一下這個框再按 Ctrl+V 貼上截圖</b>
         </div>
         <div className="text-xs text-gray-400 mt-1">
           支援圖片和影片，單檔最大 {maxSizeMB}MB，最多 {maxFiles} 個檔案
