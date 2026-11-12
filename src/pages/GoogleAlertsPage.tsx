@@ -117,11 +117,12 @@ export default function GoogleAlertsPage() {
 
       <div className="bg-white rounded-lg shadow p-4 mb-4 text-xs text-gray-600 leading-relaxed">
         <div className="font-semibold text-gray-700 mb-1">📖 說明</div>
-        系統每 6 小時（08:00 / 12:00 / 18:00 / 21:00 台灣時間）自動抓一次各門市 Google Map 官方最新 5 則評論，
-        發現 <strong>rating ≤ 2</strong> 的新負評會：
-        <span className="mx-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700">📱 立即發 LINE 給公關部</span>
-        <span className="mx-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">📋 建立此頁的 alert</span>
-        。公關處理後標「已處理」或「已忽略」歸檔。
+        系統每天 10:00 / 12:00 / 14:00 / 16:00 / 18:00（台灣時間）自動抓一次各門市 Google Map 最新 5 則評論，
+        發現 <strong>1～2 星</strong>的新負評會：
+        <span className="mx-1 px-1.5 py-0.5 rounded bg-red-100 text-red-700">📱 發 LINE 給公關部（曹智環）</span>
+        <span className="mx-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">📋 建立此頁告警</span>
+        <span className="mx-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700">📝 自動新增評價給店長／代理人＋開洗評論 20 則＋請填改善書</span>
+        。客人刪除負評或改成 3 星以上 → 告警自動標已處理、評價自動移除。公關處理後標「已處理」或「已忽略」歸檔。
       </div>
 
       {err && (
