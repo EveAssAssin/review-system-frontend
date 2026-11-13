@@ -82,6 +82,8 @@ const ServiceEvaluationPage: React.FC = () => {
   const isGoalMode = yearMonth >= '2026-11';
   const goalThreshold = (_ev: any) => 20; // 個人固定 20；負評洗評論另計
   const goalGood = (ev: any) => Number(ev?.verified_screenshot_count) || 0;
+  // 個人還差幾則＝服務評鑑缺額＋負評洗評論缺額
+  const goalLack = (ev: any) => Math.max(0, 20 - goalGood(ev)) + Math.max(0, 20 * (Number(ev?.negative_review_count) || 0) - (Number(ev?.wash_approved_count) || 0));
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState<{ id: string; employeeName: string; yearMonth: string; isLocked: boolean } | null>(null);
   const [inbox, setInbox] = useState<any[]>([]);
@@ -495,7 +497,7 @@ const ServiceEvaluationPage: React.FC = () => {
         </div>
         {isGoalMode ? (() => {
           const evs = rows.map(r => r.evaluation).filter(Boolean) as any[];
-          const passN = evs.filter(ev => goalGood(ev) >= goalThreshold(ev)).length;
+          const passN = evs.filter(ev => goalLack(ev) === 0).length;
           return (
             <div className="bg-white p-4 rounded-lg shadow text-center">
               <div className="text-2xl font-bold" style={{ color: passN === evs.length && evs.length > 0 ? '#16a34a' : '#dc2626' }}>{passN} / {evs.length}</div>
@@ -600,10 +602,10 @@ const ServiceEvaluationPage: React.FC = () => {
                               <div className="font-medium">{goalThreshold(ev)}</div>
                             </td>
                             <td className="px-3 py-3 text-center">
-                              {goalGood(ev) >= goalThreshold(ev) ? (
+                              {goalLack(ev) === 0 ? (
                                 <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">✓ 達標</span>
                               ) : (
-                                <span className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">✗ 差 {goalThreshold(ev) - goalGood(ev)} 則</span>
+                                <span className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">✗ 差 {goalLack(ev)} 則</span>
                               )}
                               {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
                             </td>
