@@ -307,6 +307,7 @@ export interface ServiceEvaluation {
   glasses_count: number;
   website_review_count: number;
   negative_review_count: number;
+  wash_approved_count?: number; // 本人負評洗評論已通過張數（2026-11 起與截圖合計算門檻）
   google_low_star_count: number;
   service_process_score: number;
   phone_survey_score: number;

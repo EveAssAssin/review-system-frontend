@@ -81,6 +81,7 @@ const ServiceEvaluationPage: React.FC = () => {
   // 2026-11 起：店務目標制（每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數）— Louis
   const isGoalMode = yearMonth >= '2026-11';
   const goalThreshold = (ev: any) => 20 + 20 * Math.max(0, Number(ev?.negative_review_count) || 0);
+  const goalGood = (ev: any) => (Number(ev?.verified_screenshot_count) || 0) + (Number(ev?.wash_approved_count) || 0);
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState<{ id: string; employeeName: string; yearMonth: string; isLocked: boolean } | null>(null);
   const [inbox, setInbox] = useState<any[]>([]);
@@ -494,7 +495,7 @@ const ServiceEvaluationPage: React.FC = () => {
         </div>
         {isGoalMode ? (() => {
           const evs = rows.map(r => r.evaluation).filter(Boolean) as any[];
-          const passN = evs.filter(ev => (ev.verified_screenshot_count ?? 0) >= goalThreshold(ev)).length;
+          const passN = evs.filter(ev => goalGood(ev) >= goalThreshold(ev)).length;
           return (
             <div className="bg-white p-4 rounded-lg shadow text-center">
               <div className="text-2xl font-bold" style={{ color: passN === evs.length && evs.length > 0 ? '#16a34a' : '#dc2626' }}>{passN} / {evs.length}</div>
@@ -587,8 +588,8 @@ const ServiceEvaluationPage: React.FC = () => {
                         {isGoalMode ? (
                           <>
                             <td className="px-3 py-3 text-center text-sm">
-                              <div className="font-medium">{ev.verified_screenshot_count ?? 0}</div>
-                              <div className="text-xs text-gray-400">則（已驗證）</div>
+                              <div className="font-medium">{goalGood(ev)}</div>
+                              <div className="text-xs text-gray-400">截圖 {ev.verified_screenshot_count ?? 0}＋洗評 {ev.wash_approved_count ?? 0}</div>
                             </td>
                             <td className={`px-3 py-3 text-center text-sm ${(Number(ev.negative_review_count) || 0) > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
                               {ev.negative_review_count ?? 0}
@@ -598,10 +599,10 @@ const ServiceEvaluationPage: React.FC = () => {
                               <div className="text-xs text-gray-400">20＋{(Number(ev.negative_review_count) || 0)}×20</div>
                             </td>
                             <td className="px-3 py-3 text-center">
-                              {(ev.verified_screenshot_count ?? 0) >= goalThreshold(ev) ? (
+                              {goalGood(ev) >= goalThreshold(ev) ? (
                                 <span className="text-xs px-2 py-1 rounded bg-green-100 text-green-700">✓ 達標</span>
                               ) : (
-                                <span className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">✗ 差 {goalThreshold(ev) - (ev.verified_screenshot_count ?? 0)} 則</span>
+                                <span className="text-xs px-2 py-1 rounded bg-red-50 text-red-600">✗ 差 {goalThreshold(ev) - goalGood(ev)} 則</span>
                               )}
                               {ev.is_locked && <span title="已鎖定" className="ml-1">🔒</span>}
                             </td>
