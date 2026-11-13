@@ -138,8 +138,8 @@ const MyServiceEvaluationPage: React.FC = () => {
                         {(Number(ev.negative_review_count) || 0) > 0 && (
                           <div className="text-xs text-red-600">負評 {ev.negative_review_count} 則・洗評論 {ev.wash_approved_count ?? 0}/{20 * (Number(ev.negative_review_count) || 0)}</div>
                         )}
-                        <span className={`text-xs px-1.5 py-0.5 rounded ${goalGood(ev) >= goalThreshold(ev) ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                          {goalGood(ev) >= goalThreshold(ev) ? '✓ 個人達標' : '✗ 未達標'}
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${(goalGood(ev) >= 20 && (Number(ev.wash_approved_count) || 0) >= 20 * (Number(ev.negative_review_count) || 0)) ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                          {(goalGood(ev) >= 20 && (Number(ev.wash_approved_count) || 0) >= 20 * (Number(ev.negative_review_count) || 0)) ? '✓ 個人達標' : '✗ 未達標'}
                         </span>
                       </>
                     ) : scoringMode === 'legacy' ? (
@@ -208,11 +208,20 @@ const MyServiceEvaluationPage: React.FC = () => {
                           </div>
                         );
                       })()}
-                      <div className={goalGood(ev) >= goalThreshold(ev) ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold'}>
-                        {goalGood(ev) >= goalThreshold(ev)
-                          ? '✓ 服務評鑑 20 則已達標'
-                          : `還差 ${goalThreshold(ev) - goalGood(ev)} 則`}
-                      </div>
+                      {(() => {
+                        const lackGood = Math.max(0, 20 - goalGood(ev));
+                        const washReq = 20 * (Number(ev.negative_review_count) || 0);
+                        const lackWash = Math.max(0, washReq - (Number(ev.wash_approved_count) || 0));
+                        const total = lackGood + lackWash;
+                        return (
+                          <div className={total === 0 ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold'}>
+                            {total === 0 ? '✓ 個人已全部完成' : `還差 ${total} 則`}
+                            {total > 0 && washReq > 0 && (
+                              <span className="text-xs font-normal text-gray-600 ml-2">（服務評鑑還差 {lackGood} 則＋洗評論還差 {lackWash} 則）</span>
+                            )}
+                          </div>
+                        );
+                      })()}
                       <div className="text-xs text-gray-500">門市是否達成看全店正職是否都達門檻、改善書是否交齊，請看店務目標看板。</div>
                     </div>
                     ) : scoringMode === 'legacy' ? (
