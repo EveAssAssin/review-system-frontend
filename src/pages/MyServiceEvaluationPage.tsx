@@ -126,7 +126,7 @@ const MyServiceEvaluationPage: React.FC = () => {
                           五星好評 <span className="text-gray-800 font-medium">{goalGood(ev)}/{goalThreshold(ev)}</span>
                         </div>
                         {(Number(ev.negative_review_count) || 0) > 0 && (
-                          <div className="text-xs text-red-600">負評 {ev.negative_review_count} 則</div>
+                          <div className="text-xs text-red-600">負評 {ev.negative_review_count} 則・洗評論 {ev.wash_approved_count ?? 0}/{20 * (Number(ev.negative_review_count) || 0)}</div>
                         )}
                         <span className={`text-xs px-1.5 py-0.5 rounded ${goalGood(ev) >= goalThreshold(ev) ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600'}`}>
                           {goalGood(ev) >= goalThreshold(ev) ? '✓ 個人達標' : '✗ 未達標'}
@@ -174,18 +174,15 @@ const MyServiceEvaluationPage: React.FC = () => {
                     {isGoalMonth(ev.year_month) ? (
                     <div className="bg-white border rounded p-3 text-sm space-y-1">
                       <div className="text-xs font-medium text-gray-700 mb-1">本月目標（店務目標：門市服務評鑑）</div>
-                      <div>五星好評合計：<b>{goalGood(ev)}</b> / 門檻 <b>{goalThreshold(ev)}</b> 則
-                        <span className="text-xs text-gray-500 ml-2">（服務評鑑截圖 {ev.verified_screenshot_count ?? 0}＋負評洗評論 {ev.wash_approved_count ?? 0}）</span>
-                      </div>
-                      <div className="text-xs text-gray-500">有負評時，補的 20 則可以傳到該則負評的「洗評論」，也可以傳到下方評論截圖，兩邊合計算（同一則評論不能兩邊重複用）。</div>
-                      <div>
-                        {(Number(ev.negative_review_count) || 0) > 0
-                          ? <span className="text-xs text-red-600 ml-2">（基本 20＋負評 {ev.negative_review_count} 則 × 20）</span>
-                          : <span className="text-xs text-gray-500 ml-2">（本月無負評，基本 20 則）</span>}
-                      </div>
+                      <div>服務評鑑五星好評：<b>{goalGood(ev)}</b> / <b>20</b> 則（每人固定 20 則，傳在下方評論截圖）</div>
+                      {(Number(ev.negative_review_count) || 0) > 0 ? (
+                        <div className="text-red-600">負評 {ev.negative_review_count} 則 → 洗評論 <b>{ev.wash_approved_count ?? 0}</b> / <b>{20 * (Number(ev.negative_review_count) || 0)}</b> 則
+                          <span className="text-xs text-gray-500 ml-2">（每則負評 20 則，傳在「評價」裡該則負評的洗評論，跟上面的 20 則分開算；同一則評論不能兩邊重複用）</span>
+                        </div>
+                      ) : <div className="text-xs text-gray-500">本月無負評，只要完成 20 則</div>}
                       <div className={goalGood(ev) >= goalThreshold(ev) ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold'}>
                         {goalGood(ev) >= goalThreshold(ev)
-                          ? '✓ 個人已達門檻'
+                          ? '✓ 服務評鑑 20 則已達標'
                           : `還差 ${goalThreshold(ev) - goalGood(ev)} 則`}
                       </div>
                       <div className="text-xs text-gray-500">門市是否達成看全店正職是否都達門檻、改善書是否交齊，請看店務目標看板。</div>
@@ -340,9 +337,9 @@ const MyServiceEvaluationPage: React.FC = () => {
 // ── 2026-11 起：店務目標制（Louis）——每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數 ──
 const GOAL_FROM = '2026-11';
 const isGoalMonth = (ym?: string) => !!ym && ym >= GOAL_FROM;
-const goalThreshold = (ev: any) => 20 + 20 * Math.max(0, Number(ev?.negative_review_count) || 0);
-// 好評合計＝服務評鑑截圖＋本人負評的洗評論已通過張數（Louis 2026-11-13：總共 40 不是 60）
-const goalGood = (ev: any) => (Number(ev?.verified_screenshot_count) || 0) + (Number(ev?.wash_approved_count) || 0);
+const goalThreshold = (_ev: any) => 20; // 個人服務評鑑固定 20 張；負評的 20 張在該則負評的洗評論補，分開算
+// 個人服務評鑑固定 20 張；負評 20 張在該則負評的洗評論補，分開算（Louis 2026-11-13）
+const goalGood = (ev: any) => Number(ev?.verified_screenshot_count) || 0;
 
 // ── 評論截圖 section（新公式核心）─────────────────────────
 interface RSProps {

@@ -80,8 +80,8 @@ const ServiceEvaluationPage: React.FC = () => {
   const isLegacyMode = (scoringSettings?.scoring_mode || 'legacy') === 'legacy';
   // 2026-11 起：店務目標制（每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數）— Louis
   const isGoalMode = yearMonth >= '2026-11';
-  const goalThreshold = (ev: any) => 20 + 20 * Math.max(0, Number(ev?.negative_review_count) || 0);
-  const goalGood = (ev: any) => (Number(ev?.verified_screenshot_count) || 0) + (Number(ev?.wash_approved_count) || 0);
+  const goalThreshold = (_ev: any) => 20; // 個人固定 20；負評洗評論另計
+  const goalGood = (ev: any) => Number(ev?.verified_screenshot_count) || 0;
   const [savingProcessId, setSavingProcessId] = useState<string | null>(null);
   const [inspecting, setInspecting] = useState<{ id: string; employeeName: string; yearMonth: string; isLocked: boolean } | null>(null);
   const [inbox, setInbox] = useState<any[]>([]);
@@ -589,14 +589,15 @@ const ServiceEvaluationPage: React.FC = () => {
                           <>
                             <td className="px-3 py-3 text-center text-sm">
                               <div className="font-medium">{goalGood(ev)}</div>
-                              <div className="text-xs text-gray-400">截圖 {ev.verified_screenshot_count ?? 0}＋洗評 {ev.wash_approved_count ?? 0}</div>
                             </td>
                             <td className={`px-3 py-3 text-center text-sm ${(Number(ev.negative_review_count) || 0) > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}`}>
                               {ev.negative_review_count ?? 0}
+                              {(Number(ev.negative_review_count) || 0) > 0 && (
+                                <div className="text-xs">洗評論 {ev.wash_approved_count ?? 0}/{20 * (Number(ev.negative_review_count) || 0)}</div>
+                              )}
                             </td>
                             <td className="px-3 py-3 text-center text-sm">
                               <div className="font-medium">{goalThreshold(ev)}</div>
-                              <div className="text-xs text-gray-400">20＋{(Number(ev.negative_review_count) || 0)}×20</div>
                             </td>
                             <td className="px-3 py-3 text-center">
                               {goalGood(ev) >= goalThreshold(ev) ? (
@@ -870,7 +871,7 @@ const EvaluationEditModal: React.FC<EditModalProps> = ({ evaluation, onClose, on
           {isGoalEvYM(evaluation.year_month) ? (
           <div className="rounded-lg p-4 mb-4 text-sm" style={{ backgroundColor: '#faf9f6', border: '1px solid #ede8e2' }}>
             <div className="text-xs text-gray-500 mb-1">本月目標（2026 年 11 月起門檻制）</div>
-            <div>五星好評截圖：<b>{evaluation.verified_screenshot_count ?? 0}</b> / 門檻 <b>{20 + 20 * (Number(evaluation.negative_review_count) || 0)}</b> 則（20＋本人負評 {evaluation.negative_review_count ?? 0} 則×20）</div>
+            <div>五星好評截圖：<b>{evaluation.verified_screenshot_count ?? 0}</b> / <b>20</b> 則（每人固定 20）{(Number(evaluation.negative_review_count) || 0) > 0 && <>｜負評 {evaluation.negative_review_count} 則・洗評論 <b>{evaluation.wash_approved_count ?? 0}</b> / {20 * (Number(evaluation.negative_review_count) || 0)}（在該則負評下補，分開算）</>}</div>
             <div className="text-xs text-gray-500 mt-1">好評數由員工上傳截圖自動驗證、負評數由評價紀錄自動計算，不需手動填分數。</div>
           </div>
           ) : (
