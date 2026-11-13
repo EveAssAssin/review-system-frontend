@@ -74,8 +74,9 @@ const MyServiceEvaluationPage: React.FC = () => {
       {isGoalMonth(evals[0]?.year_month) ? (
       <div className="rounded-lg p-3 text-xs text-gray-700 bg-[#faf8f5] border border-[#e8ddd0]">
         <div className="font-medium mb-1">服務評鑑規則（2026 年 11 月起）</div>
-        每位正職都要完成 <b>20 則 Google 五星好評截圖</b>；本人每被記 1 則負評，就要再補 20 則（1 則負評→40 則、2 則→60 則，以此類推）。
-        每則負評由店長／代理人填 1 份負評改善書。全店正職都達門檻且改善書交齊，門市才算達成。
+        ① 每位正職固定完成 <b>20 則 Google 五星好評截圖</b>，傳在本頁下方「評論截圖」。<br/>
+        ② 有負評的人，每則負評要再完成 <b>20 則洗評論</b>，傳在「評價」裡<b>那則負評的洗評論</b>（跟 ① 分開傳、分開算，同一則評論不能兩邊重複用）。<br/>
+        每則負評由店長／代理人填 1 份負評改善書。全店正職 ① 都達標、洗評論補滿、改善書交齊，門市才算達成。
       </div>
       ) : (
       <div className="rounded-lg p-3 text-xs text-gray-600 bg-[#faf8f5] border border-[#e8ddd0]">
@@ -334,7 +335,7 @@ const MyServiceEvaluationPage: React.FC = () => {
   );
 };
 
-// ── 2026-11 起：店務目標制（Louis）——每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數 ──
+// ── 2026-11 起：店務目標制（Louis）——每位正職 20 則五星好評；負評洗評論每則 20 另計 ──
 const GOAL_FROM = '2026-11';
 const isGoalMonth = (ym?: string) => !!ym && ym >= GOAL_FROM;
 const goalThreshold = (_ev: any) => 20; // 個人服務評鑑固定 20 張；負評的 20 張在該則負評的洗評論補，分開算

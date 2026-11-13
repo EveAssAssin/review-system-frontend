@@ -78,7 +78,7 @@ const ServiceEvaluationPage: React.FC = () => {
     settingsApi.getScoringSettings().then(res => setScoringSettings(res.data)).catch(() => {});
   }, []);
   const isLegacyMode = (scoringSettings?.scoring_mode || 'legacy') === 'legacy';
-  // 2026-11 起：店務目標制（每位正職 20 則五星好評＋本人每則負評再補 20 則；不再算分數）— Louis
+  // 2026-11 起：店務目標制（每位正職 20 則五星好評；負評洗評論每則 20 另計；不再算分數）— Louis
   const isGoalMode = yearMonth >= '2026-11';
   const goalThreshold = (_ev: any) => 20; // 個人固定 20；負評洗評論另計
   const goalGood = (ev: any) => Number(ev?.verified_screenshot_count) || 0;
@@ -514,8 +514,8 @@ const ServiceEvaluationPage: React.FC = () => {
       {isGoalMode ? (
       <div className="bg-[#faf9f6] border rounded-lg p-3 text-xs text-gray-700" style={{ borderColor: '#ede8e2' }}>
         <span className="font-semibold">評鑑規則（2026 年 11 月起，同店務目標）：</span>
-        每位正職完成 <b>20 則 Google 五星好評截圖</b>；本人每 1 則負評再補 20 則（1 則→40、2 則→60…）。
-        每則負評由店長／代理人填 1 份負評改善書。全店正職都達門檻且改善書交齊才算門市達成（門市結果以店務目標看板為準）。
+        每位正職固定完成 <b>20 則 Google 五星好評截圖</b>（服務評鑑上傳）；每則負評另外在該負評的洗評論補 <b>20 則</b>（分開傳、分開算）。
+        每則負評由店長／代理人填 1 份負評改善書。全店正職達標、洗評論補滿、改善書交齊才算門市達成（以店務目標看板為準）。
       </div>
       ) : (
       <div className="bg-[#faf9f6] border rounded-lg p-3 text-xs text-gray-600" style={{ borderColor: '#ede8e2' }}>
