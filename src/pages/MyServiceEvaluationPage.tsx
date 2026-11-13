@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { serviceEvaluationApi, reviewScreenshotsApi, settingsApi } from '../services/api';
+import { serviceEvaluationApi, reviewScreenshotsApi, settingsApi, reviewsApi } from '../services/api';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import type { ServiceEvaluation, ReviewScreenshot } from '../types';
 import { starStr } from '../utils/stars';
@@ -20,6 +21,14 @@ const MyServiceEvaluationPage: React.FC = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [scoringMode, setScoringMode] = useState<'legacy' | 'screenshot'>('legacy');
+  const navigate = useNavigate();
+  const [washReviews, setWashReviews] = useState<any[]>([]);
+  useEffect(() => {
+    if (!employee?.id) return;
+    reviewsApi.search({ employee_id: employee.id, limit: 100 })
+      .then((res: any) => setWashReviews(((res?.data?.data) || []).filter((r: any) => r.wash_task)))
+      .catch(() => {});
+  }, [employee]);
   useEffect(() => {
     settingsApi.getScoringSettings().then(res => setScoringMode(res.data?.scoring_mode || 'legacy')).catch(() => {});
   }, []);
@@ -181,6 +190,24 @@ const MyServiceEvaluationPage: React.FC = () => {
                           <span className="text-xs text-gray-500 ml-2">（每則負評 20 則，傳在「評價」裡該則負評的洗評論，跟上面的 20 則分開算；同一則評論不能兩邊重複用）</span>
                         </div>
                       ) : <div className="text-xs text-gray-500">本月無負評，只要完成 20 則</div>}
+                      {(() => {
+                        const list = washReviews.filter((r: any) => {
+                          const d = new Date(r.wash_task?.created_at || r.created_at);
+                          const ym = new Date(d.getTime() + 8 * 3600e3).toISOString().slice(0, 7);
+                          return ym === ev.year_month || (r.wash_task?.status === 'in_progress' && ev.year_month === evals[0]?.year_month);
+                        });
+                        if (!list.length) return null;
+                        return (
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {list.map((r: any) => (
+                              <button key={r.id} type="button" onClick={() => navigate(`/reviews/${r.id}`)}
+                                className="px-3 py-1.5 rounded text-white text-sm font-medium" style={{ backgroundColor: '#dc2626' }}>
+                                📤 上傳負評洗評論（{r.wash_task.approved_count ?? 0}/{r.wash_task.required_count ?? 20}）
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                       <div className={goalGood(ev) >= goalThreshold(ev) ? 'text-green-700 font-semibold' : 'text-red-600 font-semibold'}>
                         {goalGood(ev) >= goalThreshold(ev)
                           ? '✓ 服務評鑑 20 則已達標'

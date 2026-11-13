@@ -337,7 +337,7 @@ const WashSection: React.FC<WashSectionProps> = ({
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">第 {slot.slot_index + 1} 張</span>
                   {slot.status === 'pending' && <span className="text-gray-400">待上傳</span>}
-                  {isUploaded && <span className="text-yellow-600 font-medium">待公關審核</span>}
+                  {isUploaded && <span className="text-yellow-600 font-medium">待公關確認</span>}
                   {isApproved && <span className="text-green-600 font-medium">合格</span>}
                   {isRejected && <span className="text-red-600 font-medium">不合格</span>}
                 </div>
